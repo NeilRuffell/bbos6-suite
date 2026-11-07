@@ -43,15 +43,17 @@ the shortcut is not included in the home screen's song-search results.
 
 **Settings** uses reusable non-selectable group headers. Under the
 **Music library** group, **Music Folders** opens a submenu with **Add folders**
-and a live list of saved folders, each with a **Remove** control. **Refresh
-library** remains directly in the Music library group. Removing a folder
-does not delete the files on the device.
+and a live list of saved folders, each with a **Remove** control. The group
+also contains **Refresh library** (incremental), **Full rescan** (complete
+metadata recheck) and **Auto refresh on launch** (On/Off, initially On).
+Removing a folder does not delete the files on the device.
 
 ### Persistent offline catalog (Room)
 
 `MusicLibraryDatabase.java` uses AndroidX Room 2.8.5 (SQLite) to persist
 the scanned song catalog in app-private storage. Tracks store only their SAF
-`content://` URIs, source tree URI, tags, duration and track number; audio
+`content://` URIs, source tree URI, tags, duration, track number and SAF
+file size/last-modified/display-name fingerprints; audio
 files remain in the user-selected folders. `LocalMusicSource` performs all
 database operations off the UI thread. On startup it:
 
@@ -60,12 +62,19 @@ database operations off the UI thread. On startup it:
 3. Loads tracks directly from Room when the marker matches, including a
    successfully indexed but empty collection. No directory enumeration or
    audio-tag extraction occurs on this fast path.
-4. Scans the selected folders only on first use, after a folder selection
-   changes, or when the user explicitly chooses **Settings > Refresh library**.
+4. If the authorized folder set changes, incrementally enumerates selected
+   trees, reusing already-verified unchanged metadata when possible.
+5. With **Auto refresh on launch** enabled (default), displays cached tracks
+   immediately, then asynchronously checks selected folders for changes.
+   If the initial load already scanned, it does not scan twice.
 
-The scanner replaces the catalog and scan marker in one transaction. If
-scanning fails, the previous database snapshot is retained. Previously
-indexed library data remains browseable while a manual refresh runs.
+**Refresh library** enumerates every selected directory to find new/missing
+documents, but compares SAF file size, modification time and display name
+before opening audio streams. Verified unchanged tracks reuse cached
+metadata; new and changed tracks are re-inspected. Only added/changed/deleted
+Room rows and the scan marker are committed in a single transaction.
+A failed scan leaves the prior catalog intact and browseable.
+**Full rescan** ignores fingerprints and rechecks all candidate audio files.
 Individual rows are checked against the current authorized folder list
 before display; stale rows from revoked/removed folder access cannot leak
 into the library. A changed permission/selection set invalidates the
@@ -84,18 +93,20 @@ with zero duration. `MediaExtractor` may also reject otherwise legitimate
 formats such as WMA when no extractor is available on the device. A playable audio file with unreadable title tags still uses
 its filename and Unknown Artist/Album/Genre fallbacks.
 
-**One-time index revision:** The audio-validation change versions the saved
-scan marker so an existing pre-fix Room catalog is rebuilt once after upgrade
-to remove previously misindexed entries. After this one scan, ordinary app
-launches continue reading the saved database without rescanning. No folder
-grants, existing files, Room database schema or playback settings are reset.
+**Room v1 to v2 migration:** Existing metadata, scan marker and selected-folder
+SAF permissions remain intact. Previous tracks have unknown fingerprints;
+the first incremental refresh rechecks them and saves size/time/name data.
+Later scans reuse unchanged rows. SAF providers may report null file sizes or
+timestamps; those files are rechecked every time rather than silently
+classified as unchanged. Changes that preserve file size, timestamp and name
+cannot be detected reliably, so **Full rescan** is available.
 
-This is **manual on-demand refresh**, not a periodic scanner. To find files
-added, moved, deleted or retagged outside BB Music, choose **Refresh library**.
-Force-stopping the app, restarting Android, or reopening the app does not
-normally rescan folders. A database is retained across app upgrades and
-`adb install -r`, but uninstalling or clearing app data erases it.
-Embedded artwork stays in the existing separate in-memory thumbnail cache.
+Auto refresh runs once when an Activity is created after its cached library
+loads, not as continuous polling. The worker scans only selected trees and
+logs added/rechecked/removed/reused counts. Manually triggered scans show a
+completion message. `adb install -r` preserves catalog and settings;
+uninstalling or clearing app data does not. Artwork caches are invalidated
+after file changes or a full rescan.
 
 ### Original BBOS6 music menu icons
 
@@ -349,9 +360,9 @@ without adapter invalidation, preserving trackpad selection and scroll offset.
 ## Selected-folder-only device library
 
 **Privacy/access contract:** BB Music must **not scan any music outside the
-directories explicitly selected by the user**. This includes app startup:
-the app does not automatically enumerate storage, and with no saved
-selections there are no media queries.
+directories explicitly selected by the user**. Automatic startup scanning,
+when enabled, is limited to previously selected and still-authorized trees.
+With no selections there are no media queries.
 
 - Settings > Music Folders > Add folders opens Android's trusted
   `Intent.ACTION_OPEN_DOCUMENT_TREE` folder picker.
@@ -409,10 +420,10 @@ Removing the final folder leaves an empty selected-folder library. Back
 retains normal page navigation, and the submenu refreshes after Add folders
 returns from the Android folder picker. Re-selecting a saved folder that had
 lost its read grant restores authorization and triggers a new library scan.
-**Refresh library** rebuilds the entire catalog on demand, without making
-the currently displayed cached library unavailable while it runs. The
-scanner still reads **only** the intersection of saved folders and live
-read grants. If a document provider cannot return a friendly folder name,
+**Refresh library** updates the catalog incrementally, keeping the existing
+snapshot browseable while it runs. **Full rescan** rechecks every candidate
+when provider change metadata cannot be trusted. The scanner still reads
+**only** the intersection of saved folders and live read grants. If a document provider cannot return a friendly folder name,
 the UI derives a label from its tree document ID.
 
 
@@ -635,6 +646,22 @@ For relevant logs:
 adb -s 202512003630 logcat -d -s 'BBMusic:I' 'BBMusic-Local:I' 'BBMusic-Local:W' '*:S'
 ```
 
+### Incremental refresh regression checks
+
+- From Settings > Music library, verify the header cannot be selected, and
+  toggle **Auto refresh on launch** on/off with the trackpad; the displayed
+  state must persist across application restarts.
+- On a provider supplying size and modification timestamps, refresh twice:
+  the second scan should log zero rechecked and reused unchanged tracks.
+- Add a new track, retag one existing track and delete another outside the
+  app; then **Refresh library**. The next catalog should add/recheck/remove
+  only those items. Inspect `BBMusic-Local` logs for counts.
+- Choose **Full rescan** to re-inspect every candidate regardless of cached
+  signatures. Cancel its confirmation to verify no scan begins.
+- Test providers with unavailable size/mtime, old v1 catalogs, revoked SAF
+  grants, overlapping tree selections, and failed folder enumeration.
+  Failures must retain the last good Room snapshot; no files are modified.
+
 ## Architecture
 
 ```text
@@ -648,13 +675,13 @@ BB Music APK (dev.q25.bbmusic)
     Explicit persisted folder-tree allowlist
         |
         v
-  LocalMusicSource
-    Reads authorized song metadata from Room on startup
-    First-time/explicit refresh: DocumentsContract enumeration
+  LocalMusicSource + MusicFileChangeDetector
+    Cached startup + incremental SAF document fingerprint comparison
+    Optional auto refresh + explicit full rescan
         |
         v
-  MusicLibraryDatabase (Room / private SQLite)
-    Atomic song catalog + selected-tree scan marker
+  MusicLibraryDatabase (Room v2 / private SQLite)
+    Atomic changed-row updates + selected-tree scan marker
         |
         v
   Native Media3 playback -> MediaSessionService + ExoPlayer (implemented)
