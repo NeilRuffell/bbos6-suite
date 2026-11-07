@@ -58,11 +58,13 @@ final class MusicListView extends ListView {
         final String artworkKey;
         final List<Uri> artworkCandidates;
         final boolean showRemoveButton;
+        final boolean sectionHeader;
 
         RowData(String title, String subtitle, boolean enabled,
                 boolean showArtwork, boolean albumFallback, int menuIconRes,
                 String trackNumber, String durationLabel, String artworkKey,
-                List<Uri> artworkCandidates, boolean showRemoveButton) {
+                List<Uri> artworkCandidates, boolean showRemoveButton,
+                boolean sectionHeader) {
             this.title = title;
             this.subtitle = subtitle;
             this.enabled = enabled;
@@ -74,6 +76,7 @@ final class MusicListView extends ListView {
             this.artworkKey = artworkKey;
             this.artworkCandidates = artworkCandidates;
             this.showRemoveButton = showRemoveButton;
+            this.sectionHeader = sectionHeader;
         }
     }
 
@@ -161,11 +164,27 @@ final class MusicListView extends ListView {
                 return position;
             }
 
+            @Override public int getViewTypeCount() {
+                return 2;
+            }
+
+            @Override public int getItemViewType(int position) {
+                return MusicListView.this.data.rowAt(position).sectionHeader ? 1 : 0;
+            }
+
             @Override public View getView(int position, View convertView,
                     ViewGroup parent) {
+                RowData dataRow = MusicListView.this.data.rowAt(position);
+                if (dataRow.sectionHeader) {
+                    MusicSettingsHeaderView header = convertView == null
+                            ? new MusicSettingsHeaderView(getContext())
+                            : (MusicSettingsHeaderView) convertView;
+                    header.bind(dataRow.title);
+                    return header;
+                }
                 View view = convertView == null ? createRowView() : convertView;
                 RowViews views = (RowViews) view.getTag();
-                bindRow(views, MusicListView.this.data.rowAt(position), position);
+                bindRow(views, dataRow, position);
                 return view;
             }
         };

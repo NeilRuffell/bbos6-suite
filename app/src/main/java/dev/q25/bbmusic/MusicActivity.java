@@ -58,6 +58,7 @@ public final class MusicActivity extends Activity {
     private static final int ROW_SETTING = 4;
     private static final int ROW_FOLDER = 5;
     private static final int ROW_NOW_PLAYING = 6;
+    private static final int ROW_SETTINGS_HEADER = 7;
     private static final String[] MENU = {
             "All Songs",
             "Artists",
@@ -76,6 +77,7 @@ public final class MusicActivity extends Activity {
     private TextView noSearchResults;
     private Page rootPage;
     private Page settingsPage;
+    private Page musicFoldersPage;
     private List<MenuRow> visibleRows;
     private boolean searchOpen;
     private int searchOriginalPosition;
@@ -144,6 +146,11 @@ public final class MusicActivity extends Activity {
 
         static MenuRow setting(String title) {
             return new MenuRow(title, ROW_SETTING, -1, -1, null, null, null, null);
+        }
+
+        static MenuRow settingsHeader(String title) {
+            return new MenuRow(title, ROW_SETTINGS_HEADER, -1, -1,
+                    null, null, null, null);
         }
 
         static MenuRow folder(String name, String location, Uri tree) {
@@ -338,10 +345,12 @@ public final class MusicActivity extends Activity {
                 ? MediaSeekPolicy.formatTime(row.song.durationMs) : null;
         return new MusicListView.RowData(
                 row.title, subtitle,
-                row.kind != ROW_MESSAGE, hasArtwork, albumFallback,
+                row.kind != ROW_MESSAGE && row.kind != ROW_SETTINGS_HEADER,
+                hasArtwork, albumFallback,
                 menuIconForRow(row), trackNumber, duration,
                 albumKey == null ? null : "album:" + albumKey,
-                candidates, row.kind == ROW_FOLDER);
+                candidates, row.kind == ROW_FOLDER,
+                row.kind == ROW_SETTINGS_HEADER);
     }
 
     /**
@@ -490,9 +499,12 @@ public final class MusicActivity extends Activity {
                 navigateTo(settingsPage);
             }
         } else if (row.kind == ROW_SETTING) {
-            if ("Refresh library".equals(row.title)) {
+            if ("Music Folders".equals(row.title)) {
+                musicFoldersPage = new Page("Music Folders", buildMusicFolderRows());
+                navigateTo(musicFoldersPage);
+            } else if ("Refresh library".equals(row.title)) {
                 startLocalScan(true, true);
-            } else {
+            } else if ("Add folders".equals(row.title)) {
                 showFolderPicker();
             }
         } else if (row.kind == ROW_FOLDER) {
@@ -522,11 +534,19 @@ public final class MusicActivity extends Activity {
         }
     }
 
-    /** Rebuild the Settings menu from the same authorized tree allowlist as scans. */
+    /** Each settings section uses a shared, non-selectable header row. */
     private ArrayList<MenuRow> buildSettingsRows() {
         ArrayList<MenuRow> rows = new ArrayList<>();
-        rows.add(MenuRow.setting("Add folders"));
+        rows.add(MenuRow.settingsHeader("Music library"));
+        rows.add(MenuRow.setting("Music Folders"));
         rows.add(MenuRow.setting("Refresh library"));
+        return rows;
+    }
+
+    /** Folder management is a nested page; only saved SAF trees are listed. */
+    private ArrayList<MenuRow> buildMusicFolderRows() {
+        ArrayList<MenuRow> rows = new ArrayList<>();
+        rows.add(MenuRow.setting("Add folders"));
         Set<String> authorized = new HashSet<>();
         for (Uri tree : MusicFolders.selectedTrees(this)) {
             authorized.add(tree.toString());
@@ -542,23 +562,24 @@ public final class MusicActivity extends Activity {
         return rows;
     }
 
-    private void refreshSettingsRows() {
-        if (settingsPage == null) return;
-        settingsPage.rows.clear();
-        settingsPage.rows.addAll(buildSettingsRows());
-        if (currentPage != settingsPage) return;
+    /** Refresh the existing submenu in place after an add or remove. */
+    private void refreshMusicFolderRows() {
+        if (musicFoldersPage == null) return;
+        musicFoldersPage.rows.clear();
+        musicFoldersPage.rows.addAll(buildMusicFolderRows());
+        if (currentPage != musicFoldersPage) return;
         if (searchOpen) {
             updateSearchResults();
             return;
         }
         int selected = Math.max(0, Math.min(list.getSelectedItemPosition(),
-                settingsPage.rows.size() - 1));
+                musicFoldersPage.rows.size() - 1));
         View selectedView = list.getSelectedView();
         int top = selectedView == null ? 0 : selectedView.getTop();
-        visibleRows = settingsPage.rows;
+        visibleRows = musicFoldersPage.rows;
         list.notifyRowsChanged();
         list.post(() -> {
-            if (currentPage != settingsPage || searchOpen
+            if (currentPage != musicFoldersPage || searchOpen
                     || isFinishing() || isDestroyed()) return;
             list.requestFocus();
             list.setSelectionFromTop(selected, top);
@@ -582,7 +603,7 @@ public final class MusicActivity extends Activity {
     private void removeMusicFolder(Uri tree) {
         try {
             if (!MusicFolders.remove(this, tree)) {
-                refreshSettingsRows();
+                refreshMusicFolderRows();
                 Toast.makeText(this, "Folder already removed",
                         Toast.LENGTH_SHORT).show();
                 return;
@@ -598,7 +619,7 @@ public final class MusicActivity extends Activity {
             localSongs = null;
             albumArtworkSources = Collections.emptyMap();
             list.clearArtworkCache();
-            refreshSettingsRows();
+            refreshMusicFolderRows();
             if (MusicFolders.selectedTrees(this).isEmpty()) {
                 localSongs = Collections.emptyList();
                 updateLocalCategoryCounts();
@@ -782,7 +803,7 @@ public final class MusicActivity extends Activity {
                 Log.i(TAG, "Selected music folder added; total="
                         + MusicFolders.selectedTrees(this).size());
             }
-            refreshSettingsRows();
+            refreshMusicFolderRows();
             Toast.makeText(this, added ? "Music folder added"
                     : accessRestored ? "Music folder access restored"
                     : "Folder already selected", Toast.LENGTH_SHORT).show();
@@ -1037,7 +1058,7 @@ public final class MusicActivity extends Activity {
                 // Within Artists, Albums, Genres or a song list, narrow only
                 // the current page. The original Page.rows stay unchanged.
                 for (MenuRow row : currentPage.rows) {
-                    if (row.kind == ROW_MESSAGE) continue;
+                    if (row.kind == ROW_MESSAGE || row.kind == ROW_SETTINGS_HEADER) continue;
                     if (row.title.toLowerCase(Locale.ROOT).contains(term)
                             || (row.kind == ROW_SONG && songMatches(row.song, term))) {
                         matches.add(row);
