@@ -10,8 +10,8 @@ Android on the Zinwa Q25. The current test build is a single **Vector/LSPosed
 APK** that integrates with LineageOS SystemUI. The long-term target is a
 native LineageOS SystemUI implementation.
 
-**Current APK version:** `0.9.113-recents-native-scrim-tint`
-(versionCode 143). The native shade integration and its slide animation
+**Current APK version:** `0.9.114-recents-scrim-visibility-trace`
+(versionCode 144). The native shade integration and its slide animation
 remain **opt-in** while the remaining presentation work continues.
 
 This Recents branch **replaces the Quickstep Overview host's entire drawing
