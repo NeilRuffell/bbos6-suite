@@ -95,7 +95,20 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
                 @Override protected void beforeHookedMethod(MethodHookParam p) {
                     if (!enabled() || !(p.args[0] instanceof Canvas)) return;
                     ViewGroup root = (ViewGroup) p.thisObject;
-                    paintGrid(root, (Canvas) p.args[0]);
+                    Canvas canvas = (Canvas) p.args[0];
+                    // View.draw(Canvas) begins with Android's scroll transform:
+                    // on the Q25 canvas matrix was translated -3850px while
+                    // our icon cells use viewport coordinates 0..720.
+                    // Cancel ONLY the native pager's scroll for this one
+                    // BBUI-owned drawing pass. Save/restore leaves Android's
+                    // native rendering state and task/lifecycle untouched.
+                    int checkpoint = canvas.save();
+                    try {
+                        canvas.translate(root.getScrollX(), root.getScrollY());
+                        paintGrid(root, canvas);
+                    } finally {
+                        canvas.restoreToCount(checkpoint);
+                    }
                     p.setResult(null); // bypass RecentsView.draw AND ViewGroup children
                 }
             });
