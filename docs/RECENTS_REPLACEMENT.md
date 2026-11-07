@@ -65,6 +65,40 @@ adb -s 202512003630 logcat -d -s 'BB7-PullDown:V' 'OverviewProxyRecentsImpl:V' '
 
 The presentation model and keyboard/trackpad policy should not import Xposed types. Use a minimal Q25-specific Vector bridge for class/lifecycle adaptation.
 
+## Native blur/scrim conflicts with requested black tint (0.9.112; Q25 verification pending)
+
+Issue: the translucent black painter (85% transparency / alpha 38)
+did not visually replace Launcher3's blurred Overview background.
+Inspection of lineage-24.0 Launcher3 source confirmed two separate
+native effects: `OverviewState.getDepthUnchecked()` returns 70%
+depth by default, and `OverviewState.getWorkspaceScrimColor()`
+provides the themed `overviewScrimColor`. BBUI's prior
+`canvas.drawColor(0x26000000)` only painted a weak black tint;
+it did not disable either native background effect.
+
+This version adds two Xposed method hooks to the existing Launcher3
+module, active **only** while
+`debug.bbui.recents.icons=true`:
+
+- `OverviewState.getDepthUnchecked` returns `0f`, avoiding native
+  Overview depth/blur.
+- `OverviewState.getWorkspaceScrimColor` returns transparent
+  background/foreground scrim values, avoiding native color overlays.
+- When BBUI mode is off, both hooks call the original Launcher3 code.
+
+The single BBUI `RecentsView.draw(Canvas)` painter remains unchanged
+and continues drawing `0x26000000` over what is visible underneath.
+No new background View, overlay, activity, card renderer, or duplicate
+task manager is created. The compact grid, centered heading, native
+task identity mapping, and directional paging are unchanged.
+
+**Note:** 85% transparency means only ~15% black opacity; the tint is
+intentionally subtle. Removing native blur makes the source below more
+visible, not darker than the specified alpha. This must be verified
+on the Q25 before merging.
+
+Branch: `fix/recents-native-blur-black-tint`. Do not run CI.
+
 ## Shared selected-application heading (0.9.111; Q25 verification pending)
 
 Match the attached BlackBerry OS 6 screenshot: display the currently
