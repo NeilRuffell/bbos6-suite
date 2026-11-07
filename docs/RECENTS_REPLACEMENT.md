@@ -65,6 +65,23 @@ adb -s 202512003630 logcat -d -s 'BB7-PullDown:V' 'OverviewProxyRecentsImpl:V' '
 
 The presentation model and keyboard/trackpad policy should not import Xposed types. Use a minimal Q25-specific Vector bridge for class/lifecycle adaptation.
 
+## Eight icons per page (0.9.105; pending Q25 verification)
+
+The BBUI-owned Recents grid is now **4 columns × 2 rows**, giving exactly
+**8 task icons per page**. Task 9 starts page 2; task 17 starts page 3.
+
+- The exclusive BBUI painter and the Q25-verified native carousel canvas
+  scroll cancellation from 0.9.104 are unchanged.
+- Page selection, tap hit-testing, left/right touch swipes and Page Up/Down
+  already derive page capacity from `RecentsIconGridLayout.PAGE_SIZE`; the
+  shared constant now evaluates to 8. Hardware arrow keys keep using
+  the same shared four-column grid navigation.
+- No stock Recents thumbnails, task cards, or secondary UI are introduced.
+- Regression unit tests cover 8, 9 and 17 tasks, page offsets,
+  directional selection, and empty or too-small viewports.
+- This revision is staged on `feat/recents-4x2-pages` until physically
+  confirmed on the Q25. Build and install locally; no CI.
+
 ## Q25 verified blank-screen cause and fix (0.9.104)
 
 Q25 log from 2026-11-07 13:42:42 showed the BBUI painter loaded all
@@ -99,7 +116,7 @@ and interaction model. That does **not** meet the user's requirement.
   responsible for task enumeration, task identity, native launch and task
   lifecycle. No new Activity, overlay window or second task list is created.
 - **One exclusive presentation:** intercept `RecentsView.draw(Canvas)`
-  and paint BBUI's **4x4 application icon grid** to the host canvas.
+  and paint BBUI's **4x2 application icon grid** to the host canvas.
   The stock `RecentsView.draw`, `dispatchDraw`, **all native TaskView
   drawing**, thumbnail widgets, header chips, previews, labels, stock
   focus visuals and live-tile drawing are **not invoked**.
