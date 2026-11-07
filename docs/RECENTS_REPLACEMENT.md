@@ -65,6 +65,27 @@ adb -s 202512003630 logcat -d -s 'BB7-PullDown:V' 'OverviewProxyRecentsImpl:V' '
 
 The presentation model and keyboard/trackpad policy should not import Xposed types. Use a minimal Q25-specific Vector bridge for class/lifecycle adaptation.
 
+## Q25 verified blank-screen cause and fix (0.9.104)
+
+Q25 log from 2026-11-07 13:42:42 showed the BBUI painter loaded all
+8 native task icon Drawables, yet its own grid was invisible. The
+`LauncherRecentsView` had `scrollX=3850` while Android supplied a
+Canvas matrix with X translation `-3850` and clipping interval
+`[3850, 4570]`. BBUI painted at viewport coordinates `[0, 720]`;
+all icon pixels were outside the Canvas clipping region. This conclusively
+identified a **native Quickstep horizontal-pager transform leak**, not a
+missing icon, Vector hook, transparent view, or extra overlay.
+
+Correction: within the exclusive `RecentsView.draw(Canvas)` hook,
+`canvas.save()`, `canvas.translate(root.getScrollX(), root.getScrollY())`,
+`paintGrid(root, canvas)`, and `canvas.restoreToCount(...)`.
+This cancels Quickstep's native pager translation **only** while drawing the
+BBUI-owned 4x4 viewport grid. It does not alter task binding, lifecycle,
+navigation state, click actions, or underlying Android system services.
+
+The patch is committed but **the corrected drawing requires physical Q25
+verification**. Do not reintroduce Quickstep cards to fix viewport painting.
+
 ## Exclusive BBUI Recents presentation (0.9.101)
 
 Root cause: the screenshot of 0.9.99 shows stock Quickstep card
