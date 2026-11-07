@@ -65,6 +65,55 @@ adb -s 202512003630 logcat -d -s 'BB7-PullDown:V' 'OverviewProxyRecentsImpl:V' '
 
 The presentation model and keyboard/trackpad policy should not import Xposed types. Use a minimal Q25-specific Vector bridge for class/lifecycle adaptation.
 
+## Correct background ownership: Launcher3 native ScrimView (0.9.113; Q25 verification pending)
+
+Q25 evidence: the 0.9.112 build removed the default blue/blurred Overview
+effect, but the wallpaper remained apparently completely unobscured even
+though BBUI was still drawing `0x26000000` in
+`RecentsView.draw(Canvas)`. This establishes that removing the native
+depth/scrim was insufficient to display the requested tint.
+
+**Root cause and verified platform architecture**
+
+The lineage-24.0 Launcher3 source confirms that the native launcher
+`res/layout/launcher.xml` stacks the native full-screen
+`com.android.launcher3.views.ScrimView` above the workspace and
+*below* the Quickstep `overview_panel` (RecentsView).
+`WorkspaceStateTransitionAnimation.setScrim()` obtains the target
+`LauncherState.getWorkspaceScrimColor()` and passes those values to
+`ScrimView.setScrimColors()`. `ScrimView` applies the background using
+its `setBackgroundColor()` and a native `ColorDrawable`.
+
+Prior 0.9.112 hooked `OverviewState.getWorkspaceScrimColor()` to
+**transparent** instead of using that proper scrim. The remaining
+`RecentsView.draw(Canvas)` paint was confined to the *icon renderer*
+and was not the authoritative background tint. Leaving that native
+scrim transparent accounted for the user's uncolored wallpaper.
+
+**Fix**
+
+- Keep the Q25-requested black with **85% transparency** exactly:
+  `0x26000000` (~15% opacity, alpha 38/255).
+- Have `OverviewState.getWorkspaceScrimColor()` return a
+  `ScrimColors(background=0x26000000, foreground=TRANSPARENT)`.
+  Launcher3's *existing* scrim handles positioning, compositing, and
+  state transitions. No new overlay or auxiliary window.
+- Continue returning `0f` from `OverviewState.getDepthUnchecked()`
+  while BBUI mode is enabled to avoid the original native blur.
+- Remove `canvas.drawColor(...)` from the exclusive RecentsView painter.
+  It now draws **only** the BBUI icon grid, focus, heading, and divider.
+- Add a read-only native `ScrimView.setScrimColors` observation.
+  The log `BBUI-RecentsIcons: SCRIM-APPLIED native Launcher3 ScrimView
+  background=#26000000` confirms the native background actually
+  received the intended color on the device.
+- Both state hooks revert to original Launcher3 behavior when
+  `debug.bbui.recents.icons=false`; no stock Recents cards have been
+  restored.
+
+Source-level layout and compositing architecture confirmed. The effect
+still requires actual Q25 installation and visual verification.
+Branch: `fix/recents-native-scrim-tint`. Never use CI.
+
 ## Native blur/scrim conflicts with requested black tint (0.9.112; Q25 verification pending)
 
 Issue: the translucent black painter (85% transparency / alpha 38)
