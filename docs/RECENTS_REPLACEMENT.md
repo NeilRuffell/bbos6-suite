@@ -65,6 +65,34 @@ adb -s 202512003630 logcat -d -s 'BB7-PullDown:V' 'OverviewProxyRecentsImpl:V' '
 
 The presentation model and keyboard/trackpad policy should not import Xposed types. Use a minimal Q25-specific Vector bridge for class/lifecycle adaptation.
 
+## Native scrim visibility diagnostic (0.9.114; Q25 inspection pending)
+
+Q25 logs for 0.9.113 confirmed two things:
+`Native Overview background hooks: depth=true scrim=true nativeScrimView=true`,
+and `SCRIM-APPLIED native Launcher3 ScrimView background=#26000000`.
+The wallpaper remained visually untinted, however. **Those logs only
+prove the colour was assigned to a Java view, not that the view
+contributed any visible pixels.**
+
+The next build makes *no visual or functional corrections*. It logs:
+- `SCRIM-DRAW` when the native ScrimView actually receives `onDraw`,
+  with native Canvas clipping.
+- `SCRIM-STATE` 1.2 seconds after opening Recents: actual
+  background ColorDrawable colour, view alpha, visibility,
+  `isShown`, `getGlobalVisibleRect`, size, draw count and position
+  relative to RecentsView.
+- `SCRIM-ABOVE` and `SCRIM-PARENT` to reveal native siblings,
+  potential occlusion and parent-level opacity.
+
+This instrumentation distinguishes a colour-assignment success
+from a visibility/opacity/compositor failure. It does not add any
+overlays, change the tint, restore stock cards, modify task launching,
+or compensate with an extra paint operation.
+
+Branch: `diag/recents-native-scrim-visibility`, version 0.9.114.
+Do not merge before the Q25 log shows the actual compositing blocker.
+No CI.
+
 ## Correct background ownership: Launcher3 native ScrimView (0.9.113; Q25 verification pending)
 
 Q25 evidence: the 0.9.112 build removed the default blue/blurred Overview
