@@ -47,18 +47,54 @@ public final class RecentsIconGridLayoutTest {
         assertEquals(grid.y(0), grid.y(16));
     }
 
-    @Test public void directionalNavigationUsesFourColumns() {
+    @Test public void horizontalKeysChangePagesAtGridEdges() {
         RecentsIconGridLayout grid = RecentsIconGridLayout.calculate(
                 720, 720, 2f, 0, 20);
         assertNotNull(grid);
-        assertEquals(1, grid.nextIndex(0, 3)); // right
-        assertEquals(0, grid.nextIndex(0, 2)); // left boundary
-        assertEquals(4, grid.nextIndex(0, 1)); // down
-        assertEquals(0, grid.nextIndex(4, 0)); // up
-        assertEquals(3, grid.nextIndex(3, 3)); // right column boundary
-        assertEquals(8, grid.nextIndex(4, 1)); // next page
-        assertEquals(4, grid.nextIndex(8, 0)); // previous page
-        assertEquals(19, grid.nextIndex(19, 1)); // end of task list
+        assertEquals(1, grid.nextIndex(0, 3));  // right inside row
+        assertEquals(0, grid.nextIndex(0, 2));  // no page to the left
+        assertEquals(4, grid.nextIndex(0, 1));  // down within page
+        assertEquals(0, grid.nextIndex(4, 0));  // up within page
+        assertEquals(8, grid.nextIndex(3, 3));  // right -> next page, row 1
+        assertEquals(12, grid.nextIndex(7, 3)); // right -> next page, row 2
+        assertEquals(3, grid.nextIndex(8, 2));  // left -> previous page, row 1
+        assertEquals(7, grid.nextIndex(12, 2)); // left -> previous page, row 2
+        assertEquals(16, grid.nextIndex(11, 3)); // page 2 -> page 3
+        assertEquals(16, grid.nextIndex(15, 3)); // final partial page, top row
+        assertEquals(15, grid.nextIndex(16, 2)); // page 3 -> page 2
+    }
+
+    @Test public void verticalKeysNeverSwitchPages() {
+        RecentsIconGridLayout grid = RecentsIconGridLayout.calculate(
+                720, 720, 2f, 0, 20);
+        assertNotNull(grid);
+        assertEquals(4, grid.nextIndex(4, 1));  // bottom row, stay on page 1
+        assertEquals(8, grid.nextIndex(8, 0));  // top row, stay on page 2
+        assertEquals(12, grid.nextIndex(12, 1)); // bottom row, stay on page 2
+        assertEquals(16, grid.nextIndex(16, 0)); // top row, stay on page 3
+        assertEquals(19, grid.nextIndex(19, 1)); // no bottom row on page 3
+        assertEquals(19, grid.nextIndex(19, 0)); // no previous row on page 3
+    }
+
+    @Test public void partialLastPageUsesHorizontalFallback() {
+        RecentsIconGridLayout grid = RecentsIconGridLayout.calculate(
+                720, 720, 2f, 0, 9);
+        assertNotNull(grid);
+        assertEquals(8, grid.nextIndex(3, 3));  // next page, first row
+        assertEquals(8, grid.nextIndex(7, 3));  // no second row on next page
+        assertEquals(3, grid.nextIndex(8, 2));  // previous page
+        assertEquals(8, grid.nextIndex(8, 3));  // no icon to the right
+        assertEquals(8, grid.nextIndex(8, 1));  // no second row
+    }
+
+    @Test public void onePageDoesNotScrollPastItsEdges() {
+        RecentsIconGridLayout grid = RecentsIconGridLayout.calculate(
+                720, 720, 2f, 0, 8);
+        assertNotNull(grid);
+        assertEquals(3, grid.nextIndex(3, 3));  // no next page
+        assertEquals(7, grid.nextIndex(7, 3));  // no next page
+        assertEquals(0, grid.nextIndex(0, 2));  // no previous page
+        assertEquals(4, grid.nextIndex(4, 1));  // no vertical page transition
     }
 
     @Test public void smallViewportsFailClosed() {
