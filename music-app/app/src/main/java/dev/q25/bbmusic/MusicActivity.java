@@ -51,6 +51,8 @@ import java.util.Set;
 public final class MusicActivity extends Activity {
     private static final String TAG = "BBMusic";
     private static final int ADD_FOLDER_REQUEST = 6102;
+    private static final String MUSIC_SETTINGS_PREFS = "bbmusic_settings";
+    private static final String AUTO_REFRESH_PREF = "auto_refresh_on_launch";
     private static final int ROW_MENU = 0;
     private static final int ROW_SONG = 1;
     private static final int ROW_GROUP = 2;
@@ -95,6 +97,7 @@ public final class MusicActivity extends Activity {
     private List<LocalMusicSource.Song> localSongs;
     private final int[] localCategoryCounts = new int[4];
     private boolean loading;
+    private boolean startupAutoRefreshPending = true;
     private int pendingMenu = -1;
     private final ArrayDeque<Page> backStack = new ArrayDeque<>();
     private Page currentPage;
@@ -313,6 +316,7 @@ public final class MusicActivity extends Activity {
         // No folder grants means zero music queries and zero children.
         if (MusicFolders.selectedTrees(this).isEmpty()) {
             localSongs = Collections.emptyList();
+            startupAutoRefreshPending = false;
         } else {
             startLocalScan(false);
         }
@@ -340,7 +344,10 @@ public final class MusicActivity extends Activity {
         // duration sits at the far right of the title line. Existing menu
         // counts and folder locations keep their original subtitle policies.
         String subtitle = row.kind == ROW_SONG ? row.song.artist
-                : row.kind == ROW_FOLDER ? row.folderLocation : childCountLabel(row);
+                : row.kind == ROW_FOLDER ? row.folderLocation
+                : row.kind == ROW_SETTING && "Auto refresh on launch".equals(row.title)
+                        ? (autoRefreshEnabled() ? "On" : "Off")
+                        : childCountLabel(row);
         String duration = row.kind == ROW_SONG && row.song.durationMs > 0L
                 ? MediaSeekPolicy.formatTime(row.song.durationMs) : null;
         return new MusicListView.RowData(
@@ -504,6 +511,13 @@ public final class MusicActivity extends Activity {
                 navigateTo(musicFoldersPage);
             } else if ("Refresh library".equals(row.title)) {
                 startLocalScan(true, true);
+            } else if ("Full rescan".equals(row.title)) {
+                confirmFullRescan();
+            } else if ("Auto refresh on launch".equals(row.title)) {
+                boolean enabled = !autoRefreshEnabled();
+                getSharedPreferences(MUSIC_SETTINGS_PREFS, MODE_PRIVATE).edit()
+                        .putBoolean(AUTO_REFRESH_PREF, enabled).apply();
+                list.refreshVisibleRows();
             } else if ("Add folders".equals(row.title)) {
                 showFolderPicker();
             }
@@ -540,7 +554,25 @@ public final class MusicActivity extends Activity {
         rows.add(MenuRow.settingsHeader("Music library"));
         rows.add(MenuRow.setting("Music Folders"));
         rows.add(MenuRow.setting("Refresh library"));
+        rows.add(MenuRow.setting("Full rescan"));
+        rows.add(MenuRow.setting("Auto refresh on launch"));
         return rows;
+    }
+
+    private boolean autoRefreshEnabled() {
+        return getSharedPreferences(MUSIC_SETTINGS_PREFS, MODE_PRIVATE)
+                .getBoolean(AUTO_REFRESH_PREF, true);
+    }
+
+    private void confirmFullRescan() {
+        new AlertDialog.Builder(this)
+                .setTitle("Full rescan library?")
+                .setMessage("Recheck every audio file in your selected "
+                        + "music folders? This may take longer than Refresh library.")
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Rescan",
+                        (dialog, which) -> startLocalScan(true, true, true))
+                .show();
     }
 
     /** Folder management is a nested page; only saved SAF trees are listed. */
@@ -835,31 +867,49 @@ public final class MusicActivity extends Activity {
     }
 
     private void startLocalScan(boolean showFeedback, boolean refresh) {
-        if (loading) return;
+        startLocalScan(showFeedback, refresh, false);
+    }
+
+    private void startLocalScan(boolean showFeedback, boolean refresh,
+            boolean fullRescan) {
+        if (loading) {
+            if (showFeedback) {
+                Toast.makeText(this, "Library scan already in progress",
+                        Toast.LENGTH_SHORT).show();
+            }
+            return;
+        }
         if (MusicFolders.selectedTrees(this).isEmpty()) {
             localSongs = Collections.emptyList();
             updateLocalCategoryCounts();
             return;
         }
         loading = true;
-        // A manual refresh keeps the old snapshot browseable until the new
-        // one commits; selected-folder changes already invalidate localSongs.
+        // Keep the previous snapshot browseable while a refresh runs.
         if (!refresh) localSongs = null;
         list.refreshVisibleRows();
         if (showFeedback) {
-            Toast.makeText(this, refresh ? "Refreshing music library..."
+            Toast.makeText(this, fullRescan ? "Rescanning all music..."
+                    : refresh ? "Checking music library..."
                     : "Loading music library...", Toast.LENGTH_SHORT).show();
         }
         LocalMusicSource.Listener listener = new LocalMusicSource.Listener() {
-            @Override public void onLoaded(List<LocalMusicSource.Song> songs) {
+            @Override public void onLoaded(List<LocalMusicSource.Song> songs,
+                    LocalMusicSource.ScanSummary summary) {
                 loading = false;
                 localSongs = songs;
-                // Music files and embedded album art can change on refresh.
-                if (refresh) list.clearArtworkCache();
+                if (refresh && summary.artworkMayHaveChanged()) {
+                    list.clearArtworkCache();
+                }
                 updateAlbumArtworkSources();
                 updateLocalCategoryCounts();
                 if (searchOpen) updateSearchResults();
-                Log.i(TAG, "Selected-folder music ready: " + songs.size() + " tracks");
+                Log.i(TAG, "Selected-folder music ready: " + songs.size()
+                        + " tracks");
+                if (showFeedback && refresh) {
+                    Toast.makeText(MusicActivity.this, summary.message(),
+                            Toast.LENGTH_LONG).show();
+                }
                 if (pendingShuffleStart) {
                     pendingShuffleStart = false;
                     shuffleAllSongs();
@@ -867,10 +917,20 @@ public final class MusicActivity extends Activity {
                 int menu = pendingMenu;
                 pendingMenu = -1;
                 if (menu >= 0 && backStack.isEmpty()) showLocalCategory(menu);
+
+                // Show cached tracks first, then quietly perform one scan.
+                // Do not duplicate a scan already required by the initial load.
+                if (startupAutoRefreshPending) {
+                    startupAutoRefreshPending = false;
+                    if (!refresh && !summary.scanned && autoRefreshEnabled()) {
+                        startLocalScan(false, true);
+                    }
+                }
             }
 
             @Override public void onError(String reason) {
                 loading = false;
+                startupAutoRefreshPending = false;
                 pendingMenu = -1;
                 pendingShuffleStart = false;
                 list.refreshVisibleRows();
@@ -878,7 +938,9 @@ public final class MusicActivity extends Activity {
                 Toast.makeText(MusicActivity.this, reason, Toast.LENGTH_LONG).show();
             }
         };
-        if (refresh) {
+        if (fullRescan) {
+            localSource.fullRescan(listener);
+        } else if (refresh) {
             localSource.refresh(listener);
         } else {
             localSource.load(listener);

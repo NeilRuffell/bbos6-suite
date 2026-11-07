@@ -16,9 +16,11 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -28,7 +30,7 @@ import java.util.concurrent.Executors;
  *
  * Important privacy invariant: never query MediaStore's device-wide tables,
  * enumerate storage roots, or walk directories outside the persisted trees
- * explicitly selected in Settings > Add folders.
+ * explicitly selected in Settings > Music Folders > Add folders.
  *
  * Queries and audio metadata reads run on one worker thread. The UI owns
  * how the resulting list is presented; no media playback dependency exists.
@@ -47,8 +49,58 @@ final class LocalMusicSource {
     private volatile int latestRequest;
 
     interface Listener {
-        void onLoaded(List<Song> songs);
+        void onLoaded(List<Song> songs, ScanSummary summary);
         void onError(String reason);
+    }
+
+    static final class ScanSummary {
+        final boolean scanned;
+        final boolean full;
+        final int added;
+        final int rechecked;
+        final int removed;
+        final int reused;
+        final int total;
+
+        ScanSummary(boolean scanned, boolean full, int added, int rechecked,
+                int removed, int reused, int total) {
+            this.scanned = scanned;
+            this.full = full;
+            this.added = added;
+            this.rechecked = rechecked;
+            this.removed = removed;
+            this.reused = reused;
+            this.total = total;
+        }
+
+        boolean artworkMayHaveChanged() {
+            return full || added > 0 || rechecked > 0 || removed > 0;
+        }
+
+        String message() {
+            if (full) return "Full rescan complete: " + total + " tracks";
+            if (added == 0 && rechecked == 0 && removed == 0) {
+                return "Library up to date: " + total + " tracks";
+            }
+            return "Library refreshed: " + added + " added, "
+                    + rechecked + " rechecked, " + removed + " removed";
+        }
+    }
+
+    private static final class ScanResult {
+        final ArrayList<Song> songs = new ArrayList<>();
+        final ArrayList<MusicLibraryDatabase.TrackRow> changes = new ArrayList<>();
+        final ArrayList<String> removed = new ArrayList<>();
+        final Set<String> retainedUris = new HashSet<>();
+        final Set<String> visitedDocuments = new HashSet<>();
+        int added;
+        int rechecked;
+        int reused;
+
+        ScanSummary summary(boolean full) {
+            return new ScanSummary(true, full, added, rechecked, removed.size(),
+                    reused, songs.size());
+        }
     }
 
     static final class Song {
@@ -87,17 +139,23 @@ final class LocalMusicSource {
         libraryDatabase = MusicLibraryDatabase.open(this.context);
     }
 
-    /** Read the durable index; scan only if the selected folder set changed. */
+    /** Load the saved catalog without directory enumeration when possible. */
     void load(Listener listener) {
-        request(false, listener);
+        request(false, false, listener);
     }
 
-    /** Explicitly rebuild metadata after music files are added or changed. */
+    /** Enumerate folders while reusing unchanged, verified song metadata. */
     void refresh(Listener listener) {
-        request(true, listener);
+        request(true, false, listener);
     }
 
-    private void request(boolean forceScan, Listener listener) {
+    /** Force metadata rechecking when document providers report stale metadata. */
+    void fullRescan(Listener listener) {
+        request(true, true, listener);
+    }
+
+    private void request(boolean scanRequested, boolean fullRescan,
+            Listener listener) {
         if (closed) return;
         final int request = ++latestRequest;
         worker.execute(() -> {
@@ -106,68 +164,64 @@ final class LocalMusicSource {
                 String key = selectionKey(trees);
                 MusicLibraryDatabase.LibraryDao dao = libraryDatabase.libraryDao();
                 MusicLibraryDatabase.ScanRow state = dao.scanState();
+                List<MusicLibraryDatabase.TrackRow> oldRows = dao.tracks();
                 List<Song> songs;
+                ScanSummary summary;
 
-                if (!forceScan && state != null
+                if (!scanRequested && state != null
                         && key.equals(state.selectedTreesKey)) {
-                    // Do not expose metadata belonging to a tree whose SAF
-                    // grant has been revoked since a prior app launch.
+                    // Never load metadata for trees whose SAF grants expired.
                     Set<String> authorized = new HashSet<>();
                     for (Uri tree : trees) authorized.add(tree.toString());
                     ArrayList<Song> cached = new ArrayList<>();
-                    for (MusicLibraryDatabase.TrackRow row : dao.tracks()) {
-                        if (!authorized.contains(row.sourceTree)) continue;
-                        Uri uri = Uri.parse(row.uri);
-                        if (!"content".equals(uri.getScheme())) continue;
-                        cached.add(new Song(row.id, uri, Uri.parse(row.sourceTree),
-                                row.title, row.artist, row.album, row.genre,
-                                row.artistId, row.albumId, row.durationMs,
-                                row.trackNumber));
+                    for (MusicLibraryDatabase.TrackRow row : oldRows) {
+                        if (!authorized.contains(row.sourceTree)
+                                || !row.uri.startsWith("content:")) continue;
+                        cached.add(songFromRow(row));
                     }
-                    // Match the scanner's Java sort exactly on every launch.
                     cached.sort(Comparator.comparing((Song song) -> song.title,
                             String.CASE_INSENSITIVE_ORDER)
                             .thenComparing(song -> song.uri.toString()));
                     songs = Collections.unmodifiableList(cached);
+                    summary = new ScanSummary(false, false, 0, 0, 0,
+                            cached.size(), cached.size());
                     Log.i(TAG, "Loaded persistent music index: " + songs.size());
                 } else {
-                    // First use, folder change or explicit Settings refresh.
-                    // Scanner reads only user-selected SAF trees, never MediaStore.
-                    songs = scanSelectedFolders(request);
-                    if (closed || request != latestRequest) return;
-                    ArrayList<MusicLibraryDatabase.TrackRow> records =
-                            new ArrayList<>(songs.size());
-                    for (Song song : songs) {
-                        MusicLibraryDatabase.TrackRow row =
-                                new MusicLibraryDatabase.TrackRow();
-                        row.id = song.id;
-                        row.uri = song.uri.toString();
-                        row.sourceTree = song.sourceTree.toString();
-                        row.title = song.title;
-                        row.artist = song.artist;
-                        row.album = song.album;
-                        row.genre = song.genre;
-                        row.artistId = song.artistId;
-                        row.albumId = song.albumId;
-                        row.durationMs = song.durationMs;
-                        row.trackNumber = song.trackNumber;
-                        records.add(row);
+                    Map<String, MusicLibraryDatabase.TrackRow> previous =
+                            new HashMap<>();
+                    for (MusicLibraryDatabase.TrackRow row : oldRows) {
+                        previous.put(row.uri, row);
                     }
+                    // SAF exposes no universal directory-change journal; walk
+                    // every selected directory, then check candidate signatures.
+                    ScanResult result = scanSelectedFolders(
+                            request, trees, previous, fullRescan);
+                    if (closed || request != latestRequest) return;
                     MusicLibraryDatabase.ScanRow next =
                             new MusicLibraryDatabase.ScanRow();
                     next.selectedTreesKey = key;
-                    // The new catalog and its scan marker commit atomically.
-                    // A failed refresh never wipes the previous good snapshot.
+                    // Atomic delta commit: failed scans retain the old index.
                     libraryDatabase.runInTransaction(() -> {
                         if (closed || request != latestRequest) return;
-                        dao.deleteAllTracks();
-                        dao.insertTracks(records);
+                        for (int i = 0; i < result.removed.size(); i += 400) {
+                            dao.deleteTracks(result.removed.subList(i,
+                                    Math.min(i + 400, result.removed.size())));
+                        }
+                        if (!result.changes.isEmpty()) dao.insertTracks(result.changes);
                         dao.setScanState(next);
                     });
+                    songs = Collections.unmodifiableList(result.songs);
+                    summary = result.summary(fullRescan);
+                    Log.i(TAG, "Library scan: added=" + summary.added
+                            + " rechecked=" + summary.rechecked
+                            + " removed=" + summary.removed
+                            + " reused=" + summary.reused
+                            + " total=" + summary.total
+                            + " full=" + fullRescan);
                 }
                 main.post(() -> {
                     if (!closed && request == latestRequest) {
-                        listener.onLoaded(songs);
+                        listener.onLoaded(songs, summary);
                     }
                 });
             } catch (RuntimeException exception) {
@@ -179,6 +233,32 @@ final class LocalMusicSource {
                 });
             }
         });
+    }
+
+    private static Song songFromRow(MusicLibraryDatabase.TrackRow row) {
+        return new Song(row.id, Uri.parse(row.uri), Uri.parse(row.sourceTree),
+                row.title, row.artist, row.album, row.genre, row.artistId,
+                row.albumId, row.durationMs, row.trackNumber);
+    }
+
+    private static MusicLibraryDatabase.TrackRow trackRow(Song song,
+            String filename, long fileSize, long lastModified) {
+        MusicLibraryDatabase.TrackRow row = new MusicLibraryDatabase.TrackRow();
+        row.id = song.id;
+        row.uri = song.uri.toString();
+        row.sourceTree = song.sourceTree.toString();
+        row.title = song.title;
+        row.artist = song.artist;
+        row.album = song.album;
+        row.genre = song.genre;
+        row.artistId = song.artistId;
+        row.albumId = song.albumId;
+        row.durationMs = song.durationMs;
+        row.trackNumber = song.trackNumber;
+        row.fileName = filename == null ? "" : filename;
+        row.fileSize = fileSize;
+        row.lastModified = lastModified;
+        return row;
     }
 
     /** Length-prefixed sorted URI list; an empty scanned library is valid. */
@@ -223,19 +303,16 @@ final class LocalMusicSource {
         });
     }
 
-    private List<Song> scanSelectedFolders(int request) {
-        // Only the selected and currently authorized document trees are used.
-        // If no folder was selected there are zero queries to shared storage.
-        List<Uri> trees = MusicFolders.selectedTrees(context);
-        if (trees.isEmpty()) return Collections.emptyList();
-
-        ArrayList<Song> songs = new ArrayList<>();
+    private ScanResult scanSelectedFolders(int request, List<Uri> trees,
+            Map<String, MusicLibraryDatabase.TrackRow> previous,
+            boolean fullRescan) {
+        ScanResult result = new ScanResult();
         Set<String> visited = new HashSet<>();
         int readableTrees = 0;
         for (Uri tree : trees) {
             if (closed || request != latestRequest) break;
             try {
-                scanTree(tree, request, visited, songs);
+                scanTree(tree, request, visited, previous, fullRescan, result);
                 readableTrees++;
             } catch (SecurityException exception) {
                 Log.w(TAG, "Lost access to selected folder " + tree, exception);
@@ -245,25 +322,33 @@ final class LocalMusicSource {
                 throw exception;
             }
         }
-        if (!closed && request == latestRequest && readableTrees == 0) {
+        if (!closed && request == latestRequest
+                && !trees.isEmpty() && readableTrees == 0) {
             throw new IllegalStateException("All selected music folders were inaccessible");
         }
-        songs.sort(Comparator.comparing((Song song) -> song.title,
-                String.CASE_INSENSITIVE_ORDER).thenComparing(song -> song.uri.toString()));
-        Log.i(TAG, "Indexed music files in selected folders: " + songs.size()
-                + ", readable roots: " + readableTrees);
-        return Collections.unmodifiableList(songs);
+
+        // Entries missing from a completed enumeration are no longer indexed.
+        for (String uri : previous.keySet()) {
+            if (!result.retainedUris.contains(uri)) result.removed.add(uri);
+        }
+        result.songs.sort(Comparator.comparing((Song song) -> song.title,
+                String.CASE_INSENSITIVE_ORDER)
+                .thenComparing(song -> song.uri.toString()));
+        return result;
     }
 
     private void scanTree(Uri tree, int request, Set<String> visited,
-            List<Song> songs) {
+            Map<String, MusicLibraryDatabase.TrackRow> previous,
+            boolean fullRescan, ScanResult result) {
         String rootId = DocumentsContract.getTreeDocumentId(tree);
         ArrayDeque<String> directories = new ArrayDeque<>();
         directories.add(rootId);
         String[] projection = {
                 DocumentsContract.Document.COLUMN_DOCUMENT_ID,
                 DocumentsContract.Document.COLUMN_DISPLAY_NAME,
-                DocumentsContract.Document.COLUMN_MIME_TYPE
+                DocumentsContract.Document.COLUMN_MIME_TYPE,
+                DocumentsContract.Document.COLUMN_SIZE,
+                DocumentsContract.Document.COLUMN_LAST_MODIFIED
         };
 
         while (!directories.isEmpty() && !closed && request == latestRequest) {
@@ -284,22 +369,48 @@ final class LocalMusicSource {
                         DocumentsContract.Document.COLUMN_DISPLAY_NAME);
                 int mimeColumn = cursor.getColumnIndexOrThrow(
                         DocumentsContract.Document.COLUMN_MIME_TYPE);
+                int sizeColumn = cursor.getColumnIndex(
+                        DocumentsContract.Document.COLUMN_SIZE);
+                int modifiedColumn = cursor.getColumnIndex(
+                        DocumentsContract.Document.COLUMN_LAST_MODIFIED);
 
                 while (cursor.moveToNext() && !closed && request == latestRequest) {
                     String docId = cursor.getString(idColumn);
                     String name = cursor.getString(nameColumn);
                     String mime = cursor.getString(mimeColumn);
                     if (docId == null || docId.isEmpty()) continue;
-
                     if (DocumentsContract.Document.MIME_TYPE_DIR.equals(mime)) {
                         directories.addLast(docId);
                     } else if (isAudio(name, mime)) {
-                        // buildDocumentUriUsingTree can only use permissions
-                        // granted for the currently selected subtree.
                         Uri fileUri = DocumentsContract.buildDocumentUriUsingTree(
                                 tree, docId);
-                        Song song = inspectAudio(tree, fileUri, name);
-                        if (song != null) songs.add(song);
+                        String uri = fileUri.toString();
+                        if (!result.visitedDocuments.add(uri)) continue;
+                        long size = cursorLong(cursor, sizeColumn);
+                        long modified = cursorLong(cursor, modifiedColumn);
+                        MusicLibraryDatabase.TrackRow cached = previous.get(uri);
+                        boolean reuse = !fullRescan && cached != null
+                                && tree.toString().equals(cached.sourceTree)
+                                && MusicFileChangeDetector.unchanged(
+                                        cached.fileSize, cached.lastModified,
+                                        cached.fileName, size, modified, name);
+                        Song song;
+                        if (reuse) {
+                            song = songFromRow(cached);
+                            result.reused++;
+                        } else {
+                            song = inspectAudio(tree, fileUri, name);
+                            if (song != null) {
+                                result.changes.add(trackRow(
+                                        song, name, size, modified));
+                                if (cached == null) result.added++;
+                                else result.rechecked++;
+                            }
+                        }
+                        if (song != null) {
+                            result.retainedUris.add(uri);
+                            result.songs.add(song);
+                        }
                     }
                 }
             } catch (SecurityException exception) {
@@ -310,6 +421,11 @@ final class LocalMusicSource {
                 throw exception;
             }
         }
+    }
+
+    /** A missing provider size/mtime is unknown, not an unchanged file. */
+    private static long cursorLong(Cursor cursor, int column) {
+        return column >= 0 && !cursor.isNull(column) ? cursor.getLong(column) : -1L;
     }
 
     private static boolean isAudio(String filename, String mime) {

@@ -3,6 +3,7 @@ package dev.q25.bbmusic;
 import android.content.Context;
 
 import androidx.annotation.NonNull;
+import androidx.room.ColumnInfo;
 import androidx.room.Dao;
 import androidx.room.Database;
 import androidx.room.Entity;
@@ -13,6 +14,8 @@ import androidx.room.PrimaryKey;
 import androidx.room.Query;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
+import androidx.room.migration.Migration;
+import androidx.sqlite.db.SupportSQLiteDatabase;
 
 import java.util.List;
 
@@ -22,7 +25,7 @@ import java.util.List;
  * are cached here. All queries and writes run on LocalMusicSource's worker.
  */
 @Database(entities = {MusicLibraryDatabase.TrackRow.class,
-        MusicLibraryDatabase.ScanRow.class}, version = 1, exportSchema = false)
+        MusicLibraryDatabase.ScanRow.class}, version = 2, exportSchema = false)
 abstract class MusicLibraryDatabase extends RoomDatabase {
     private static final String DATABASE_NAME = "bbmusic_library.db";
 
@@ -39,6 +42,9 @@ abstract class MusicLibraryDatabase extends RoomDatabase {
         public long albumId;
         public long durationMs;
         public int trackNumber;
+        @NonNull @ColumnInfo(defaultValue = "''") public String fileName = "";
+        @ColumnInfo(defaultValue = "-1") public long fileSize = -1L;
+        @ColumnInfo(defaultValue = "-1") public long lastModified = -1L;
     }
 
     /**
@@ -68,6 +74,9 @@ abstract class MusicLibraryDatabase extends RoomDatabase {
         @Query("DELETE FROM library_tracks")
         void deleteAllTracks();
 
+        @Query("DELETE FROM library_tracks WHERE uri IN (:uris)")
+        void deleteTracks(List<String> uris);
+
         @Query("DELETE FROM library_tracks WHERE sourceTree = :sourceTree")
         void deleteTracksFromTree(String sourceTree);
 
@@ -77,8 +86,23 @@ abstract class MusicLibraryDatabase extends RoomDatabase {
 
     abstract LibraryDao libraryDao();
 
+    /** Non-destructive v1 -> v2 migration retains tags and folder grants. */
+    private static final Migration MIGRATION_1_2 = new Migration(1, 2) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE library_tracks "
+                    + "ADD COLUMN fileName TEXT NOT NULL DEFAULT ''");
+            database.execSQL("ALTER TABLE library_tracks "
+                    + "ADD COLUMN fileSize INTEGER NOT NULL DEFAULT -1");
+            database.execSQL("ALTER TABLE library_tracks "
+                    + "ADD COLUMN lastModified INTEGER NOT NULL DEFAULT -1");
+        }
+    };
+
     static MusicLibraryDatabase open(Context context) {
         return Room.databaseBuilder(context.getApplicationContext(),
-                MusicLibraryDatabase.class, DATABASE_NAME).build();
+                MusicLibraryDatabase.class, DATABASE_NAME)
+                .addMigrations(MIGRATION_1_2)
+                .build();
     }
 }

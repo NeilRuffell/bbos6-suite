@@ -29,4 +29,5 @@ dependencies {
     def roomVersion = '2.8.5'
     implementation "androidx.room:room-runtime:$roomVersion"
     annotationProcessor "androidx.room:room-compiler:$roomVersion"
+    testImplementation 'junit:junit:4.13.2'
 }
