@@ -552,6 +552,10 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
         if (state.selected >= 0 && state.selected < all.size()) {
             paintSelectedAppHeader(root, canvas, grid, all.get(state.selected));
         }
+        // A small, centered page indicator directly below the icon grid.
+        // Keyboard and touch paging both update state.page and invalidate
+        // this same renderer, so no separate view or paging model is needed.
+        paintPageCounter(root, canvas, grid, state.page);
         // Bounded diagnostics identify the real failing lookup path. They do
         // not modify the native task data or replace the presentation again.
         if (state.diagnosticCount < 4
@@ -603,6 +607,21 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
                     TextUtils.TruncateAt.END).toString();
             canvas.drawText(visibleLabel, grid.centerX(),
                     dividerY - dp(root, 11), LABEL_PAINT);
+        }
+    }
+
+    /** One-based page position beneath the grid, omitted for a single page. */
+    private static void paintPageCounter(ViewGroup root, Canvas canvas,
+            RecentsIconGridLayout grid, int currentPage) {
+        String label = grid.pageCounterText(currentPage);
+        if (label == null) return;
+        synchronized (LABEL_PAINT) {
+            LABEL_PAINT.setColor(0xffd4d7dc);
+            LABEL_PAINT.setTextSize(dp(root, 12));
+            LABEL_PAINT.setTypeface(android.graphics.Typeface.DEFAULT);
+            LABEL_PAINT.setTextAlign(Paint.Align.CENTER);
+            canvas.drawText(label, grid.centerX(),
+                    grid.gridBottom() + dp(root, 20), LABEL_PAINT);
         }
     }
 
