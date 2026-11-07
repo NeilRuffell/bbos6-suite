@@ -65,6 +65,28 @@ adb -s 202512003630 logcat -d -s 'BB7-PullDown:V' 'OverviewProxyRecentsImpl:V' '
 
 The presentation model and keyboard/trackpad policy should not import Xposed types. Use a minimal Q25-specific Vector bridge for class/lifecycle adaptation.
 
+## Compact four-by-two grid (0.9.110; Q25 verification pending)
+
+The user requested a much tighter grid without changing the icon size.
+Reduce each icon's surrounding cell to **82dp** and inter-cell spacing to
+**6dp** (from the previous near-full-width grid with 8dp spacing).
+Center the complete four-column block horizontally and retain vertical
+centering of the complete two-row block. The 55dp normal icon renderer
+and selected-app labels retain their existing sizing.
+
+At the Q25's logged 720px viewport and 1.4 density, the grid occupies
+approximately 484px of horizontal space rather than almost the full
+720px, and approximately 238px of vertical space rather than 340+px.
+
+The shared layout's x/y coordinates feed both the painter and tap
+hit-testing. Touch swipes, keyboard paging, current task identity, the
+transparent black background and existing native Canvas scroll
+cancellation are unchanged. Added tests for compact bounds and
+consistent positioning across page 1/2/3.
+
+The change is isolated on `feat/recents-compact-grid` for device
+verification; no CI.
+
 ## Translucent black Recents background (0.9.109; Q25 verification pending)
 
 Replaced the painter's opaque gray `Color.rgb(28,32,39)` background
