@@ -10,8 +10,8 @@ Android on the Zinwa Q25. The current test build is a single **Vector/LSPosed
 APK** that integrates with LineageOS SystemUI. The long-term target is a
 native LineageOS SystemUI implementation.
 
-**Current APK version:** `0.9.112-recents-black-without-native-blur`
-(versionCode 142). The native shade integration and its slide animation
+**Current APK version:** `0.9.113-recents-native-scrim-tint`
+(versionCode 143). The native shade integration and its slide animation
 remain **opt-in** while the remaining presentation work continues.
 
 This Recents branch **replaces the Quickstep Overview host's entire drawing
@@ -30,9 +30,10 @@ keyed by the *current bound application and user*, not by TaskView identity.
 The selected application's name is shown once, centered above the icon grid,
 with a thin gray separator below it; per-icon labels are removed. Selection
 and launch diagnostics still log the native task identity for Q25 verification.
-The renderer suppresses Launcher3's native Overview blur and themed scrim
-while the BBUI Recents mode is active, leaving BBUI's requested 85%-transparent
-black tint as the background. This does not change other Launcher3 states.
+The renderer suppresses Launcher3's native Overview depth blur and uses its
+existing native Overview `ScrimView` to tint the wallpaper black at 15%
+opacity (85% transparency). The icons-only Recents Canvas no longer paints
+any background. Normal Launcher3 states retain their original appearance.
 The renderer cancels the native pager's canvas scroll offset so icons stay
 in the visible viewport. The previous two-column Recents hook was
 **deleted**, not merely disabled. The
