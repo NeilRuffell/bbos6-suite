@@ -25,8 +25,8 @@ import androidx.media3.session.MediaController;
 
 /**
  * Standalone presentation port of the BB UI shade's expanded Now Playing:
- * 40dp Shuffle/Repeat icon header with the BBOS6 Shuffle icon on the left
- * and Repeat on the right, half-radial artwork/metadata, 30dp seek strip
+ * 40dp Repeat/Shuffle icon header with Repeat on the left and Shuffle on
+ * the right, half-radial artwork/metadata, 30dp seek strip
  * and 62dp three-button transport. Its drawables are ported unchanged into
  * MusicPlayerChrome, MediaChromeDivider and HalfRadialGradientDrawable.
  *
@@ -81,37 +81,38 @@ final class MusicNowPlayingView extends LinearLayout {
         LinearLayout modeHeader = new LinearLayout(context);
         modeHeader.setOrientation(HORIZONTAL);
         modeHeader.setGravity(Gravity.CENTER_VERTICAL);
-        modeHeader.setPadding(0, 0, dp(8), 0);
+        modeHeader.setPadding(0, 0, 0, 0);
         modeHeader.setBackground(MusicPlayerChrome.modeHeaderBackground(context));
         addView(modeHeader, new LayoutParams(LayoutParams.MATCH_PARENT, dp(40)));
 
-        // Original BBOS6 Shuffle button takes the former "Media" title slot.
-        modeShuffle = new ImageView(context);
-        modeShuffle.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        modeShuffle.setPadding(0, 0, 0, 0);
-        modeShuffle.setContentDescription("Shuffle unavailable");
-        modeShuffle.setOnClickListener(view -> {
-            zone = ZONE_MODE;
-            selectedMode = 0;
-            requestFocus();
-            client.toggleShuffle();
-            render();
-        });
-        modeHeader.addView(modeShuffle, new LayoutParams(dp(48), LayoutParams.MATCH_PARENT));
-        modeHeader.addView(new View(context), new LayoutParams(0, dp(1), 1f));
-
+        // Repeat occupies the left-hand header slot formerly used by "Media".
         modeRepeat = new ImageView(context);
         modeRepeat.setScaleType(ImageView.ScaleType.FIT_CENTER);
         modeRepeat.setPadding(0, 0, 0, 0);
         modeRepeat.setContentDescription("Repeat unavailable");
         modeRepeat.setOnClickListener(view -> {
             zone = ZONE_MODE;
-            selectedMode = 1;
+            selectedMode = 0;
             requestFocus();
             client.toggleRepeat();
             render();
         });
         modeHeader.addView(modeRepeat, new LayoutParams(
+                dp(48), LayoutParams.MATCH_PARENT));
+        modeHeader.addView(new View(context), new LayoutParams(0, dp(1), 1f));
+
+        modeShuffle = new ImageView(context);
+        modeShuffle.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        modeShuffle.setPadding(0, 0, 0, 0);
+        modeShuffle.setContentDescription("Shuffle unavailable");
+        modeShuffle.setOnClickListener(view -> {
+            zone = ZONE_MODE;
+            selectedMode = 1;
+            requestFocus();
+            client.toggleShuffle();
+            render();
+        });
+        modeHeader.addView(modeShuffle, new LayoutParams(
                 dp(48), LayoutParams.MATCH_PARENT));
 
         // The BB UI expanded player uses its artwork stage to consume all
@@ -338,7 +339,7 @@ final class MusicNowPlayingView extends LinearLayout {
                 && controller.isCommandAvailable(Player.COMMAND_SET_SHUFFLE_MODE);
         boolean shuffle = shuffleAvailable && controller.getShuffleModeEnabled();
         boolean shuffleFocused = shuffleAvailable && focused
-                && zone == ZONE_MODE && selectedMode == 0;
+                && zone == ZONE_MODE && selectedMode == 1;
         modeShuffle.setImageResource(!shuffleAvailable
                 ? R.drawable.bbos6_shuffle_unavailable
                 : shuffle ? R.drawable.bbos6_shuffle_on
@@ -369,7 +370,7 @@ final class MusicNowPlayingView extends LinearLayout {
                 : "Repeat off");
         modeRepeat.setEnabled(repeatAvailable);
         boolean repeatFocused = repeatAvailable && focused
-                && zone == ZONE_MODE && selectedMode == 1;
+                && zone == ZONE_MODE && selectedMode == 0;
         modeRepeat.setBackground(repeatFocused
                 ? MusicSelectionGradient.create(getContext()) : null);
         modeRepeat.setAlpha(1f);
@@ -418,17 +419,16 @@ final class MusicNowPlayingView extends LinearLayout {
 
     void activate() {
         if (zone == ZONE_MODE) {
+            MediaController controller = client.controller();
             if (selectedMode == 0) {
-                MediaController controller = client.controller();
-                if (controller != null
-                        && controller.isCommandAvailable(Player.COMMAND_SET_SHUFFLE_MODE)) {
-                    client.toggleShuffle();
-                }
-            } else {
-                MediaController controller = client.controller();
                 if (controller != null
                         && controller.isCommandAvailable(Player.COMMAND_SET_REPEAT_MODE)) {
                     client.toggleRepeat();
+                }
+            } else {
+                if (controller != null
+                        && controller.isCommandAvailable(Player.COMMAND_SET_SHUFFLE_MODE)) {
+                    client.toggleShuffle();
                 }
             }
         } else if (zone == ZONE_SEEK) {
