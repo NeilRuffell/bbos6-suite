@@ -7,8 +7,8 @@ android {
         applicationId 'dev.q25.trackpad'
         minSdk 33
         targetSdk 28
-        versionCode 143
-        versionName '0.9.113-recents-native-scrim-tint'
+        versionCode 144
+        versionName '0.9.114-recents-scrim-visibility-trace'
     }
     // Compile legacy feature sources into this one APK. These directories
     // are source roots only; their former application modules are not built.
