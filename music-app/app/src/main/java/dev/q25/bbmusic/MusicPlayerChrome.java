@@ -17,7 +17,6 @@ import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.LayerDrawable;
 import android.view.Gravity;
 import android.widget.ImageView;
-import android.widget.TextView;
 
 /**
  * Resource-independent visual port of BB UI's expanded BBOS6 player chrome.
@@ -261,21 +260,4 @@ final class MusicPlayerChrome {
         };
     }
 
-    static void styleMode(Context context, TextView view, boolean active, boolean focused) {
-        if (focused) {
-            GradientDrawable background = new GradientDrawable();
-            background.setColor(0xff153a65);
-            background.setCornerRadius(dp(context, 4));
-            background.setStroke(dp(context, 1), BLUE_BORDER);
-            view.setBackground(background);
-        } else if (active) {
-            GradientDrawable background = new GradientDrawable();
-            background.setColor(0x663c5369);
-            background.setCornerRadius(dp(context, 4));
-            view.setBackground(background);
-        } else {
-            view.setBackground(null);
-        }
-        view.setAlpha(active || focused ? 1f : 0.78f);
-    }
 }

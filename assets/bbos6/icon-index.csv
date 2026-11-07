@@ -6,5 +6,12 @@ filename,name,keywords,android_resource
 348.png,Genres,music genres categories,bbos6_menu_genres
 350.png,All Songs,music songs tracks library,bbos6_menu_all_songs
 351.png,Albums,music albums collection,bbos6_menu_albums
+485.png,Repeat Unavailable,music now playing repeat disabled unavailable,bbos6_repeat_unavailable
+486.png,Repeat On,music now playing repeat all on enabled,bbos6_repeat_all
+487.png,Repeat One On,music now playing repeat one track single on enabled,bbos6_repeat_one
+488.png,Repeat Available Off,music now playing repeat available not on off,bbos6_repeat_off
+509.png,Shuffle Unavailable,music now playing shuffle disabled unavailable,bbos6_shuffle_unavailable
+510.png,Shuffle On,music now playing shuffle on enabled,bbos6_shuffle_on
+511.png,Shuffle Available Off,music now playing shuffle available not on off,bbos6_shuffle_off
 543.png,Missing Album Art,music album missing artwork placeholder,bbos6_album_no_art
 3412.png,Options,blackberry options settings wrench preferences,bbos6_menu_settings
