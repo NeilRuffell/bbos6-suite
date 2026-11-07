@@ -41,9 +41,11 @@ The original seven menu indices remain unchanged in code. Updates modify
 only `rootPage.rows` and preserve existing list selection/Back navigation;
 the shortcut is not included in the home screen's song-search results.
 
-**Settings** provides **Add folders**, **Refresh library**, and a live list
-of each saved music folder, with a per-folder **Remove** control. Removing a
-folder does not delete the files on the device.
+**Settings** uses reusable non-selectable group headers. Under the
+**Music library** group, **Music Folders** opens a submenu with **Add folders**
+and a live list of saved folders, each with a **Remove** control. **Refresh
+library** remains directly in the Music library group. Removing a folder
+does not delete the files on the device.
 
 ### Persistent offline catalog (Room)
 
@@ -241,7 +243,8 @@ dimensions, album artwork and selected-folder restrictions do not change.
   artist, album or genre.
 - **Artists / Albums / Genres:** Filter only the currently displayed
   artist/album/genre entries by their visible name.
-- **Settings:** Filter the existing Settings entries by label.
+- **Settings / Music Folders:** Filter the current page's selectable entries
+  by label. Non-selectable group headings are excluded from results.
 
 **Back** closes the active search first and restores the previous unfiltered
 selection and scroll position; a second Back performs normal page navigation.
@@ -278,7 +281,9 @@ Songs, Artists, Albums and Genres display 68dp square album covers
 flush with the left, top and bottom edges of the 68dp `ListView` selection
 bounds, with zero artwork or row padding. Text labels keep their own internal
 inset. The existing selected-row gradient stays full-width.
-The home menu and Settings use the same shared 68dp rows.
+The home menu and selectable Settings rows use the same shared 68dp rows.
+Reusable 36dp section headers are rendered as disabled ListView item types,
+so they cannot receive selection or activate when pressing Enter.
 
 **BBOS6 song-row metadata:** Every song entry in All Songs, artist/genre
 track lists, album track lists and song-search results shows its **title on
@@ -348,7 +353,7 @@ directories explicitly selected by the user**. This includes app startup:
 the app does not automatically enumerate storage, and with no saved
 selections there are no media queries.
 
-- Settings > Add folders opens Android's trusted
+- Settings > Music Folders > Add folders opens Android's trusted
   `Intent.ACTION_OPEN_DOCUMENT_TREE` folder picker.
 - Each folder chosen grants **read-only** access to its directory and its
   subfolders using Android's Storage Access Framework (SAF).
@@ -384,24 +389,24 @@ Android's DocumentsProvider must actually expose the folders for SAF access.
 
 ### Manage selected folders
 
-The Settings page retains **Add folders** as its first row. Beneath it,
-one regular 68dp list row appears for each **saved** selected SAF folder,
+The **Settings > Music Folders** submenu has **Add folders** as its first row.
+Beneath it, one regular 68dp list row appears for each **saved** selected SAF folder,
 with its document-provider display name, the tree document ID as a
 distinguishing subtitle, and a right-side **Remove** button. Folders whose
 Android read permission is no longer held remain listed with an
-**Access unavailable** subtitle so they can be removed or re-authorized. Settings
-uses the existing shared `MusicListView`, selection gradient, touch
+**Access unavailable** subtitle so they can be removed or re-authorized.
+The submenu uses the existing shared `MusicListView`, selection gradient, touch
 scrolling, physical keyboard and one-row trackpad Up/Down navigation.
 Tapping Remove, tapping a folder row, or pressing Enter/trackpad on a
 highlighted folder row opens a **Remove / Cancel confirmation**.
 
 Confirming removal deletes only that tree's saved allowlist entry and
 releases this app's persisted read grant. It **never deletes, moves or
-modifies files on the device**. The removed folder disappears from Settings;
+modifies files on the device**. The removed folder disappears from Music Folders;
 in-progress scans are invalidated, old library metadata and artwork caches
 are cleared, and the remaining authorized folders are scanned again.
 Removing the final folder leaves an empty selected-folder library. Back
-retains normal page navigation, and Settings refreshes after Add folders
+retains normal page navigation, and the submenu refreshes after Add folders
 returns from the Android folder picker. Re-selecting a saved folder that had
 lost its read grant restores authorization and triggers a new library scan.
 **Refresh library** rebuilds the entire catalog on demand, without making
@@ -523,16 +528,16 @@ adb -s 202512003630 install -r app/build/outputs/apk/debug/app-debug.apk
 
 1. Open BB Music > All Songs **before choosing any folders**. It must not
    enumerate device music; it displays the Add folders instruction.
-2. Go Back > Settings > Add folders; pick a music-containing directory and
+2. Go Back > Settings > Music Folders > Add folders; pick a music-containing directory and
    grant read access through Android's picker.
 3. Return to All Songs. Only audio under that directory and its descendants
    should be indexed. Confirm an unrelated music folder is not listed.
-4. Return to Settings > Add folders; choose a **different** music folder.
+4. Return to Settings > Music Folders > Add folders; choose a **different** music folder.
 5. Return to All Songs and verify the union of the two selected folder trees.
 6. Browse Artists, Albums and Genres, including physical trackpad navigation
    and Back. The blue selection and status-bar boundaries should remain
    correct.
-7. In Settings, confirm both folders appear with readable titles, location
+7. In Settings > Music Folders, confirm both folders appear with readable titles, location
    subtitles and separate Remove buttons. Touch a button, then Cancel:
    neither folder may disappear. Use trackpad Up/Down and Enter on a folder
    row; the same confirmation must open.
@@ -542,7 +547,7 @@ adb -s 202512003630 install -r app/build/outputs/apk/debug/app-debug.apk
    in the removed folder must remain untouched. Remove the last folder and
    verify the library is empty; Add folders remains available.
 9. Re-add a removed folder and restart BB Music to confirm the remaining
-   folder grants and Settings entries persist. If a saved folder loses its
+   folder grants and Music Folders entries persist. If a saved folder loses its
    permission, Settings should still list it as Access unavailable. Re-add
    that folder to restore access or use Remove to discard the saved entry.
 10. Confirm main-menu counters show the selected-folder track count, distinct
@@ -636,7 +641,7 @@ adb -s 202512003630 logcat -d -s 'BBMusic:I' 'BBMusic-Local:I' 'BBMusic-Local:W'
 BB Music APK (dev.q25.bbmusic)
   MusicActivity
     ListView + BaseAdapter, user-guided BBOS6 presentation
-    Settings > Add folders -> Android ACTION_OPEN_DOCUMENT_TREE
+    Settings > Music Folders > Add folders -> Android ACTION_OPEN_DOCUMENT_TREE
         |
         v
   MusicFolders
