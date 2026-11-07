@@ -97,6 +97,28 @@ public final class RecentsIconGridLayoutTest {
         assertEquals(4, grid.nextIndex(4, 1));  // no vertical page transition
     }
 
+    @Test public void completeTwoRowGridIsCenteredVertically() {
+        RecentsIconGridLayout grid = RecentsIconGridLayout.calculate(
+                720, 720, 2f, 0, 8);
+        assertNotNull(grid);
+        int gridHeight = RecentsIconGridLayout.ROWS * grid.cellHeight
+                + (RecentsIconGridLayout.ROWS - 1) * grid.gap;
+        assertEquals((720 - gridHeight) / 2, grid.top);
+        assertEquals(grid.top, grid.y(0));
+        assertEquals(grid.top + grid.cellHeight + grid.gap, grid.y(4));
+        assertTrue(Math.abs((grid.top * 2 + gridHeight) - 720) <= 1);
+    }
+
+    @Test public void allPagesStayAtSameVerticalPosition() {
+        RecentsIconGridLayout grid = RecentsIconGridLayout.calculate(
+                720, 720, 1.4f, 0, 17);
+        assertNotNull(grid);
+        assertEquals(3, grid.pageCount);
+        assertEquals(grid.y(0), grid.y(8));
+        assertEquals(grid.y(0), grid.y(16));
+        assertEquals(grid.y(4), grid.y(12));
+    }
+
     @Test public void smallViewportsFailClosed() {
         assertNull(RecentsIconGridLayout.calculate(100, 120, 1f, 0, 4));
         assertNull(RecentsIconGridLayout.calculate(0, 640, 1f, 0, 1));
