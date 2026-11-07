@@ -10,8 +10,8 @@ Android on the Zinwa Q25. The current test build is a single **Vector/LSPosed
 APK** that integrates with LineageOS SystemUI. The long-term target is a
 native LineageOS SystemUI implementation.
 
-**Current APK version:** `0.9.105-recents-4x2-paging`
-(versionCode 135). The native shade integration and its slide animation
+**Current APK version:** `0.9.106-recents-task-identity-diagnostics`
+(versionCode 136). The native shade integration and its slide animation
 remain **opt-in** while the remaining presentation work continues.
 
 This Recents branch **replaces the Quickstep Overview host's entire drawing
@@ -19,6 +19,10 @@ pass** with one BBUI-owned 4x2 grid of application icons (8 per page, swipe for 
 TaskView drawing occurs: no card geometry, thumbnails, header chips or
 labels. Native TaskViews remain headless Quickstep task-data/action handles
 only. BBUI owns its grid's touch/keyboard interaction and selection.
+A recycled TaskView no longer causes stale icons: package-icon caching is
+keyed by the *current bound application and user*, not by TaskView identity.
+The selected icon shows its application label and logs the exact native task
+identity when focused or launched, allowing Q25 verification of app switching.
 The renderer cancels the native pager's canvas scroll offset so icons stay
 in the visible viewport. The previous two-column Recents hook was
 **deleted**, not merely disabled. The
