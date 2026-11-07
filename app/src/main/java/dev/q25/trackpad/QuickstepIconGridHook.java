@@ -55,9 +55,9 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
     private static final String RECENTS = "com.android.quickstep.views.RecentsView";
     private static final String TASK = "com.android.quickstep.views.TaskView";
 
-    // Native Launcher3 scrim tint: black at 15% opacity / 85% transparency.
+    // Native Launcher3 scrim tint: black at 85% opacity / 15% transparency.
     // The icon renderer itself must never own the wallpaper background.
-    private static final int OVERVIEW_SCRIM_TINT = 0x26000000;
+    private static final int OVERVIEW_SCRIM_TINT = 0xD9000000;
     private static final int FOCUS_FILL = 0xff245b97;
     private static final int FOCUS_STROKE = 0xffa8cef3;
     private static final WeakHashMap<View, GridState> STATES = new WeakHashMap<>();
@@ -229,7 +229,7 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
             // Launcher3 owns the wallpaper tint through its full-screen
             // ScrimView, positioned BELOW the RecentsView in launcher.xml.
             // Turn off the native Overview depth blur, but let the native
-            // ScrimView apply BBUI's black-with-85%-transparency tint.
+            // ScrimView apply BBUI's black-with-85%-opacity tint.
             // When the flag is disabled, both hooks defer to Launcher3.
             Class<?> overviewState = XposedHelpers.findClassIfExists(
                     "com.android.launcher3.uioverrides.states.OverviewState",
@@ -274,7 +274,8 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
                                     && ((Integer) value) == OVERVIEW_SCRIM_TINT) {
                                 scrimAppliedLogged = true;
                                 Log.i(TAG, "SCRIM-APPLIED native Launcher3 ScrimView "
-                                        + "background=#26000000");
+                                        + "background=#"
+                                        + Integer.toHexString(OVERVIEW_SCRIM_TINT));
                             }
                         } catch (Throwable error) {
                             Log.w(TAG, "Native scrim verification unavailable", error);
