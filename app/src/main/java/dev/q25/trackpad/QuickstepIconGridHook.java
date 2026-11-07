@@ -58,8 +58,6 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
     // Native Launcher3 scrim tint: black at 85% opacity / 15% transparency.
     // The icon renderer itself must never own the wallpaper background.
     private static final int OVERVIEW_SCRIM_TINT = 0xD9000000;
-    private static final int FOCUS_FILL = 0xff245b97;
-    private static final int FOCUS_STROKE = 0xffa8cef3;
     private static final WeakHashMap<View, GridState> STATES = new WeakHashMap<>();
     // Quickstep TaskViews are recycled. NEVER cache a drawable by TaskView.
     // Cache fallback icons by the bound native task's package and user instead.
@@ -515,21 +513,11 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
             int y = grid.y(index) + (grid.cellHeight - iconsTall) / 2;
 
             if (state.selected == index) {
-                synchronized (PAINT) {
-                    PAINT.setStyle(Paint.Style.FILL);
-                    PAINT.setColor(FOCUS_FILL);
-                    float padding = dp(root, 7);
-                    canvas.drawRoundRect(x - padding, y - padding,
-                            x + iconsWide + padding, y + iconsTall + padding,
-                            dp(root, 10), dp(root, 10), PAINT);
-                    PAINT.setStyle(Paint.Style.STROKE);
-                    PAINT.setStrokeWidth(dp(root, 2));
-                    PAINT.setColor(FOCUS_STROKE);
-                    canvas.drawRoundRect(x - padding, y - padding,
-                            x + iconsWide + padding, y + iconsTall + padding,
-                            dp(root, 10), dp(root, 10), PAINT);
-                    PAINT.setStyle(Paint.Style.FILL);
-                }
+                float padding = dp(root, 7);
+                GridSelectionHighlight.draw(canvas,
+                        x - padding, y - padding,
+                        x + iconsWide + padding, y + iconsTall + padding,
+                        root.getResources().getDisplayMetrics().density);
             }
 
             for (int j = 0; j < number; j++) {
