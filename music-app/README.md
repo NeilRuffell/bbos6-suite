@@ -436,15 +436,18 @@ grant additional storage access and does not affect the Room catalog.
 The Now Playing screen is a standalone presentation port of BB UI master
 `TwoColumnPanel.java` and `UnifiedShadeHost.java`, preserving:
 
-- 40dp mode bar with the Shuffle icon at left (replacing the "Media" label)
-  and Repeat at right. The Shuffle control uses original BBOS6 PNGs from
-  `assets/bbos6/icons/`: normal `488.png`, enabled `486.png`,
-  enabled-and-focused `487.png`, and unavailable `485.png`.
-  The icons are packaged as `bbos6_shuffle_*.png` drawables and indexed in
-  `assets/bbos6/icon-index.csv`. Shuffle has zero internal padding and no
-  left-header inset; its square selection fills the header height. It has no
-  background unless focused, when it reuses the exact theme-aware list-row
+- 40dp mode bar with icon-only Shuffle on the left (replacing the "Media"
+  heading) and icon-only Repeat on the right. Original BBOS6 PNG mapping:
+  - **Repeat:** unavailable `485.png`, available/off `488.png`,
+    Repeat All on `486.png`, Repeat One on `487.png`.
+  - **Shuffle:** unavailable `509.png`, available/off `511.png`,
+    on `510.png`.
+  The icons are bundled as `bbos6_repeat_*.png` and
+  `bbos6_shuffle_*.png` drawables and indexed in
+  `assets/bbos6/icon-index.csv`. Both buttons have zero internal padding
+  and a background only when focused, using the exact theme-aware list-row
   selection gradient through the shared `MusicSelectionGradient` helper.
+  The Shuffle button remains flush with the left edge of its header.
   Touch and trackpad controls are unchanged.
 - Full-height half-radial artwork/metadata background and 50/50 art/text split.
 - 30dp seek strip, shared dark gradient and 2dp/silver divider system,
