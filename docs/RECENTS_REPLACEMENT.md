@@ -65,6 +65,33 @@ adb -s 202512003630 logcat -d -s 'BB7-PullDown:V' 'OverviewProxyRecentsImpl:V' '
 
 The presentation model and keyboard/trackpad policy should not import Xposed types. Use a minimal Q25-specific Vector bridge for class/lifecycle adaptation.
 
+## Left/Right page changes (0.9.107; Q25 verification pending)
+
+The 4x2 icon grid already allowed horizontal touch swipes; however, the
+shared keyboard layout policy `RecentsIconGridLayout.nextIndex()` crossed
+from the lower row of one page to the upper row of the next page on
+**Down**, while **Right** stopped at the fourth column. This caused
+vertical-direction page navigation despite horizontal visual paging.
+
+Corrected directional selection in the existing BBUI-owned renderer:
+
+- Up/Down changes rows **within the current page only**.
+- Right from the fourth column advances to the **next page**. It prefers
+  the same row and falls back to the first icon if that row is absent
+  from the next (partially filled) page.
+- Left from the first column returns to the **previous page**, preserving
+  the row.
+- Horizontal touch swipes and Page Up/Page Down remain unchanged.
+- Still one exclusive BBUI renderer, eight task icons per page, with the
+  Q25-verified scroll-offset correction and app/task identity fix intact.
+- Unit tests cover both page-edge directions, partial last pages,
+  preventing vertical page crossings, and end-of-list boundaries.
+
+Implemented on `feat/recents-horizontal-page-navigation`. The previous
+`0.9.106` commit has already fast-forwarded into `master`. This
+navigation update should be tested on the Q25 before another merge.
+Build/test with local Gradle; no CI.
+
 ## Wrong application opens — source analysis and diagnostic fix (0.9.106)
 
 Issue reported on Q25 **before** the 4x2 change: selected icon sometimes
