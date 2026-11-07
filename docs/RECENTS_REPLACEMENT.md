@@ -65,6 +65,28 @@ adb -s 202512003630 logcat -d -s 'BB7-PullDown:V' 'OverviewProxyRecentsImpl:V' '
 
 The presentation model and keyboard/trackpad policy should not import Xposed types. Use a minimal Q25-specific Vector bridge for class/lifecycle adaptation.
 
+## Shared selected-application heading (0.9.111; Q25 verification pending)
+
+Match the attached BlackBerry OS 6 screenshot: display the currently
+selected application's name **once**, horizontally centered above the
+compact 4x2 icon grid, with a thin gray horizontal separator between
+the heading and the grid. No labels are drawn below individual icons.
+
+The heading reads the exact same native task identity and package-manager
+application label used for Recents selection/launch diagnostics. The
+single BBUI Canvas painter draws the header after its icon pass; no
+separate Android View, new UI layer, activity or stock card is added.
+The separator spans the full compact grid width and is always centered
+on that grid. The label ellipsizes to fit the grid's width.
+
+The layout preserves icon sizing, viewport centering, 8 tasks per page,
+touch hit-testing, horizontal page switching, the native canvas scroll
+correction, and the 85%-transparent-black background. Unit tests check
+that heading center and divider width align across pages.
+
+Test branch: `feat/recents-selected-app-header`. Do not merge until
+verified on the Q25. No CI.
+
 ## Compact four-by-two grid (0.9.110; Q25 verification pending)
 
 The user requested a much tighter grid without changing the icon size.
