@@ -65,6 +65,24 @@ adb -s 202512003630 logcat -d -s 'BB7-PullDown:V' 'OverviewProxyRecentsImpl:V' '
 
 The presentation model and keyboard/trackpad policy should not import Xposed types. Use a minimal Q25-specific Vector bridge for class/lifecycle adaptation.
 
+## Corrected requested alpha: 85% opacity (0.9.115; Q25 verification pending)
+
+The user clarified that the intended result was **15% transparency /
+85% black opacity**. Earlier iterations had implemented the inverse:
+`0x26000000` (~15% opacity), which explains why the tint remained
+extremely subtle even when assigned and drawn.
+
+Change only the shared native Launcher3 Overview `ScrimView` tint
+constant from `0x26000000` to `0xD9000000` (alpha 217 of 255,
+85.1% opacity); keep the existing native scrim ownership, native blur
+suppression, compact 4x2 grid, selected-app heading, and read-only
+scrim visibility traces. No substitute background painter is added.
+The `SCRIM-APPLIED` diagnostic now derives its logged hex value from
+the constant instead of duplicating it as a literal.
+
+Q25 verification pending, branch `fix/recents-black-85pct-opacity`.
+No CI.
+
 ## Native scrim visibility diagnostic (0.9.114; Q25 inspection pending)
 
 Q25 logs for 0.9.113 confirmed two things:
