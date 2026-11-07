@@ -44,8 +44,14 @@ final class RecentsIconGridLayout {
                 (height - topPadding - spacing * (ROWS + 1)) / ROWS);
         if (tileWidth < Math.round(40 * density)
                 || tileHeight < Math.round(40 * density)) return null;
+        // Center the *complete* two-row grid in the Recents viewport.
+        // Each page shares the same cell positions; horizontal page changes
+        // therefore do not move the icons vertically. Keep the reserved top
+        // inset as a minimum in unusually short viewports.
+        int gridHeight = ROWS * tileHeight + (ROWS - 1) * spacing;
+        int centeredTop = Math.max(topPadding, (height - gridHeight) / 2);
         return new RecentsIconGridLayout(width, tileWidth, tileHeight,
-                spacing, topPadding, taskCount);
+                spacing, centeredTop, taskCount);
     }
 
     int page(int taskIndex) {
