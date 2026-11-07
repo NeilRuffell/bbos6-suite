@@ -7,8 +7,8 @@ android {
         applicationId 'dev.q25.trackpad'
         minSdk 33
         targetSdk 28
-        versionCode 145
-        versionName '0.9.115-recents-black-85pct-opacity'
+        versionCode 146
+        versionName '0.9.116-recents-page-counter'
     }
     // Compile legacy feature sources into this one APK. These directories
     // are source roots only; their former application modules are not built.
