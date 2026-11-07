@@ -7,8 +7,8 @@ android {
         applicationId 'dev.q25.trackpad'
         minSdk 33
         targetSdk 28
-        versionCode 132
-        versionName '0.9.102-recents-icon-trace'
+        versionCode 133
+        versionName '0.9.103-recents-surface-diagnostics'
     }
     // Compile legacy feature sources into this one APK. These directories
     // are source roots only; their former application modules are not built.
