@@ -148,6 +148,20 @@ public final class RecentsIconGridLayoutTest {
         assertTrue(grid.cellWidth >= Math.round(55 * 1.4f) + Math.round(14 * 1.4f));
     }
 
+    @Test public void selectedAppHeaderSharesTheGridCenterAndWidth() {
+        RecentsIconGridLayout grid = RecentsIconGridLayout.calculate(
+                720, 720, 1.4f, 0, 17);
+        assertNotNull(grid);
+        int leftEdge = grid.x(0);
+        int rightEdge = grid.x(3) + grid.cellWidth;
+        assertEquals(rightEdge - leftEdge, grid.gridWidth());
+        assertEquals(360f, grid.centerX(), 0.5f);
+        assertEquals((leftEdge + rightEdge) / 2f, grid.centerX(), 0.5f);
+        // Header is one fixed heading for every horizontal page.
+        assertEquals(grid.centerX(), (grid.x(8) - 720
+                + grid.x(11) - 720 + grid.cellWidth) / 2f, 0.5f);
+    }
+
     @Test public void smallViewportsFailClosed() {
         assertNull(RecentsIconGridLayout.calculate(100, 120, 1f, 0, 4));
         assertNull(RecentsIconGridLayout.calculate(0, 640, 1f, 0, 1));
