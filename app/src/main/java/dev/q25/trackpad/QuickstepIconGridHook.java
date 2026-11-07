@@ -7,6 +7,7 @@ import android.graphics.Matrix;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.text.TextUtils;
 import android.graphics.drawable.Drawable;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -16,7 +17,9 @@ import android.view.ViewGroup;
 
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.WeakHashMap;
 
 import de.robv.android.xposed.IXposedHookLoadPackage;
@@ -54,11 +57,15 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
     private static final int FOCUS_FILL = 0xff245b97;
     private static final int FOCUS_STROKE = 0xffa8cef3;
     private static final WeakHashMap<View, GridState> STATES = new WeakHashMap<>();
-    private static final WeakHashMap<View, Drawable> FALLBACK_ICONS = new WeakHashMap<>();
+    // Quickstep TaskViews are recycled. NEVER cache a drawable by TaskView.
+    // Cache fallback icons by the bound native task's package and user instead.
+    private static final Map<String, Drawable> PACKAGE_ICONS = new HashMap<>();
+    private static final Map<String, String> PACKAGE_LABELS = new HashMap<>();
     private static final WeakHashMap<View, Boolean> SURFACE_DIAG = new WeakHashMap<>();
     private static final WeakHashMap<View, Boolean> CHROME_REMOVED = new WeakHashMap<>();
     private static final WeakHashMap<View, Boolean> SURFACE_PENDING = new WeakHashMap<>();
     private static final Paint PAINT = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private static final Paint LABEL_PAINT = new Paint(Paint.ANTI_ALIAS_FLAG);
 
     private static Class<?> nativeTaskType;
     private static Class<?> nativeRecentsType;
@@ -73,6 +80,7 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
         boolean logged;
         int lastDrawableCount = -1;
         int diagnosticCount;
+        String lastSelectionLogKey;
     }
 
     @Override public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lp) {
@@ -248,36 +256,117 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
             state.selected = state.page * RecentsIconGridLayout.PAGE_SIZE;
     }
 
+    /**
+     * The task identity is read directly from Quickstep's bound TaskContainer.
+     * It is exactly the key used by TaskView.launchWithoutAnimation.
+     */
+    private static final class TaskIdentity {
+        final int id;
+        final int user;
+        final String pkg;
+        final String component;
+
+        TaskIdentity(int id, int user, String pkg, String component) {
+            this.id = id;
+            this.user = user;
+            this.pkg = pkg;
+            this.component = component;
+        }
+
+        String cacheKey() { return pkg + "|" + user; }
+
+        @Override public String toString() {
+            return "taskId=" + id + " user=" + user + " package=" + pkg
+                    + " component=" + component;
+        }
+    }
+
+    private static TaskIdentity taskIdentity(View task, int containerIndex) {
+        try {
+            Object containers = XposedHelpers.callMethod(task, "getTaskContainers");
+            if (!(containers instanceof List)) return null;
+            List<?> all = (List<?>) containers;
+            if (containerIndex < 0 || containerIndex >= all.size()) return null;
+            Object bound = XposedHelpers.callMethod(all.get(containerIndex), "getTask");
+            Object key = XposedHelpers.getObjectField(bound, "key");
+            Intent intent = (Intent) XposedHelpers.getObjectField(key, "baseIntent");
+            if (intent == null) return null;
+            String pkg = intent.getComponent() == null ? intent.getPackage()
+                    : intent.getComponent().getPackageName();
+            if (pkg == null) return null;
+            int id = XposedHelpers.getIntField(key, "id");
+            int user;
+            try {
+                user = XposedHelpers.getIntField(key, "userId");
+            } catch (Throwable ignored) {
+                user = -1;
+            }
+            return new TaskIdentity(id, user, pkg,
+                    intent.getComponent() == null ? "(none)"
+                            : intent.getComponent().flattenToShortString());
+        } catch (Throwable error) {
+            return null;
+        }
+    }
+
     private static Drawable nativeIcon(View task, int containerIndex) {
         try {
             Object containers = XposedHelpers.callMethod(task, "getTaskContainers");
             if (!(containers instanceof List)) return null;
             List<?> all = (List<?>) containers;
             if (containerIndex < 0 || containerIndex >= all.size()) return null;
-            Object nativeContainer = all.get(containerIndex);
-            Object chip = XposedHelpers.callMethod(nativeContainer, "getIconView");
+            Object chip = XposedHelpers.callMethod(all.get(containerIndex), "getIconView");
             Object drawable = XposedHelpers.callMethod(chip, "getDrawable");
             if (drawable instanceof Drawable) return (Drawable) drawable;
-            // Native Quickstep may not have loaded offscreen carousel icons.
-            // Read the application identity from the SAME bound task object,
-            // not a separate recent-tasks query or a speculative app list.
-            Drawable cached = FALLBACK_ICONS.get(task);
-            if (cached != null && containerIndex == 0) return cached;
-            Object nativeTask = XposedHelpers.callMethod(nativeContainer, "getTask");
-            Object key = XposedHelpers.getObjectField(nativeTask, "key");
-            Intent baseIntent = (Intent) XposedHelpers.getObjectField(
-                    key, "baseIntent");
-            if (baseIntent == null) return null;
-            String pkg = baseIntent.getComponent() != null
-                    ? baseIntent.getComponent().getPackageName()
-                    : baseIntent.getPackage();
-            if (pkg == null) return null;
+
+            // Native icons are null on the Q25 build. A Quickstep TaskView
+            // may be reused for a DIFFERENT app: the old view-keyed cache
+            // returned the previous app's icon while launching the new task.
+            TaskIdentity identity = taskIdentity(task, containerIndex);
+            if (identity == null) return null;
+            Drawable cached = PACKAGE_ICONS.get(identity.cacheKey());
+            if (cached != null) return cached;
             Drawable installed = task.getContext().getPackageManager()
-                    .getApplicationIcon(pkg);
-            if (containerIndex == 0) FALLBACK_ICONS.put(task, installed);
+                    .getApplicationIcon(identity.pkg);
+            PACKAGE_ICONS.put(identity.cacheKey(), installed);
             return installed;
         } catch (Throwable ignored) {
-            return null; // native model can be empty during initial binding
+            return null;
+        }
+    }
+
+    private static String appLabel(View task, TaskIdentity identity) {
+        if (identity == null) return "Unknown application";
+        String cached = PACKAGE_LABELS.get(identity.cacheKey());
+        if (cached != null) return cached;
+        String label = identity.pkg;
+        try {
+            android.content.pm.PackageManager pm =
+                    task.getContext().getPackageManager();
+            CharSequence displayName = pm.getApplicationLabel(
+                    pm.getApplicationInfo(identity.pkg, 0));
+            if (displayName != null && displayName.length() > 0) {
+                label = displayName.toString();
+            }
+        } catch (Throwable ignored) {
+            // Task package remains the canonical diagnostic fallback.
+        }
+        PACKAGE_LABELS.put(identity.cacheKey(), label);
+        return label;
+    }
+
+    private static void logSelectionIfChanged(ViewGroup root, GridState state,
+            List<View> all) {
+        if (state.selected < 0 || state.selected >= all.size()) return;
+        View task = all.get(state.selected);
+        TaskIdentity identity = taskIdentity(task, 0);
+        String key = "index=" + state.selected + " page=" + state.page
+                + " view=" + System.identityHashCode(task)
+                + " " + (identity == null ? "UNBOUND" : identity.toString());
+        if (!key.equals(state.lastSelectionLogKey)) {
+            state.lastSelectionLogKey = key;
+            Log.i(TAG, "SELECT " + key
+                    + " label=" + appLabel(task, identity));
         }
     }
 
@@ -298,6 +387,7 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
         if (grid == null) return;
         GridState state = state(root);
         normalize(state, all.size());
+        logSelectionIfChanged(root, state, all);
         if (!state.logged) {
             state.logged = true;
             Log.i(TAG, "BBUI-only Recents drawing: " + all.size()
@@ -341,6 +431,23 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
                             x + iconsWide + padding, y + iconsTall + padding,
                             dp(root, 10), dp(root, 10), PAINT);
                     PAINT.setStyle(Paint.Style.FILL);
+                }
+            }
+
+            if (state.selected == index) {
+                TaskIdentity identity = taskIdentity(task, 0);
+                String label = appLabel(task, identity);
+                synchronized (LABEL_PAINT) {
+                    LABEL_PAINT.setColor(0xfff3f3f5);
+                    LABEL_PAINT.setTextSize(dp(root, 13));
+                    LABEL_PAINT.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+                    LABEL_PAINT.setTextAlign(Paint.Align.CENTER);
+                    String visibleLabel = TextUtils.ellipsize(label, LABEL_PAINT,
+                            grid.cellWidth - dp(root, 8),
+                            TextUtils.TruncateAt.END).toString();
+                    canvas.drawText(visibleLabel,
+                            grid.x(index) - pageOffset + grid.cellWidth / 2f,
+                            y + iconsTall + dp(root, 19), LABEL_PAINT);
                 }
             }
 
@@ -532,7 +639,8 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
         if (grid == null) return true;
 
         if (activate) {
-            launchTask(all.get(state.selected));
+            launchTask(all.get(state.selected), state.selected, state.page,
+                    "keyboard");
             return true;
         }
 
@@ -599,7 +707,7 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
                     if (hit >= 0) {
                         state.selected = hit;
                         root.invalidate();
-                        launchTask(all.get(hit));
+                        launchTask(all.get(hit), hit, state.page, "touch");
                     }
                 }
                 state.hadDown = false;
@@ -628,7 +736,14 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
     }
 
     /** Calls Android's own task-launch method, without the stock card animation. */
-    private static void launchTask(View nativeTask) {
+    private static void launchTask(View nativeTask, int index, int page,
+            String source) {
+        TaskIdentity identity = taskIdentity(nativeTask, 0);
+        String target = "source=" + source + " index=" + index
+                + " page=" + page
+                + " view=" + System.identityHashCode(nativeTask)
+                + " " + (identity == null ? "UNBOUND" : identity.toString());
+        Log.i(TAG, "LAUNCH-REQUEST " + target);
         try {
             ClassLoader loader = nativeTask.getClass().getClassLoader();
             Class<?> callbackType = Class.forName("kotlin.jvm.functions.Function1",
@@ -637,7 +752,12 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
             Object unit = XposedHelpers.getStaticObjectField(unitType, "INSTANCE");
             Object callback = Proxy.newProxyInstance(loader, new Class<?>[]{callbackType},
                     (proxy, method, args) -> {
-                        if ("invoke".equals(method.getName())) return unit;
+                        if ("invoke".equals(method.getName())) {
+                            Log.i(TAG, "LAUNCH-RESULT " + target
+                                    + " success=" + (args != null && args.length > 0
+                                            ? args[0] : "unknown"));
+                            return unit;
+                        }
                         if ("toString".equals(method.getName())) return "BBUIRecentsCallback";
                         if ("hashCode".equals(method.getName()))
                             return System.identityHashCode(proxy);
@@ -648,8 +768,8 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
             XposedHelpers.callMethod(nativeTask, "launchWithoutAnimation",
                     false, callback);
         } catch (Throwable error) {
-            Log.w(TAG, "Native no-card launch unavailable, using TaskView action: "
-                    + error.getClass().getSimpleName());
+            Log.w(TAG, "LAUNCH-FALLBACK " + target
+                    + " reason=" + error.getClass().getSimpleName());
             // Still the same Android task action, never start a new app intent.
             nativeTask.performClick();
         }
