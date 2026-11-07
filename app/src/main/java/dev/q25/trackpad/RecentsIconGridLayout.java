@@ -60,6 +60,16 @@ final class RecentsIconGridLayout {
                 spacing, centeredLeft, centeredTop, taskCount);
     }
 
+    /** Full width of the icon grid, including its three inner gaps. */
+    int gridWidth() {
+        return COLUMNS * cellWidth + (COLUMNS - 1) * gap;
+    }
+
+    /** Shared horizontal center for the selected-app heading and grid. */
+    float centerX() {
+        return left + gridWidth() / 2f;
+    }
+
     int page(int taskIndex) {
         return taskIndex / PAGE_SIZE;
     }
