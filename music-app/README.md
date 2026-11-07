@@ -437,7 +437,11 @@ The Now Playing screen is a standalone presentation port of BB UI master
 `TwoColumnPanel.java` and `UnifiedShadeHost.java`, preserving:
 
 - 40dp mode bar with icon-only Repeat on the left (replacing the "Media"
-  heading) and icon-only Shuffle on the right. Original BBOS6 PNG mapping:
+  heading), a centered read-only queue position (e.g. `17 of 637`), and
+  icon-only Shuffle on the right. The counter uses the current Media3
+  media-item index and playlist length (not the total library count), updates
+  when the playback controller changes and shows `0 of 0` if disconnected
+  or empty. It does not affect trackpad focus. Original BBOS6 PNG mapping:
   - **Repeat:** unavailable `485.png`, available/off `488.png`,
     Repeat All on `486.png`, Repeat One on `487.png`.
   - **Shuffle:** unavailable `509.png`, available/off `511.png`,
