@@ -25,8 +25,8 @@ import androidx.media3.session.MediaController;
 
 /**
  * Standalone presentation port of the BB UI shade's expanded Now Playing:
- * 40dp Repeat/Shuffle icon header with Repeat on the left and Shuffle on
- * the right, half-radial artwork/metadata, 30dp seek strip
+ * 40dp header with Repeat on the left, queue position in the center and
+ * Shuffle on the right; half-radial artwork/metadata, 30dp seek strip
  * and 62dp three-button transport. Its drawables are ported unchanged into
  * MusicPlayerChrome, MediaChromeDivider and HalfRadialGradientDrawable.
  *
@@ -43,6 +43,7 @@ final class MusicNowPlayingView extends LinearLayout {
     private final MusicArtworkLoader artworkLoader;
     private final ImageView modeShuffle;
     private final ImageView modeRepeat;
+    private final TextView queuePosition;
     private final ImageView artworkImage;
     private final TextView trackTitle;
     private final TextView trackArtist;
@@ -99,7 +100,14 @@ final class MusicNowPlayingView extends LinearLayout {
         });
         modeHeader.addView(modeRepeat, new LayoutParams(
                 dp(48), LayoutParams.MATCH_PARENT));
-        modeHeader.addView(new View(context), new LayoutParams(0, dp(1), 1f));
+
+        // Keep the count mathematically centered between equal-width buttons.
+        // It is informational only and does not enter the trackpad focus order.
+        queuePosition = text("0 of 0", 14, Color.WHITE);
+        queuePosition.setGravity(Gravity.CENTER);
+        queuePosition.setSingleLine(true);
+        modeHeader.addView(queuePosition, new LayoutParams(
+                0, LayoutParams.MATCH_PARENT, 1f));
 
         modeShuffle = new ImageView(context);
         modeShuffle.setScaleType(ImageView.ScaleType.FIT_CENTER);
@@ -282,6 +290,14 @@ final class MusicNowPlayingView extends LinearLayout {
             }
             updateArtwork(artworkSource);
         }
+        // Media3 supplies the current item index and total for the active
+        // playback queue, not the size of the scanned music library.
+        int queueSize = controller == null ? 0 : controller.getMediaItemCount();
+        int index = controller == null || item == null
+                ? C.INDEX_UNSET : controller.getCurrentMediaItemIndex();
+        int position = index >= 0 && index < queueSize ? index + 1 : 0;
+        queuePosition.setText(position + " of " + queueSize);
+
         boolean playing = controller != null && controller.getPlayWhenReady();
         transportButtons[1].setImageDrawable(
                 MusicPlayerChrome.transportIcon(getContext(), 1, playing));
