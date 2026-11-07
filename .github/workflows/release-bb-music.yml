@@ -1,9 +1,13 @@
 name: Release BB Music APK
 
-# Production releases are intentionally manual. A private, stable signing key is
-# required; it must never be committed to this public repository.
+# A pushed version tag from the music-app branch triggers this workflow.
+# Tag-triggered workflows work even when the repository's default branch
+# (main) differs from the active development branch (master).
+# The signing key must never be committed to this public repository.
 on:
-  workflow_dispatch:
+  push:
+    tags:
+      - 'bb-music-v*'
 
 permissions:
   contents: write
@@ -94,6 +98,10 @@ jobs:
           fi
           RELEASE_APK="BBMusic-${VERSION_NAME}.apk"
           RELEASE_TAG="bb-music-v${VERSION_NAME}"
+          if [[ "$GITHUB_REF_TYPE" != "tag" || "$GITHUB_REF_NAME" != "$RELEASE_TAG" ]]; then
+            echo "::error::Release tag must match the built APK versionName ($RELEASE_TAG)."
+            exit 1
+          fi
           mv "$SIGNED" "$RELEASE_APK"
           echo "RELEASE_APK=$RELEASE_APK" >> "$GITHUB_ENV"
           echo "RELEASE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"
