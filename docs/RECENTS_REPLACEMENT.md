@@ -65,6 +65,27 @@ adb -s 202512003630 logcat -d -s 'BB7-PullDown:V' 'OverviewProxyRecentsImpl:V' '
 
 The presentation model and keyboard/trackpad policy should not import Xposed types. Use a minimal Q25-specific Vector bridge for class/lifecycle adaptation.
 
+## Current/total page counter beneath grid (0.9.116; Q25 verification pending)
+
+Add a small centered `current/total` label directly below the compact
+4x2 Recents grid. Reuse the existing native-task-derived
+`RecentsIconGridLayout.pageCount` and per-view `GridState.page`:
+a zero-based current page becomes a one-based label such as `1/2`,
+`2/2` or `3/3`. The label is omitted when there are zero or one
+pages.
+
+The existing exclusive BBUI Recents Canvas draws this label below the
+second row at the grid's horizontal center. Keyboard paging and touch
+swipes already update `state.page` and invalidate the painter; no
+extra window, view, task model, or page navigation logic is introduced.
+The selected-application title remains above the grid. The black
+85%-opaque native Launcher3 scrim and blur suppression are unchanged.
+
+Unit tests cover 0/1/2/3 pages, page-number formatting, invalid-page
+clamping, and below-grid alignment. Branch
+`feat/recents-page-counter`; physical Q25 verification pending.
+No CI.
+
 ## Corrected requested alpha: 85% opacity (0.9.115; Q25 verification pending)
 
 The user clarified that the intended result was **15% transparency /
