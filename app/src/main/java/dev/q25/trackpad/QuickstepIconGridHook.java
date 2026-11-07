@@ -301,7 +301,7 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
         if (!state.logged) {
             state.logged = true;
             Log.i(TAG, "BBUI-only Recents drawing: " + all.size()
-                    + " tasks, 4x4 icon slots, native cards NOT painted");
+                    + " tasks, 4x2 icon slots, native cards NOT painted");
         }
 
         int drawn = 0;
