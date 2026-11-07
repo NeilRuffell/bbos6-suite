@@ -73,26 +73,37 @@ final class RecentsIconGridLayout {
     int nextIndex(int current, int direction) {
         if (tasks == 0) return -1;
         if (current < 0 || current >= tasks) current = 0;
-        int candidate = current;
+        int currentPage = page(current);
+        int withinPage = current % PAGE_SIZE;
+        int row = withinPage / COLUMNS;
+        int column = withinPage % COLUMNS;
         switch (direction) {
-            case 0: // up
-                candidate -= COLUMNS;
-                break;
-            case 1: // down
-                candidate += COLUMNS;
-                break;
-            case 2: // left
-                candidate--;
-                break;
-            case 3: // right
-                candidate++;
-                break;
-            default: return current;
+            case 0: // Up: never leave the current page.
+                return row > 0 ? current - COLUMNS : current;
+            case 1: { // Down: never leave the current page.
+                int below = current + COLUMNS;
+                return row + 1 < ROWS && below < tasks
+                        && page(below) == currentPage ? below : current;
+            }
+            case 2: // Left: leave the page horizontally at its left edge.
+                if (column > 0) return current - 1;
+                return currentPage > 0
+                        ? (currentPage - 1) * PAGE_SIZE + row * COLUMNS
+                                + COLUMNS - 1
+                        : current;
+            case 3: { // Right: leave the page horizontally at its right edge.
+                if (column < COLUMNS - 1) {
+                    int right = current + 1;
+                    return right < tasks && page(right) == currentPage
+                            ? right : current;
+                }
+                int nextPageStart = (currentPage + 1) * PAGE_SIZE;
+                if (nextPageStart >= tasks) return current;
+                int matchingRow = nextPageStart + row * COLUMNS;
+                return matchingRow < tasks ? matchingRow : nextPageStart;
+            }
+            default:
+                return current;
         }
-        if (candidate < 0 || candidate >= tasks) return current;
-        // Directional navigation respects four columns, including page edges.
-        if (direction == 2 && current % COLUMNS == 0) return current;
-        if (direction == 3 && current % COLUMNS == COLUMNS - 1) return current;
-        return candidate;
     }
 }
