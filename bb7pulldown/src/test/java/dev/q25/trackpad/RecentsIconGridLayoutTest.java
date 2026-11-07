@@ -162,6 +162,45 @@ public final class RecentsIconGridLayoutTest {
                 + grid.x(11) - 720 + grid.cellWidth) / 2f, 0.5f);
     }
 
+    @Test public void pageCounterShowsOneBasedPositionForMultiplePages() {
+        RecentsIconGridLayout grid = RecentsIconGridLayout.calculate(
+                720, 720, 1.4f, 0, 17);
+        assertNotNull(grid);
+        assertEquals(3, grid.pageCount);
+        assertEquals("1/3", grid.pageCounterText(0));
+        assertEquals("2/3", grid.pageCounterText(1));
+        assertEquals("3/3", grid.pageCounterText(2));
+        assertEquals("1/3", grid.pageCounterText(-5)); // clamp invalid page
+        assertEquals("3/3", grid.pageCounterText(99));
+    }
+
+    @Test public void pageCounterHiddenWhenOnlyOneOrNoPageExists() {
+        RecentsIconGridLayout one = RecentsIconGridLayout.calculate(
+                720, 720, 1.4f, 0, 8);
+        RecentsIconGridLayout empty = RecentsIconGridLayout.calculate(
+                720, 720, 1.4f, 0, 0);
+        RecentsIconGridLayout two = RecentsIconGridLayout.calculate(
+                720, 720, 1.4f, 0, 9);
+        assertNotNull(one);
+        assertNotNull(empty);
+        assertNotNull(two);
+        assertNull(one.pageCounterText(0));
+        assertNull(empty.pageCounterText(0));
+        assertEquals("1/2", two.pageCounterText(0));
+        assertEquals("2/2", two.pageCounterText(1));
+    }
+
+    @Test public void pageCounterAnchorIsBelowBothRowsOnEveryPage() {
+        RecentsIconGridLayout grid = RecentsIconGridLayout.calculate(
+                720, 720, 1.4f, 0, 17);
+        assertNotNull(grid);
+        assertEquals(grid.y(4) + grid.cellHeight, grid.gridBottom());
+        assertEquals(grid.y(12) + grid.cellHeight, grid.gridBottom());
+        assertEquals(grid.top + 2 * grid.cellHeight + grid.gap,
+                grid.gridBottom());
+        assertEquals(360f, grid.centerX(), 0.5f);
+    }
+
     @Test public void smallViewportsFailClosed() {
         assertNull(RecentsIconGridLayout.calculate(100, 120, 1f, 0, 4));
         assertNull(RecentsIconGridLayout.calculate(0, 640, 1f, 0, 1));
