@@ -488,7 +488,7 @@ features and are not required for local playback.
 
 ## Create a signed production release on GitHub
 
-The manual `.github/workflows/release-bb-music.yml` GitHub Actions
+The tag-triggered `.github/workflows/release-bb-music.yml` GitHub Actions
 workflow compiles `music-app:app:assembleRelease` (non-debuggable),
 zipaligns the unsigned release build, signs it with a persistent private
 PKCS#12 key, verifies the signature and publishes an installable
@@ -520,12 +520,22 @@ printf '%s' "$SIGNING_PASSWORD" \
 unset SIGNING_PASSWORD
 ```
 
-After the secrets are configured, run GitHub Actions > **Release BB Music APK**
-> **Run workflow** on `master`, or run:
+After configuring secrets, tag the current `master` commit and push the
+tag. Because this repository's default branch is `main` rather than the
+active `master`, a **tag push** is used instead of GitHub's manual
+`workflow_dispatch` action:
 
 ```sh
-gh workflow run release-bb-music.yml --ref master -R NeilRuffell/bb-ui
+cd ~/Projects/bb-ui
+git fetch origin
+git switch master
+git pull --ff-only origin master
+git tag bb-music-v0.1.0
+git push origin bb-music-v0.1.0
 ```
+
+The tag must exactly match `bb-music-v<versionName>` from the built APK.
+GitHub Actions then signs the APK and creates the corresponding release.
 
 The finished signed APK appears at
 <https://github.com/NeilRuffell/bb-ui/releases>. This distribution does not
