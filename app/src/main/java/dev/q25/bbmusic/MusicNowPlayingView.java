@@ -25,8 +25,8 @@ import androidx.media3.session.MediaController;
 
 /**
  * Standalone presentation port of the BB UI shade's expanded Now Playing:
- * 40dp shuffle/repeat header with the BBOS6 Shuffle icon on the left,
- * half-radial artwork/metadata, 30dp seek strip
+ * 40dp Shuffle/Repeat icon header with the BBOS6 Shuffle icon on the left
+ * and Repeat on the right, half-radial artwork/metadata, 30dp seek strip
  * and 62dp three-button transport. Its drawables are ported unchanged into
  * MusicPlayerChrome, MediaChromeDivider and HalfRadialGradientDrawable.
  *
@@ -42,7 +42,7 @@ final class MusicNowPlayingView extends LinearLayout {
     private final MusicPlaybackClient client;
     private final MusicArtworkLoader artworkLoader;
     private final ImageView modeShuffle;
-    private final TextView modeRepeat;
+    private final ImageView modeRepeat;
     private final ImageView artworkImage;
     private final TextView trackTitle;
     private final TextView trackArtist;
@@ -100,9 +100,10 @@ final class MusicNowPlayingView extends LinearLayout {
         modeHeader.addView(modeShuffle, new LayoutParams(dp(48), LayoutParams.MATCH_PARENT));
         modeHeader.addView(new View(context), new LayoutParams(0, dp(1), 1f));
 
-        modeRepeat = text("Repeat", 12, Color.WHITE);
-        modeRepeat.setGravity(Gravity.CENTER);
-        modeRepeat.setPadding(dp(9), 0, dp(9), 0);
+        modeRepeat = new ImageView(context);
+        modeRepeat.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        modeRepeat.setPadding(0, 0, 0, 0);
+        modeRepeat.setContentDescription("Repeat unavailable");
         modeRepeat.setOnClickListener(view -> {
             zone = ZONE_MODE;
             selectedMode = 1;
@@ -111,7 +112,7 @@ final class MusicNowPlayingView extends LinearLayout {
             render();
         });
         modeHeader.addView(modeRepeat, new LayoutParams(
-                LayoutParams.WRAP_CONTENT, dp(28)));
+                dp(48), LayoutParams.MATCH_PARENT));
 
         // The BB UI expanded player uses its artwork stage to consume all
         // available height, preserving the compact fixed-size bottom controls.
@@ -284,13 +285,6 @@ final class MusicNowPlayingView extends LinearLayout {
         transportButtons[1].setImageDrawable(
                 MusicPlayerChrome.transportIcon(getContext(), 1, playing));
         transportButtons[1].setContentDescription(playing ? "Pause" : "Play");
-        if (controller == null) {
-            modeRepeat.setText("Repeat");
-        } else {
-            int repeat = controller.getRepeatMode();
-            modeRepeat.setText(repeat == Player.REPEAT_MODE_ONE ? "Repeat 1"
-                    : repeat == Player.REPEAT_MODE_ALL ? "Repeat All" : "Repeat");
-        }
         renderProgress();
         renderFocus();
     }
@@ -347,11 +341,8 @@ final class MusicNowPlayingView extends LinearLayout {
                 && zone == ZONE_MODE && selectedMode == 0;
         modeShuffle.setImageResource(!shuffleAvailable
                 ? R.drawable.bbos6_shuffle_unavailable
-                : shuffle
-                ? (shuffleFocused
-                        ? R.drawable.bbos6_shuffle_enabled_focused
-                        : R.drawable.bbos6_shuffle_enabled)
-                : R.drawable.bbos6_shuffle_normal);
+                : shuffle ? R.drawable.bbos6_shuffle_on
+                : R.drawable.bbos6_shuffle_off);
         modeShuffle.setContentDescription(!shuffleAvailable ? "Shuffle unavailable"
                 : shuffle ? "Shuffle on" : "Shuffle off");
         modeShuffle.setEnabled(shuffleAvailable);
@@ -361,10 +352,27 @@ final class MusicNowPlayingView extends LinearLayout {
                 ? MusicSelectionGradient.create(getContext()) : null);
         // Preserve the supplied PNG colors, including the unavailable variant.
         modeShuffle.setAlpha(1f);
-        boolean repeat = controller != null
-                && controller.getRepeatMode() != Player.REPEAT_MODE_OFF;
-        MusicPlayerChrome.styleMode(getContext(), modeRepeat, repeat,
-                focused && zone == ZONE_MODE && selectedMode == 1);
+        boolean repeatAvailable = controller != null
+                && controller.isCommandAvailable(Player.COMMAND_SET_REPEAT_MODE);
+        int repeatMode = repeatAvailable ? controller.getRepeatMode()
+                : Player.REPEAT_MODE_OFF;
+        modeRepeat.setImageResource(!repeatAvailable
+                ? R.drawable.bbos6_repeat_unavailable
+                : repeatMode == Player.REPEAT_MODE_ONE
+                ? R.drawable.bbos6_repeat_one
+                : repeatMode == Player.REPEAT_MODE_ALL
+                ? R.drawable.bbos6_repeat_all
+                : R.drawable.bbos6_repeat_off);
+        modeRepeat.setContentDescription(!repeatAvailable ? "Repeat unavailable"
+                : repeatMode == Player.REPEAT_MODE_ONE ? "Repeat one"
+                : repeatMode == Player.REPEAT_MODE_ALL ? "Repeat all"
+                : "Repeat off");
+        modeRepeat.setEnabled(repeatAvailable);
+        boolean repeatFocused = repeatAvailable && focused
+                && zone == ZONE_MODE && selectedMode == 1;
+        modeRepeat.setBackground(repeatFocused
+                ? MusicSelectionGradient.create(getContext()) : null);
+        modeRepeat.setAlpha(1f);
         seekBar.setThumb(MusicPlayerChrome.seekThumb(getContext(),
                 focused && zone == ZONE_SEEK,
                 focused && zone == ZONE_SEEK && seekEditing));
@@ -416,7 +424,13 @@ final class MusicNowPlayingView extends LinearLayout {
                         && controller.isCommandAvailable(Player.COMMAND_SET_SHUFFLE_MODE)) {
                     client.toggleShuffle();
                 }
-            } else client.toggleRepeat();
+            } else {
+                MediaController controller = client.controller();
+                if (controller != null
+                        && controller.isCommandAvailable(Player.COMMAND_SET_REPEAT_MODE)) {
+                    client.toggleRepeat();
+                }
+            }
         } else if (zone == ZONE_SEEK) {
             MediaController controller = client.controller();
             boolean canSeek = controller != null && durationMs > 0L
