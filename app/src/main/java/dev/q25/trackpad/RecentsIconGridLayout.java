@@ -4,12 +4,12 @@ package dev.q25.trackpad;
  * Layout policy for the single native Quickstep RecentsView. No Android,
  * Xposed or task-service dependency; suitable for a direct ROM port.
  *
- * The pager uses native horizontal page offsets, with sixteen icon TaskViews
- * on each page. No overlay, secondary view tree or duplicate task model.
+ * The BBUI grid uses horizontal viewport page offsets, with eight native
+ * task icons per page. No overlay, secondary view tree or duplicate task model.
  */
 final class RecentsIconGridLayout {
     static final int COLUMNS = 4;
-    static final int ROWS = 4;
+    static final int ROWS = 2;
     static final int PAGE_SIZE = COLUMNS * ROWS;
 
     final int pageWidth;
@@ -36,7 +36,7 @@ final class RecentsIconGridLayout {
         if (width <= 0 || height <= 0 || density <= 0 || taskCount < 0) return null;
         // Square-ish icon hit targets rather than full-screen thumbnail cards.
         // The native task is still one cell, retaining its original task ID
-        // and click action. Extra tasks continue on the native pager.
+        // and click action. Extra tasks continue on BBUI's existing pages.
         int spacing = Math.max(2, Math.round(8 * density));
         int topPadding = Math.max(0, statusBarOverlap) + Math.round(18 * density);
         int tileWidth = (width - spacing * (COLUMNS + 1)) / COLUMNS;
