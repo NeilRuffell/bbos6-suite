@@ -4,7 +4,7 @@ filename,name,keywords,android_resource
 341.png,Now Playing,music current track playback paused resume screen shortcut,bbos6_menu_now_playing
 345.png,Artists,music artists performers,bbos6_menu_artists
 348.png,Genres,music genres categories,bbos6_menu_genres
-350.png,All Songs,music songs tracks library,bbos6_menu_all_songs
+350.png,All Songs,music songs tracks library launcher app icon,bbos6_menu_all_songs
 351.png,Albums,music albums collection,bbos6_menu_albums
 485.png,Repeat Unavailable,music now playing repeat disabled unavailable,bbos6_repeat_unavailable
 486.png,Repeat On,music now playing repeat all on enabled,bbos6_repeat_all
