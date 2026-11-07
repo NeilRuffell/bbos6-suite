@@ -10,8 +10,8 @@ Android on the Zinwa Q25. The current test build is a single **Vector/LSPosed
 APK** that integrates with LineageOS SystemUI. The long-term target is a
 native LineageOS SystemUI implementation.
 
-**Current APK version:** `0.9.114-recents-scrim-visibility-trace`
-(versionCode 144). The native shade integration and its slide animation
+**Current APK version:** `0.9.115-recents-black-85pct-opacity`
+(versionCode 145). The native shade integration and its slide animation
 remain **opt-in** while the remaining presentation work continues.
 
 This Recents branch **replaces the Quickstep Overview host's entire drawing
@@ -20,8 +20,8 @@ touch swipes and Left/Right at grid edges change pages; Up/Down stays
 within the current page. The complete two-row grid is centered vertically
 within the visible Recents viewport, with compact 82dp icon cells and
 6dp gaps; the icon image sizes are unchanged. The Recents painter uses
-black with 85% transparency (alpha 38/255) rather than the former
-opaque gray. No native
+black with 85% opacity (15% transparency; alpha 217/255),
+instead of the former opaque gray. No native
 TaskView drawing occurs: no card geometry, thumbnails, header chips or
 labels. Native TaskViews remain headless Quickstep task-data/action handles
 only. BBUI owns its grid's touch/keyboard interaction and selection.
@@ -31,8 +31,8 @@ The selected application's name is shown once, centered above the icon grid,
 with a thin gray separator below it; per-icon labels are removed. Selection
 and launch diagnostics still log the native task identity for Q25 verification.
 The renderer suppresses Launcher3's native Overview depth blur and uses its
-existing native Overview `ScrimView` to tint the wallpaper black at 15%
-opacity (85% transparency). The icons-only Recents Canvas no longer paints
+existing native Overview `ScrimView` to tint the wallpaper black at 85%
+opacity (15% transparency). The icons-only Recents Canvas no longer paints
 any background. Normal Launcher3 states retain their original appearance.
 The renderer cancels the native pager's canvas scroll offset so icons stay
 in the visible viewport. The previous two-column Recents hook was
