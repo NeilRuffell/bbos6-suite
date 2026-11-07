@@ -65,6 +65,18 @@ adb -s 202512003630 logcat -d -s 'BB7-PullDown:V' 'OverviewProxyRecentsImpl:V' '
 
 The presentation model and keyboard/trackpad policy should not import Xposed types. Use a minimal Q25-specific Vector bridge for class/lifecycle adaptation.
 
+## Translucent black Recents background (0.9.109; Q25 verification pending)
+
+Replaced the painter's opaque gray `Color.rgb(28,32,39)` background
+with translucent black `0x26000000`: alpha 38/255, approximately
+15% opacity (85% transparency). All icons, selected labels, focus
+indicators, and horizontal page navigation remain unchanged.
+
+This is paint-layer transparency, not a change to Quickstep's window
+translucency or its underlying scene. What appears behind the black
+tint depends on the existing Launcher3 drawing stack. Verify actual
+visual output on the physical Q25 before merging.
+
 ## Vertically centered Recents grid (0.9.108; Q25 verification pending)
 
 The 4-column x 2-row grid now centers **its entire two-row cell block**
