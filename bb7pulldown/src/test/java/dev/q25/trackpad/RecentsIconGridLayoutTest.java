@@ -119,6 +119,35 @@ public final class RecentsIconGridLayoutTest {
         assertEquals(grid.y(4), grid.y(12));
     }
 
+    @Test public void compactCellsHaveSmallGapsAndRemainCentered() {
+        RecentsIconGridLayout grid = RecentsIconGridLayout.calculate(
+                720, 720, 1.4f, 0, 8);
+        assertNotNull(grid);
+        assertEquals(Math.round(82 * 1.4f), grid.cellWidth);
+        assertEquals(Math.round(6 * 1.4f), grid.gap);
+        int blockWidth = RecentsIconGridLayout.COLUMNS * grid.cellWidth
+                + (RecentsIconGridLayout.COLUMNS - 1) * grid.gap;
+        int blockHeight = RecentsIconGridLayout.ROWS * grid.cellHeight
+                + (RecentsIconGridLayout.ROWS - 1) * grid.gap;
+        assertEquals((720 - blockWidth) / 2, grid.x(0));
+        assertEquals((720 - blockHeight) / 2, grid.y(0));
+        assertEquals(grid.cellWidth + grid.gap, grid.x(1) - grid.x(0));
+        assertEquals(grid.cellHeight + grid.gap, grid.y(4) - grid.y(0));
+        assertTrue(blockWidth < 500); // formerly nearly full 720px
+        assertTrue(blockHeight < 250);
+    }
+
+    @Test public void compactGridKeepsPageAndTapCoordinatesAligned() {
+        RecentsIconGridLayout grid = RecentsIconGridLayout.calculate(
+                720, 720, 1.4f, 0, 17);
+        assertNotNull(grid);
+        assertEquals(grid.x(0) + 720, grid.x(8));
+        assertEquals(grid.x(0) + 1440, grid.x(16));
+        assertEquals(grid.y(0), grid.y(8));
+        assertEquals(grid.y(0), grid.y(16));
+        assertTrue(grid.cellWidth >= Math.round(55 * 1.4f) + Math.round(14 * 1.4f));
+    }
+
     @Test public void smallViewportsFailClosed() {
         assertNull(RecentsIconGridLayout.calculate(100, 120, 1f, 0, 4));
         assertNull(RecentsIconGridLayout.calculate(0, 640, 1f, 0, 1));
