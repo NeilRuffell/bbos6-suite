@@ -54,8 +54,9 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
     private static final String RECENTS = "com.android.quickstep.views.RecentsView";
     private static final String TASK = "com.android.quickstep.views.TaskView";
 
-    // Black at 15% opacity = 85% transparency (8-bit alpha 38/255).
-    private static final int BACKGROUND = 0x26000000;
+    // Native Launcher3 scrim tint: black at 15% opacity / 85% transparency.
+    // The icon renderer itself must never own the wallpaper background.
+    private static final int OVERVIEW_SCRIM_TINT = 0x26000000;
     private static final int FOCUS_FILL = 0xff245b97;
     private static final int FOCUS_STROKE = 0xffa8cef3;
     private static final WeakHashMap<View, GridState> STATES = new WeakHashMap<>();
@@ -71,6 +72,7 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
 
     private static Class<?> nativeTaskType;
     private static Class<?> nativeRecentsType;
+    private static boolean scrimAppliedLogged;
 
     private static final class GridState {
         int selected = -1;
@@ -215,12 +217,11 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
                     }
                 });
             }
-            // Launcher3 normally applies its own 70%-depth Overview blur and
-            // themed scrim behind RecentsView. Those are independent of the
-            // BBUI painter's black 0x26-alpha overlay. Remove *only* the
-            // native Overview effects while our replacement is enabled,
-            // allowing the 85%-transparent black to be the actual tint.
-            // When the flag is disabled, both hooks defer to stock Launcher3.
+            // Launcher3 owns the wallpaper tint through its full-screen
+            // ScrimView, positioned BELOW the RecentsView in launcher.xml.
+            // Turn off the native Overview depth blur, but let the native
+            // ScrimView apply BBUI's black-with-85%-transparency tint.
+            // When the flag is disabled, both hooks defer to Launcher3.
             Class<?> overviewState = XposedHelpers.findClassIfExists(
                     "com.android.launcher3.uioverrides.states.OverviewState",
                     lp.classLoader);
@@ -239,14 +240,43 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
                         "getWorkspaceScrimColor", new XC_MethodHook() {
                     @Override protected void beforeHookedMethod(MethodHookParam p) {
                         if (!enabled()) return;
+                        // WorkspaceStateTransitionAnimation.setScrim()
+                        // forwards these values to ScrimView.setScrimColors.
+                        // This is the actual background plane, not the
+                        // task-icons Canvas which must remain transparent.
                         p.setResult(XposedHelpers.newInstance(scrimColors,
-                                Color.TRANSPARENT, Color.TRANSPARENT));
+                                OVERVIEW_SCRIM_TINT, Color.TRANSPARENT));
                     }
                 });
             }
-            Log.i(TAG, "Native Overview blur suppression hooks: depth="
+            // Read-only confirmation that Launcher3 applied the intended
+            // tint to the existing native scrim. No extra View is created.
+            Class<?> scrimView = XposedHelpers.findClassIfExists(
+                    "com.android.launcher3.views.ScrimView", lp.classLoader);
+            if (scrimView != null) {
+                XposedBridge.hookAllMethods(scrimView, "setScrimColors",
+                        new XC_MethodHook() {
+                    @Override protected void afterHookedMethod(MethodHookParam p) {
+                        if (!enabled() || scrimAppliedLogged) return;
+                        try {
+                            Object value = XposedHelpers.callMethod(
+                                    p.thisObject, "getBackgroundColor");
+                            if (value instanceof Integer
+                                    && ((Integer) value) == OVERVIEW_SCRIM_TINT) {
+                                scrimAppliedLogged = true;
+                                Log.i(TAG, "SCRIM-APPLIED native Launcher3 ScrimView "
+                                        + "background=#26000000");
+                            }
+                        } catch (Throwable error) {
+                            Log.w(TAG, "Native scrim verification unavailable", error);
+                        }
+                    }
+                });
+            }
+            Log.i(TAG, "Native Overview background hooks: depth="
                     + (overviewState != null) + " scrim="
-                    + (overviewState != null && scrimColors != null));
+                    + (overviewState != null && scrimColors != null)
+                    + " nativeScrimView=" + (scrimView != null));
             Log.i(TAG, "Exclusive native Overview painter registered; requested=" + enabled());
         } catch (Throwable error) {
             Log.e(TAG, "Could not register native Overview replacement", error);
@@ -415,7 +445,9 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
     }
 
     private static void paintGrid(ViewGroup root, Canvas canvas) {
-        canvas.drawColor(BACKGROUND); // entire stock Overview renderer is replaced
+        // This canvas owns ONLY BBUI's icon grid, heading and focus.
+        // The wallpaper tint is composed by Launcher3's native ScrimView
+        // below this view, not by painting black into the icon surface.
         List<View> all = tasks(root);
         if (all.isEmpty()) return;
         RecentsIconGridLayout grid = geometry(root, all.size());
