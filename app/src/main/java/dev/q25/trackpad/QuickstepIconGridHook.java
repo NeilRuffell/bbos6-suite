@@ -437,23 +437,6 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
                 }
             }
 
-            if (state.selected == index) {
-                TaskIdentity identity = taskIdentity(task, 0);
-                String label = appLabel(task, identity);
-                synchronized (LABEL_PAINT) {
-                    LABEL_PAINT.setColor(0xfff3f3f5);
-                    LABEL_PAINT.setTextSize(dp(root, 13));
-                    LABEL_PAINT.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
-                    LABEL_PAINT.setTextAlign(Paint.Align.CENTER);
-                    String visibleLabel = TextUtils.ellipsize(label, LABEL_PAINT,
-                            grid.cellWidth - dp(root, 8),
-                            TextUtils.TruncateAt.END).toString();
-                    canvas.drawText(visibleLabel,
-                            grid.x(index) - pageOffset + grid.cellWidth / 2f,
-                            y + iconsTall + dp(root, 19), LABEL_PAINT);
-                }
-            }
-
             for (int j = 0; j < number; j++) {
                 Drawable icon = nativeIcon(task, j);
                 if (icon == null) continue;
@@ -468,6 +451,11 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
                     icon.setBounds(restore);
                 }
             }
+        }
+        // One selected-app heading for the whole grid, not one label below
+        // each icon. Matches the BlackBerry OS 6 heading/divider arrangement.
+        if (state.selected >= 0 && state.selected < all.size()) {
+            paintSelectedAppHeader(root, canvas, grid, all.get(state.selected));
         }
         // Bounded diagnostics identify the real failing lookup path. They do
         // not modify the native task data or replace the presentation again.
@@ -489,6 +477,37 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
             for (int i = first; i < Math.min(end, first + 8); i++) {
                 Log.i(TAG, "ICON-DIAG " + i + " " + diagnoseIcon(all.get(i)));
             }
+        }
+    }
+
+    /**
+     * BlackBerry OS 6-style title above the icon grid: selected application
+     * centered over a subtle horizontal separator. No native view or overlay
+     * is introduced; this remains part of BBUI's sole Canvas renderer.
+     */
+    private static void paintSelectedAppHeader(ViewGroup root, Canvas canvas,
+            RecentsIconGridLayout grid, View selectedTask) {
+        TaskIdentity identity = taskIdentity(selectedTask, 0);
+        String label = appLabel(selectedTask, identity);
+        int dividerY = grid.top - dp(root, 4);
+        int dividerHeight = Math.max(1, dp(root, 1));
+        synchronized (PAINT) {
+            PAINT.setStyle(Paint.Style.FILL);
+            PAINT.setColor(0xff5a5d63);
+            canvas.drawRect(grid.left, dividerY,
+                    grid.left + grid.gridWidth(),
+                    dividerY + dividerHeight, PAINT);
+        }
+        synchronized (LABEL_PAINT) {
+            LABEL_PAINT.setColor(0xfff3f3f5);
+            LABEL_PAINT.setTextSize(dp(root, 17));
+            LABEL_PAINT.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+            LABEL_PAINT.setTextAlign(Paint.Align.CENTER);
+            String visibleLabel = TextUtils.ellipsize(label, LABEL_PAINT,
+                    Math.max(1, grid.gridWidth() - dp(root, 16)),
+                    TextUtils.TruncateAt.END).toString();
+            canvas.drawText(visibleLabel, grid.centerX(),
+                    dividerY - dp(root, 11), LABEL_PAINT);
         }
     }
 
