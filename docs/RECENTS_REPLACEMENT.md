@@ -65,6 +65,29 @@ adb -s 202512003630 logcat -d -s 'BB7-PullDown:V' 'OverviewProxyRecentsImpl:V' '
 
 The presentation model and keyboard/trackpad policy should not import Xposed types. Use a minimal Q25-specific Vector bridge for class/lifecycle adaptation.
 
+## Shared rounded blue grid-selection highlight (0.9.117; Q25 verification pending)
+
+Replaced the Recents-specific flat-blue fill and light-blue stroke with
+a reusable drawing helper, `GridSelectionHighlight`, in the main BBUI
+source package. The helper paints a vertically blended rounded rectangle
+from `#088EEF` at the top to `#0851B5` at the bottom, with an
+approximately 6dp corner radius inspired by the supplied BlackBerry OS 6
+selection screenshot. The source image establishes the look but does
+not contain Android density metadata, so the dp radius is an
+approximation.
+
+The helper is independent of Recents, task binding and navigation;
+other BBUI grids can supply their own highlight bounds and density.
+Recents calls it inside the existing selected-icon branch with
+the existing 7dp selection padding. There is no separate View,
+overlay, independent selection state or new background layer.
+All grid positions, labels, page counter, task identity, paging,
+and the native 85%-opaque Launcher3 scrim remain unchanged.
+
+See `docs/GRID_SELECTION_HIGHLIGHT.md` for usage. Test branch:
+`feat/shared-grid-selection-gradient`. Q25 verification pending.
+No CI.
+
 ## Current/total page counter beneath grid (0.9.116; Q25 verification pending)
 
 Add a small centered `current/total` label directly below the compact
