@@ -8,6 +8,7 @@
         <package android:name="app.symfonik.music.player" />
     </queries>
     <application
+        android:icon="@mipmap/ic_launcher"
         android:label="BB Music"
         android:allowBackup="false"
         android:enableOnBackInvokedCallback="true"
