@@ -3,6 +3,7 @@ package dev.q25.trackpad;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Canvas;
+import android.graphics.Matrix;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
@@ -54,6 +55,7 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
     private static final int FOCUS_STROKE = 0xffa8cef3;
     private static final WeakHashMap<View, GridState> STATES = new WeakHashMap<>();
     private static final WeakHashMap<View, Drawable> FALLBACK_ICONS = new WeakHashMap<>();
+    private static final WeakHashMap<View, Boolean> SURFACE_DIAG = new WeakHashMap<>();
     private static final WeakHashMap<View, Boolean> CHROME_REMOVED = new WeakHashMap<>();
     private static final WeakHashMap<View, Boolean> SURFACE_PENDING = new WeakHashMap<>();
     private static final Paint PAINT = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -357,9 +359,79 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
                     + " cell=" + grid.cellWidth + "x" + grid.cellHeight
                     + " tasks=" + all.size() + " page=" + state.page
                     + " boundTasksOnPage=" + bound + " iconsPainted=" + drawn);
+            if (!SURFACE_DIAG.containsKey(root)) {
+                SURFACE_DIAG.put(root, Boolean.TRUE);
+                reportVisibleSurface(root, canvas);
+            }
             for (int i = first; i < Math.min(end, first + 8); i++) {
                 Log.i(TAG, "ICON-DIAG " + i + " " + diagnoseIcon(all.get(i)));
             }
+        }
+    }
+
+    /**
+     * Inspect the actual Canvas clipping and visual ancestry at paint time.
+     * icon.draw() returning does NOT establish that those pixels reached the
+     * screen. A view can be clipped, translated, transparent, or obscured by
+     * an upper sibling; these observations differentiate those cases.
+     */
+    private static void reportVisibleSurface(ViewGroup root, Canvas canvas) {
+        Rect clip = new Rect();
+        boolean hasClip = canvas.getClipBounds(clip);
+        Rect screenBounds = new Rect();
+        boolean screenVisible = root.getGlobalVisibleRect(screenBounds);
+        Matrix matrix = new Matrix();
+        canvas.getMatrix(matrix);
+        float[] m = new float[9];
+        matrix.getValues(m);
+        Log.i(TAG, "SURFACE-DIAG canvasClip=" + clip.toShortString()
+                + " hasClip=" + hasClip
+                + " matrix=[" + m[0] + "," + m[1] + "," + m[2]
+                + ";" + m[3] + "," + m[4] + "," + m[5] + "]"
+                + " hardware=" + canvas.isHardwareAccelerated()
+                + " rootShown=" + root.isShown()
+                + " rootAlpha=" + root.getAlpha()
+                + " rootVisibility=" + root.getVisibility()
+                + " windowVisibility=" + root.getWindowVisibility()
+                + " rootScreenBounds=" + screenBounds.toShortString()
+                + " globalVisible=" + screenVisible
+                + " scroll=" + root.getScrollX() + "," + root.getScrollY()
+                + " context=" + root.getContext().getClass().getName());
+
+        View current = root;
+        for (int depth = 0; depth < 7 && current != null; depth++) {
+            ViewGroup parent = current.getParent() instanceof ViewGroup
+                    ? (ViewGroup) current.getParent() : null;
+            Log.i(TAG, "VIEW-DIAG depth=" + depth
+                    + " class=" + current.getClass().getSimpleName()
+                    + " position=" + current.getLeft() + "," + current.getTop()
+                    + " size=" + current.getWidth() + "x" + current.getHeight()
+                    + " alpha=" + current.getAlpha()
+                    + " visibility=" + current.getVisibility()
+                    + " scale=" + current.getScaleX() + "," + current.getScaleY()
+                    + " translation=" + current.getTranslationX()
+                    + "," + current.getTranslationY()
+                    + " childIndex=" + (parent != null
+                            ? parent.indexOfChild(current) : -1));
+            if (parent != null && depth < 3) {
+                boolean above = false;
+                for (int i = 0; i < parent.getChildCount(); i++) {
+                    View child = parent.getChildAt(i);
+                    if (child == current) {
+                        above = true;
+                        continue;
+                    }
+                    if (!above || child.getVisibility() != View.VISIBLE) continue;
+                    Log.i(TAG, "ABOVE-DIAG parent="
+                            + parent.getClass().getSimpleName()
+                            + " class=" + child.getClass().getSimpleName()
+                            + " bounds=" + child.getLeft() + ","
+                            + child.getTop() + ","
+                            + child.getRight() + "," + child.getBottom()
+                            + " alpha=" + child.getAlpha());
+                }
+            }
+            current = parent;
         }
     }
 
