@@ -65,6 +65,24 @@ adb -s 202512003630 logcat -d -s 'BB7-PullDown:V' 'OverviewProxyRecentsImpl:V' '
 
 The presentation model and keyboard/trackpad policy should not import Xposed types. Use a minimal Q25-specific Vector bridge for class/lifecycle adaptation.
 
+## Vertically centered Recents grid (0.9.108; Q25 verification pending)
+
+The 4-column x 2-row grid now centers **its entire two-row cell block**
+vertically inside the visible Quickstep RecentsView viewport. Previously,
+the grid began at a fixed 18dp top inset. The shared
+`RecentsIconGridLayout.calculate()` now computes
+`gridHeight = ROWS * cellHeight + (ROWS - 1) * spacing` and
+`top = max(reservedTopInset, (viewportHeight - gridHeight) / 2)`.
+The reserved top inset remains a lower bound for very short viewports.
+
+This affects only vertical cell coordinates, so icon sizes, label rendering,
+hit testing, horizontal page selection, and task identity continue using
+the same shared geometry. Every page stays at the same vertical position.
+Unit tests cover viewport centering and alignment across multiple pages.
+
+Developed on `feat/recents-vertical-centering`; verify on Q25 before
+merging to master. Run Gradle tests locally; do not use CI.
+
 ## Left/Right page changes (0.9.107; Q25 verification pending)
 
 The 4x2 icon grid already allowed horizontal touch swipes; however, the
