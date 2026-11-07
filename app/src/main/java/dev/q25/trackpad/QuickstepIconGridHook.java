@@ -215,6 +215,38 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
                     }
                 });
             }
+            // Launcher3 normally applies its own 70%-depth Overview blur and
+            // themed scrim behind RecentsView. Those are independent of the
+            // BBUI painter's black 0x26-alpha overlay. Remove *only* the
+            // native Overview effects while our replacement is enabled,
+            // allowing the 85%-transparent black to be the actual tint.
+            // When the flag is disabled, both hooks defer to stock Launcher3.
+            Class<?> overviewState = XposedHelpers.findClassIfExists(
+                    "com.android.launcher3.uioverrides.states.OverviewState",
+                    lp.classLoader);
+            Class<?> scrimColors = XposedHelpers.findClassIfExists(
+                    "com.android.launcher3.views.ScrimColors", lp.classLoader);
+            if (overviewState != null) {
+                XposedBridge.hookAllMethods(overviewState, "getDepthUnchecked",
+                        new XC_MethodHook() {
+                    @Override protected void beforeHookedMethod(MethodHookParam p) {
+                        if (enabled()) p.setResult(0f);
+                    }
+                });
+            }
+            if (overviewState != null && scrimColors != null) {
+                XposedBridge.hookAllMethods(overviewState,
+                        "getWorkspaceScrimColor", new XC_MethodHook() {
+                    @Override protected void beforeHookedMethod(MethodHookParam p) {
+                        if (!enabled()) return;
+                        p.setResult(XposedHelpers.newInstance(scrimColors,
+                                Color.TRANSPARENT, Color.TRANSPARENT));
+                    }
+                });
+            }
+            Log.i(TAG, "Native Overview blur suppression hooks: depth="
+                    + (overviewState != null) + " scrim="
+                    + (overviewState != null && scrimColors != null));
             Log.i(TAG, "Exclusive native Overview painter registered; requested=" + enabled());
         } catch (Throwable error) {
             Log.e(TAG, "Could not register native Overview replacement", error);
