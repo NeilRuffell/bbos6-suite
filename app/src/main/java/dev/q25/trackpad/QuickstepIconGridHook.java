@@ -158,6 +158,7 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
                     GridState state = state(root);
                     state.selected = -1;
                     state.page = 0;
+                    state.lastSelectionLogKey = null;
                     root.setFocusable(true);
                     root.post(() -> {
                         if (!enabled()) return;
