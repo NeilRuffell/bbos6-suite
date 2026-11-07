@@ -65,6 +65,49 @@ adb -s 202512003630 logcat -d -s 'BB7-PullDown:V' 'OverviewProxyRecentsImpl:V' '
 
 The presentation model and keyboard/trackpad policy should not import Xposed types. Use a minimal Q25-specific Vector bridge for class/lifecycle adaptation.
 
+## Wrong application opens — source analysis and diagnostic fix (0.9.106)
+
+Issue reported on Q25 **before** the 4x2 change: selected icon sometimes
+does not match the application Android launches.
+
+**Evidence:**
+- Earlier 0.9.102 on-device logs confirmed Quickstep's
+  `IconAppChipView.getDrawable()` returned `null` for seven native TaskViews;
+  BBUI successfully retrieved fallback installed-package icons instead.
+- BBUI previously cached those fallbacks using a `WeakHashMap<View,Drawable>`
+  indexed by the **Quickstep TaskView instance**, not by its underlying task.
+- The native Quickstep `TaskView` is a recyclable `ViewPool.Reusable`.
+  `RecentsView` recycles those native views as tasks are removed/reloaded.
+  A recycled view can point at a different native Task while retaining a
+  prior cached BBUI icon. This is a proven source-level stale-identity defect
+  and a plausible explanation for the mismatch.
+- Previous log captures had no app-selection/task-launch ID tracing, so the
+  full reported symptom has **not yet been independently proven on-device**.
+
+**Correction and diagnostics:**
+- Cache fallback icons by `packageName|userId` derived from the **currently
+  bound TaskContainer.task.key.baseIntent**; never index by TaskView.
+- Display the selected application's package-manager label **beneath the
+  selected icon only**, derived from that same bound task identity.
+- On selection changes, log `BBUI-RecentsIcons: SELECT index=... page=...
+  taskId=... package=... component=... label=...`.
+- On touch or keyboard launch, log `LAUNCH-REQUEST` with the *same* native
+  TaskView's first TaskContainer task ID and package; log
+  `LAUNCH-RESULT success=...` when native Quickstep confirms its result.
+- No new app launch intent, recents model, visual card, overlay or secondary
+  UI. Native `TaskView.launchWithoutAnimation` continues to own task
+  activation.
+- This diagnostic fix is on `feat/recents-4x2-pages`. Local Gradle/ADB
+  install is required; no CI. Don't merge until user confirms which
+  application launches and whether names match.
+
+For an incorrect launch, immediately collect:
+
+```sh
+adb -s 202512003630 logcat -d -s 'BBUI-RecentsIcons:I' '*:S' \
+  | grep -E 'SELECT|LAUNCH-REQUEST|LAUNCH-RESULT|LAUNCH-FALLBACK'
+```
+
 ## Eight icons per page (0.9.105; pending Q25 verification)
 
 The BBUI-owned Recents grid is now **4 columns × 2 rows**, giving exactly
