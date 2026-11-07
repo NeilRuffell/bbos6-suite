@@ -441,7 +441,11 @@ The Now Playing screen is a standalone presentation port of BB UI master
   `assets/bbos6/icons/`: normal `488.png`, enabled `486.png`,
   enabled-and-focused `487.png`, and unavailable `485.png`.
   The icons are packaged as `bbos6_shuffle_*.png` drawables and indexed in
-  `assets/bbos6/icon-index.csv`; touch and trackpad controls are unchanged.
+  `assets/bbos6/icon-index.csv`. Shuffle has zero internal padding and no
+  left-header inset; its square selection fills the header height. It has no
+  background unless focused, when it reuses the exact theme-aware list-row
+  selection gradient through the shared `MusicSelectionGradient` helper.
+  Touch and trackpad controls are unchanged.
 - Full-height half-radial artwork/metadata background and 50/50 art/text split.
 - 30dp seek strip, shared dark gradient and 2dp/silver divider system,
   BBOS6 white played rail and glossy 56dp seek capsule.

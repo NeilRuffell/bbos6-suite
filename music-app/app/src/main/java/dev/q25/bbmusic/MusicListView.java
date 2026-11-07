@@ -1,7 +1,6 @@
 package dev.q25.bbmusic;
 
 import android.content.Context;
-import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
@@ -85,15 +84,6 @@ final class MusicListView extends ListView {
     // Normalize the alpha-bounded artwork into this shared visible square.
     private static final int MENU_ICON_VISIBLE_DP = 52;
     private static final int MENU_ICON_ALPHA_THRESHOLD = 16;
-    private static final int[] LIGHT_SELECTION = {
-            0xff088eef, 0xff088aef, 0xff0886ef, 0xff0882ef, 0xff087de7,
-            0xff0879e7, 0xff1075e7, 0xff1071e7, 0xff106dde, 0xff1069de,
-            0xff1065de
-    };
-    private static final int[] DARK_SELECTION = {
-            0xff459fd9, 0xff3285c5, 0xff2368aa
-    };
-
     private static final class RowViews {
         final LinearLayout root;
         final ImageView artwork;
@@ -126,7 +116,6 @@ final class MusicListView extends ListView {
     private final int canvasColor;
     private final int rowColor;
     private final int titleColor;
-    private final int[] selectionColors;
 
     MusicListView(Context context, DataSource data) {
         super(context);
@@ -140,11 +129,8 @@ final class MusicListView extends ListView {
         titleColor = Color.WHITE;
         int dividerColor = 0xff303030;
 
-        // Keep the existing focus gradient and stroke unchanged, including
-        // the original system-theme-dependent gradient selection.
-        boolean dark = (getResources().getConfiguration().uiMode
-                & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
-        selectionColors = dark ? DARK_SELECTION : LIGHT_SELECTION;
+        // Focus selection colors are provided by the same shared gradient
+        // used for the Now Playing Shuffle control.
 
         // Preserve the proven BB UI QS-style ListView configuration.
         setPadding(0, 0, 0, 0);
@@ -525,10 +511,7 @@ final class MusicListView extends ListView {
     private void styleRow(RowViews views, int position) {
         boolean focused = hasFocus() && getSelectedItemPosition() == position;
         if (focused) {
-            GradientDrawable highlight = new GradientDrawable(
-                    GradientDrawable.Orientation.TOP_BOTTOM, selectionColors);
-            highlight.setCornerRadius(0);
-            views.root.setBackground(highlight);
+            views.root.setBackground(MusicSelectionGradient.create(getContext()));
         } else {
             views.root.setBackgroundColor(rowColor);
         }

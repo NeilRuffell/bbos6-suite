@@ -81,14 +81,14 @@ final class MusicNowPlayingView extends LinearLayout {
         LinearLayout modeHeader = new LinearLayout(context);
         modeHeader.setOrientation(HORIZONTAL);
         modeHeader.setGravity(Gravity.CENTER_VERTICAL);
-        modeHeader.setPadding(dp(8), 0, dp(8), 0);
+        modeHeader.setPadding(0, 0, dp(8), 0);
         modeHeader.setBackground(MusicPlayerChrome.modeHeaderBackground(context));
         addView(modeHeader, new LayoutParams(LayoutParams.MATCH_PARENT, dp(40)));
 
         // Original BBOS6 Shuffle button takes the former "Media" title slot.
         modeShuffle = new ImageView(context);
         modeShuffle.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        modeShuffle.setPadding(dp(7), dp(3), dp(7), dp(3));
+        modeShuffle.setPadding(0, 0, 0, 0);
         modeShuffle.setContentDescription("Shuffle unavailable");
         modeShuffle.setOnClickListener(view -> {
             zone = ZONE_MODE;
@@ -97,7 +97,7 @@ final class MusicNowPlayingView extends LinearLayout {
             client.toggleShuffle();
             render();
         });
-        modeHeader.addView(modeShuffle, new LayoutParams(dp(48), dp(34)));
+        modeHeader.addView(modeShuffle, new LayoutParams(dp(48), LayoutParams.MATCH_PARENT));
         modeHeader.addView(new View(context), new LayoutParams(0, dp(1), 1f));
 
         modeRepeat = text("Repeat", 12, Color.WHITE);
@@ -355,8 +355,11 @@ final class MusicNowPlayingView extends LinearLayout {
         modeShuffle.setContentDescription(!shuffleAvailable ? "Shuffle unavailable"
                 : shuffle ? "Shuffle on" : "Shuffle off");
         modeShuffle.setEnabled(shuffleAvailable);
-        MusicPlayerChrome.styleMode(getContext(), modeShuffle, shuffle, shuffleFocused);
-        // Preserve the supplied PNG's actual colors, including its disabled variant.
+        // No persistent active-state background: highlight only the focused
+        // Shuffle control with the exact same selection as library list rows.
+        modeShuffle.setBackground(shuffleFocused
+                ? MusicSelectionGradient.create(getContext()) : null);
+        // Preserve the supplied PNG colors, including the unavailable variant.
         modeShuffle.setAlpha(1f);
         boolean repeat = controller != null
                 && controller.getRepeatMode() != Player.REPEAT_MODE_OFF;
