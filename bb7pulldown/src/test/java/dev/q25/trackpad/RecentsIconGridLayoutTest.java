@@ -61,7 +61,7 @@ public final class RecentsIconGridLayoutTest {
         assertEquals(7, grid.nextIndex(12, 2)); // left -> previous page, row 2
         assertEquals(16, grid.nextIndex(11, 3)); // page 2 -> page 3
         assertEquals(16, grid.nextIndex(15, 3)); // final partial page, top row
-        assertEquals(15, grid.nextIndex(16, 2)); // page 3 -> page 2
+        assertEquals(11, grid.nextIndex(16, 2)); // page 3 -> page 2, top row
     }
 
     @Test public void verticalKeysNeverSwitchPages() {
