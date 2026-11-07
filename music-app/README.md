@@ -486,64 +486,27 @@ after reboot yet, and no separate playback mini-bar in the library.
 Microsoft Graph authentication, cloud indexing and downloads are future
 features and are not required for local playback.
 
-## Create a signed production release on GitHub
+## Share a non-debug APK with friends
 
-The tag-triggered `.github/workflows/release-bb-music.yml` GitHub Actions
-workflow compiles `music-app:app:assembleRelease` (non-debuggable),
-zipaligns the unsigned release build, signs it with a persistent private
-PKCS#12 key, verifies the signature and publishes an installable
-`BBMusic-<versionName>.apk` on a GitHub Release tagged
-`bb-music-v<versionName>`. It also retains the APK as a workflow artifact.
-The version is read from the built APK; increment both `versionCode` and
-`versionName` in `music-app/app/build.gradle` for future releases.
+GitHub Actions automatically builds the standalone BB Music **release**
+APK when the release workflow or `music-app/app/build.gradle` changes on
+`master`. It uploads `BBMusic-<versionName>.apk` to
+[GitHub Releases](https://github.com/NeilRuffell/bb-ui/releases).
+There is **no Google Play dependency, manual signing-key setup, or GitHub
+secret setup**. The release is non-debuggable, zipaligned and signature-verified.
+All APKs must be signed for Android to install them, so the GitHub runner
+generates a temporary signing key automatically and discards it afterward.
 
-**One-time signing setup:** Generate your own private signing key on a trusted
-machine and keep a secure offline backup; never commit it to GitHub or publish
-it with the APK. This certificate must be reused for every later update:
+**Tradeoff:** Each release has a different certificate. Android will not
+install a later APK over an earlier release (or over a debug build). To switch
+versions, uninstall BB Music first; this **deletes saved app data**, including
+the private music index and saved folder permissions. Re-select your music
+folders afterward. This simple distribution method is best for occasional
+personal sharing, not seamless in-place upgrades.
 
-```sh
-keytool -genkeypair -storetype PKCS12 \
-  -keystore "$HOME/bb-music-release.p12" -alias bbmusic \
-  -keyalg RSA -keysize 3072 -validity 10000
-```
-
-Configure these **GitHub repository Actions secrets** using the GitHub
-Settings > Secrets and variables > Actions page, or with the GitHub CLI
-(`gh auth login` first):
-
-```sh
-base64 -w0 "$HOME/bb-music-release.p12" \
-  | gh secret set BB_MUSIC_KEYSTORE_BASE64 -R NeilRuffell/bb-ui
-read -rsp 'BB Music keystore password: ' SIGNING_PASSWORD; echo
-printf '%s' "$SIGNING_PASSWORD" \
-  | gh secret set BB_MUSIC_KEYSTORE_PASSWORD -R NeilRuffell/bb-ui
-unset SIGNING_PASSWORD
-```
-
-After configuring secrets, tag the current `master` commit and push the
-tag. Because this repository's default branch is `main` rather than the
-active `master`, a **tag push** is used instead of GitHub's manual
-`workflow_dispatch` action:
-
-```sh
-cd ~/Projects/bb-ui
-git fetch origin
-git switch master
-git pull --ff-only origin master
-git tag bb-music-v0.1.0
-git push origin bb-music-v0.1.0
-```
-
-The tag must exactly match `bb-music-v<versionName>` from the built APK.
-GitHub Actions then signs the APK and creates the corresponding release.
-
-The finished signed APK appears at
-<https://github.com/NeilRuffell/bb-ui/releases>. This distribution does not
-require Google Play. A release-signed APK **cannot update an existing
-debug-signed installation** directly due to Android's certificate matching;
-uninstalling that debug APK will erase its private Room library and saved
-folder permissions. Once installed, updates signed with the **same**
-release key and a higher `versionCode` can install without deleting app data.
+For the next release, increase both `versionCode` and `versionName` in
+`music-app/app/build.gradle` and merge the change to `master`.
+A public GitHub Release for that version is then created automatically.
 
 ## Build and test on Q25
 
