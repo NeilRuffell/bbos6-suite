@@ -10,6 +10,7 @@ import android.graphics.Rect;
 import android.text.TextUtils;
 import android.text.TextPaint;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.ColorDrawable;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
@@ -73,6 +74,7 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
     private static Class<?> nativeTaskType;
     private static Class<?> nativeRecentsType;
     private static boolean scrimAppliedLogged;
+    private static final WeakHashMap<View, Integer> SCRIM_DRAW_COUNTS = new WeakHashMap<>();
 
     private static final class GridState {
         int selected = -1;
@@ -169,6 +171,13 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
                         root.requestFocus();
                         root.invalidate();
                         settleLiveTile(root);
+                        // Read-only snapshot after Overview entry settles,
+                        // not just when a scrim colour is assigned.
+                        root.postDelayed(() -> {
+                            if (enabled() && root.isAttachedToWindow()) {
+                                reportNativeScrim(root, "settled");
+                            }
+                        }, 1200);
                     });
                 }
             });
@@ -269,6 +278,27 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
                             }
                         } catch (Throwable error) {
                             Log.w(TAG, "Native scrim verification unavailable", error);
+                        }
+                    }
+                });
+            }
+            if (scrimView != null) {
+                XposedBridge.hookAllMethods(scrimView, "onDraw",
+                        new XC_MethodHook() {
+                    @Override protected void beforeHookedMethod(MethodHookParam p) {
+                        if (!enabled() || !(p.thisObject instanceof View)) return;
+                        View v = (View) p.thisObject;
+                        int count = SCRIM_DRAW_COUNTS.containsKey(v)
+                                ? SCRIM_DRAW_COUNTS.get(v) : 0;
+                        SCRIM_DRAW_COUNTS.put(v, count + 1);
+                        if (count == 0 && p.args.length > 0
+                                && p.args[0] instanceof Canvas) {
+                            Rect bounds = new Rect();
+                            ((Canvas) p.args[0]).getClipBounds(bounds);
+                            Log.i(TAG, "SCRIM-DRAW first canvasClip="
+                                    + bounds.toShortString()
+                                    + " alpha=" + v.getAlpha()
+                                    + " visible=" + v.isShown());
                         }
                     }
                 });
@@ -572,6 +602,80 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
                     TextUtils.TruncateAt.END).toString();
             canvas.drawText(visibleLabel, grid.centerX(),
                     dividerY - dp(root, 11), LABEL_PAINT);
+        }
+    }
+
+    /**
+     * Read-only compositor diagnosis. Inspect the native background view
+     * after Overview settles; setScrimColors alone proves assignment only.
+     */
+    private static void reportNativeScrim(View recents, String phase) {
+        try {
+            View windowRoot = recents.getRootView();
+            int id = recents.getResources().getIdentifier(
+                    "scrim_view", "id", PACKAGE);
+            View scrim = id == 0 ? null : windowRoot.findViewById(id);
+            if (scrim == null) {
+                Log.i(TAG, "SCRIM-STATE phase=" + phase
+                        + " scrimView=MISSING id=" + id
+                        + " windowRoot=" + windowRoot.getClass().getSimpleName());
+                return;
+            }
+            Rect rect = new Rect();
+            boolean intersectsWindow = scrim.getGlobalVisibleRect(rect);
+            int color = scrim.getBackground() instanceof ColorDrawable
+                    ? ((ColorDrawable) scrim.getBackground()).getColor()
+                    : -1;
+            int drawCount = SCRIM_DRAW_COUNTS.containsKey(scrim)
+                    ? SCRIM_DRAW_COUNTS.get(scrim) : 0;
+            ViewGroup parent = scrim.getParent() instanceof ViewGroup
+                    ? (ViewGroup) scrim.getParent() : null;
+            int scrimIndex = parent == null ? -1 : parent.indexOfChild(scrim);
+            int recentsIndex = parent == recents.getParent()
+                    ? parent.indexOfChild(recents) : -1;
+            Log.i(TAG, "SCRIM-STATE phase=" + phase
+                    + " color=#" + Integer.toHexString(color)
+                    + " expected=#" + Integer.toHexString(OVERVIEW_SCRIM_TINT)
+                    + " alpha=" + scrim.getAlpha()
+                    + " visibility=" + scrim.getVisibility()
+                    + " isShown=" + scrim.isShown()
+                    + " windowVisibility=" + scrim.getWindowVisibility()
+                    + " attached=" + scrim.isAttachedToWindow()
+                    + " draws=" + drawCount
+                    + " size=" + scrim.getWidth() + "x" + scrim.getHeight()
+                    + " screenRect=" + rect.toShortString()
+                    + " globalVisible=" + intersectsWindow
+                    + " parent=" + (parent == null ? "none"
+                            : parent.getClass().getSimpleName())
+                    + " scrimIndex=" + scrimIndex
+                    + " recentsIndex=" + recentsIndex);
+            if (parent != null) {
+                for (int i = scrimIndex + 1; i < parent.getChildCount(); i++) {
+                    View sibling = parent.getChildAt(i);
+                    Log.i(TAG, "SCRIM-ABOVE child=" + i
+                            + " class=" + sibling.getClass().getSimpleName()
+                            + " visible=" + sibling.getVisibility()
+                            + " alpha=" + sibling.getAlpha()
+                            + " background=" + (sibling.getBackground() == null
+                                    ? "none" : sibling.getBackground()
+                                            .getClass().getSimpleName())
+                            + " size=" + sibling.getWidth() + "x"
+                            + sibling.getHeight());
+                }
+            }
+            View ancestor = scrim;
+            for (int depth = 0; depth < 5 && ancestor != null; depth++) {
+                Log.i(TAG, "SCRIM-PARENT depth=" + depth
+                        + " class=" + ancestor.getClass().getSimpleName()
+                        + " visibility=" + ancestor.getVisibility()
+                        + " alpha=" + ancestor.getAlpha()
+                        + " size=" + ancestor.getWidth() + "x"
+                        + ancestor.getHeight());
+                ancestor = ancestor.getParent() instanceof View
+                        ? (View) ancestor.getParent() : null;
+            }
+        } catch (Throwable e) {
+            Log.w(TAG, "SCRIM-STATE read-only inspection failed", e);
         }
     }
 
