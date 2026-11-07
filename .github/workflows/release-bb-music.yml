@@ -1,13 +1,15 @@
 name: Release BB Music APK
 
-# A pushed version tag from the music-app branch triggers this workflow.
-# Tag-triggered workflows work even when the repository's default branch
-# (main) differs from the active development branch (master).
-# The signing key must never be committed to this public repository.
+# Builds on release-workflow or version changes to master.
+# A short-lived key is created automatically; no user-managed secrets.
+# Note: every new release uses a different signing certificate.
 on:
   push:
-    tags:
-      - 'bb-music-v*'
+    branches:
+      - master
+    paths:
+      - '.github/workflows/release-bb-music.yml'
+      - 'music-app/app/build.gradle'
 
 permissions:
   contents: write
@@ -53,55 +55,50 @@ jobs:
         with:
           gradle-version: '8.11.1'
 
-      - name: Check release signing secrets
-        env:
-          BB_MUSIC_KEYSTORE_BASE64: ${{ secrets.BB_MUSIC_KEYSTORE_BASE64 }}
-          BB_MUSIC_KEYSTORE_PASSWORD: ${{ secrets.BB_MUSIC_KEYSTORE_PASSWORD }}
-        run: |
-          if [[ -z "$BB_MUSIC_KEYSTORE_BASE64" || -z "$BB_MUSIC_KEYSTORE_PASSWORD" ]]; then
-            echo "::error::Configure BB_MUSIC_KEYSTORE_BASE64 and BB_MUSIC_KEYSTORE_PASSWORD as repository Actions secrets before releasing."
-            exit 1
-          fi
-
       - name: Build non-debuggable release APK
         run: gradle -p music-app :app:assembleRelease --no-daemon --stacktrace
 
       - name: Align, sign and verify release APK
-        env:
-          BB_MUSIC_KEYSTORE_BASE64: ${{ secrets.BB_MUSIC_KEYSTORE_BASE64 }}
-          BB_MUSIC_KEYSTORE_PASSWORD: ${{ secrets.BB_MUSIC_KEYSTORE_PASSWORD }}
         run: |
           set -euo pipefail
           SDK_BUILD_TOOLS="$ANDROID_SDK_ROOT/build-tools/35.0.0"
           UNSIGNED="music-app/app/build/outputs/apk/release/app-release-unsigned.apk"
           ALIGNED="$RUNNER_TEMP/app-release-aligned.apk"
-          KEYSTORE="$RUNNER_TEMP/bb-music-release.p12"
+          KEYSTORE="$RUNNER_TEMP/bb-music-temporary.p12"
           SIGNED="$RUNNER_TEMP/BBMusic-signed.apk"
           test -f "$UNSIGNED"
-          printf '%s' "$BB_MUSIC_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+
+          # Android requires every installable APK to be signed. Generate a
+          # disposable private key for this release, with no saved secrets.
+          export BB_MUSIC_TEMP_PASSWORD
+          BB_MUSIC_TEMP_PASSWORD="$(openssl rand -hex 32)"
+          keytool -genkeypair -noprompt -storetype PKCS12 \
+            -keystore "$KEYSTORE" -alias bbmusic \
+            -keyalg RSA -keysize 3072 -validity 3650 \
+            -dname "CN=BB Music Temporary Release" \
+            -storepass "$BB_MUSIC_TEMP_PASSWORD" \
+            -keypass "$BB_MUSIC_TEMP_PASSWORD"
           chmod 600 "$KEYSTORE"
-          trap 'rm -f "$KEYSTORE"' EXIT
+          trap 'rm -f "$KEYSTORE"; unset BB_MUSIC_TEMP_PASSWORD' EXIT
+
           "$SDK_BUILD_TOOLS/zipalign" -p -f 4 "$UNSIGNED" "$ALIGNED"
           "$SDK_BUILD_TOOLS/apksigner" sign \
             --ks "$KEYSTORE" \
             --ks-type PKCS12 \
             --ks-key-alias bbmusic \
-            --ks-pass env:BB_MUSIC_KEYSTORE_PASSWORD \
-            --key-pass env:BB_MUSIC_KEYSTORE_PASSWORD \
+            --ks-pass env:BB_MUSIC_TEMP_PASSWORD \
+            --key-pass env:BB_MUSIC_TEMP_PASSWORD \
             --out "$SIGNED" "$ALIGNED"
-          "$SDK_BUILD_TOOLS/apksigner" verify --verbose --print-certs "$SIGNED"
+          "$SDK_BUILD_TOOLS/apksigner" verify --verbose "$SIGNED"
+
           VERSION_NAME=$("$SDK_BUILD_TOOLS/aapt" dump badging "$SIGNED" \
-            | sed -nE "s/.*versionName='([^']+)'.*/\1/p" | head -n 1)
+            | sed -nE "s/.*versionName='([^']+)'.*/\\1/p" | head -n 1)
           if [[ ! "$VERSION_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
             echo "::error::Unsupported or missing versionName in built APK."
             exit 1
           fi
           RELEASE_APK="BBMusic-${VERSION_NAME}.apk"
           RELEASE_TAG="bb-music-v${VERSION_NAME}"
-          if [[ "$GITHUB_REF_TYPE" != "tag" || "$GITHUB_REF_NAME" != "$RELEASE_TAG" ]]; then
-            echo "::error::Release tag must match the built APK versionName ($RELEASE_TAG)."
-            exit 1
-          fi
           mv "$SIGNED" "$RELEASE_APK"
           echo "RELEASE_APK=$RELEASE_APK" >> "$GITHUB_ENV"
           echo "RELEASE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"
@@ -127,4 +124,4 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
             --title "BB Music v${VERSION_NAME}" \
-            --notes "Standalone, release-signed Android APK for direct installation (dev.q25.bbmusic). Android 13 or newer. Not a debug build."
+            --notes "Standalone, non-debuggable Android APK for direct installation (dev.q25.bbmusic). Android 13 or newer. Signed automatically with a one-time key. To install a later release, uninstall this version first (this deletes its app data and music folder grants)."
