@@ -54,7 +54,8 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
     private static final String RECENTS = "com.android.quickstep.views.RecentsView";
     private static final String TASK = "com.android.quickstep.views.TaskView";
 
-    private static final int BACKGROUND = Color.rgb(28, 32, 39);
+    // Black at 15% opacity = 85% transparency (8-bit alpha 38/255).
+    private static final int BACKGROUND = 0x26000000;
     private static final int FOCUS_FILL = 0xff245b97;
     private static final int FOCUS_STROKE = 0xffa8cef3;
     private static final WeakHashMap<View, GridState> STATES = new WeakHashMap<>();
