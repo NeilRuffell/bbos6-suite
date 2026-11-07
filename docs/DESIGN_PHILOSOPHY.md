@@ -143,7 +143,7 @@ another presenter. No second Activity, overlay, parallel task list or
 alternative Overview window is constructed.
 
 All touch hit-testing, swipe paging, keyboard selection and focus highlighting
-come from the BBUI 4x4 icon grid, not the native carousel. The eventual
+come from the BBUI 4x2 icon grid (8 apps per page), not the native carousel. The eventual
 LineageOS source integration can remove the now-unnecessary native task
 child-view inflation and bind directly to the same Quickstep task model.
 Until that ROM integration, the Vector hook is opt-in and Q25 validation
