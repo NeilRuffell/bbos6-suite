@@ -8,6 +8,7 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.text.TextUtils;
+import android.text.TextPaint;
 import android.graphics.drawable.Drawable;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -65,7 +66,7 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
     private static final WeakHashMap<View, Boolean> CHROME_REMOVED = new WeakHashMap<>();
     private static final WeakHashMap<View, Boolean> SURFACE_PENDING = new WeakHashMap<>();
     private static final Paint PAINT = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private static final Paint LABEL_PAINT = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private static final TextPaint LABEL_PAINT = new TextPaint(Paint.ANTI_ALIAS_FLAG);
 
     private static Class<?> nativeTaskType;
     private static Class<?> nativeRecentsType;
