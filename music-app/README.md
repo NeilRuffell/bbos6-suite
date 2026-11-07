@@ -97,6 +97,8 @@ Embedded artwork stays in the existing separate in-memory thumbnail cache.
 
 ### Original BBOS6 music menu icons
 
+**Launcher icon:** The app manifest uses original BBOS6 `350.png` through the already-packaged `@drawable/bbos6_menu_all_songs` resource. This same PNG is used for the **All Songs** menu row; no duplicate or modified image is required.
+
 **Canonical icon reference:** [`assets/bbos6/icon-index.csv`](../assets/bbos6/icon-index.csv).
 For every newly identified original BBOS6 icon, update that index in the
 same change. The repository-wide rule is documented in [`AGENTS.md`](../AGENTS.md).
