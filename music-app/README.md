@@ -97,7 +97,7 @@ Embedded artwork stays in the existing separate in-memory thumbnail cache.
 
 ### Original BBOS6 music menu icons
 
-**Launcher icon:** The app manifest uses original BBOS6 `350.png` through the already-packaged `@drawable/bbos6_menu_all_songs` resource. This same PNG is used for the **All Songs** menu row; no duplicate or modified image is required.
+**Launcher icon:** The manifest references `@mipmap/ic_launcher`, a modern Android adaptive icon that scales the original BBOS6 `350.png` foreground (`@drawable/bbos6_menu_all_songs`) to the launcher viewport. The source is 65 × 65 pixels with only 39 × 46 pixels of visible artwork, which appeared undersized when assigned directly to `android:icon`. The adaptive resource fixes launcher sizing without replacing the original PNG or affecting the **All Songs** menu icon.
 
 **Canonical icon reference:** [`assets/bbos6/icon-index.csv`](../assets/bbos6/icon-index.csv).
 For every newly identified original BBOS6 icon, update that index in the
