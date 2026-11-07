@@ -10,15 +10,17 @@ Android on the Zinwa Q25. The current test build is a single **Vector/LSPosed
 APK** that integrates with LineageOS SystemUI. The long-term target is a
 native LineageOS SystemUI implementation.
 
-**Current APK version:** `0.9.108-recents-vertically-centered`
-(versionCode 138). The native shade integration and its slide animation
+**Current APK version:** `0.9.109-recents-transparent-black`
+(versionCode 139). The native shade integration and its slide animation
 remain **opt-in** while the remaining presentation work continues.
 
 This Recents branch **replaces the Quickstep Overview host's entire drawing
 pass** with one BBUI-owned 4x2 grid of application icons (8 per page). Horizontal
 touch swipes and Left/Right at grid edges change pages; Up/Down stays
 within the current page. The complete two-row grid is centered vertically
-within the visible Recents viewport. No native
+within the visible Recents viewport. The Recents painter now uses
+black with 85% transparency (alpha 38/255) rather than the former
+opaque gray. No native
 TaskView drawing occurs: no card geometry, thumbnails, header chips or
 labels. Native TaskViews remain headless Quickstep task-data/action handles
 only. BBUI owns its grid's touch/keyboard interaction and selection.
