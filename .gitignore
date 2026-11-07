@@ -3,3 +3,9 @@
 local.properties
 .idea/
 *.iml
+
+# Never commit Android release signing keys.
+*.jks
+*.keystore
+*.p12
+*.pfx
