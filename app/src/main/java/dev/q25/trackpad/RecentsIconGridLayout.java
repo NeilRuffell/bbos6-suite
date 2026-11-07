@@ -16,16 +16,18 @@ final class RecentsIconGridLayout {
     final int cellWidth;
     final int cellHeight;
     final int gap;
+    final int left;
     final int top;
     final int tasks;
     final int pageCount;
 
     private RecentsIconGridLayout(int width, int tileWidth, int tileHeight,
-            int spacing, int topPadding, int taskCount) {
+            int spacing, int leftPadding, int topPadding, int taskCount) {
         pageWidth = width;
         cellWidth = tileWidth;
         cellHeight = tileHeight;
         gap = spacing;
+        left = leftPadding;
         top = topPadding;
         tasks = taskCount;
         pageCount = (taskCount + PAGE_SIZE - 1) / PAGE_SIZE;
@@ -34,12 +36,14 @@ final class RecentsIconGridLayout {
     static RecentsIconGridLayout calculate(int width, int height,
             float density, int statusBarOverlap, int taskCount) {
         if (width <= 0 || height <= 0 || density <= 0 || taskCount < 0) return null;
-        // Square-ish icon hit targets rather than full-screen thumbnail cards.
-        // The native task is still one cell, retaining its original task ID
-        // and click action. Extra tasks continue on BBUI's existing pages.
-        int spacing = Math.max(2, Math.round(8 * density));
+        // Cap each hit target at 82dp, leaving the existing 55dp icons
+        // unchanged but bringing adjacent icons much closer together.
+        // Six-dp gaps and an evenly centered four-column block avoid an
+        // unnecessarily wide grid on the Q25's 720px Recents viewport.
+        int spacing = Math.max(2, Math.round(6 * density));
         int topPadding = Math.max(0, statusBarOverlap) + Math.round(18 * density);
-        int tileWidth = (width - spacing * (COLUMNS + 1)) / COLUMNS;
+        int availableCellWidth = (width - spacing * (COLUMNS + 1)) / COLUMNS;
+        int tileWidth = Math.min(Math.round(82 * density), availableCellWidth);
         int tileHeight = Math.min(tileWidth,
                 (height - topPadding - spacing * (ROWS + 1)) / ROWS);
         if (tileWidth < Math.round(40 * density)
@@ -49,9 +53,11 @@ final class RecentsIconGridLayout {
         // therefore do not move the icons vertically. Keep the reserved top
         // inset as a minimum in unusually short viewports.
         int gridHeight = ROWS * tileHeight + (ROWS - 1) * spacing;
+        int gridWidth = COLUMNS * tileWidth + (COLUMNS - 1) * spacing;
         int centeredTop = Math.max(topPadding, (height - gridHeight) / 2);
+        int centeredLeft = (width - gridWidth) / 2;
         return new RecentsIconGridLayout(width, tileWidth, tileHeight,
-                spacing, centeredTop, taskCount);
+                spacing, centeredLeft, centeredTop, taskCount);
     }
 
     int page(int taskIndex) {
@@ -60,7 +66,7 @@ final class RecentsIconGridLayout {
 
     int x(int taskIndex) {
         return page(taskIndex) * pageWidth
-                + gap + (taskIndex % COLUMNS) * (cellWidth + gap);
+                + left + (taskIndex % COLUMNS) * (cellWidth + gap);
     }
 
     int y(int taskIndex) {
