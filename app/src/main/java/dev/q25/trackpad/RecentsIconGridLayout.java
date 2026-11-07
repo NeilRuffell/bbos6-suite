@@ -70,6 +70,18 @@ final class RecentsIconGridLayout {
         return left + gridWidth() / 2f;
     }
 
+    /** Bottom edge of both rows, shared by all Recents pages. */
+    int gridBottom() {
+        return top + ROWS * cellHeight + (ROWS - 1) * gap;
+    }
+
+    /** Display a one-based page counter only when another page exists. */
+    String pageCounterText(int currentPage) {
+        if (pageCount <= 1) return null;
+        int visiblePage = Math.min(Math.max(currentPage, 0), pageCount - 1) + 1;
+        return visiblePage + "/" + pageCount;
+    }
+
     int page(int taskIndex) {
         return taskIndex / PAGE_SIZE;
     }
