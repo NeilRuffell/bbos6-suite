@@ -382,7 +382,8 @@ public final class MusicActivity extends Activity {
         // counts and folder locations keep their original subtitle policies.
         String subtitle = row.kind == ROW_SONG ? row.song.artist
                 : row.kind == ROW_FOLDER ? row.folderLocation
-                : row.kind == ROW_BROWSER_ROOT ? row.folderLocation
+                : row.kind == ROW_BROWSER_ROOT
+                        ? MusicFolders.displayLocation(row.folderLocation)
                 : row.kind == ROW_BROWSER_DIRECTORY ? "Folder"
                 : row.kind == ROW_BROWSER_UNAVAILABLE ? "Access unavailable"
                 : row.kind == ROW_BROWSER_FILE ? "Not in music library"
@@ -750,7 +751,8 @@ public final class MusicActivity extends Activity {
             authorized.add(tree.toString());
         }
         for (Uri tree : MusicFolders.savedTrees(this)) {
-            String location = MusicFolders.documentId(tree);
+            String location = MusicFolders.displayLocation(
+                    MusicFolders.documentId(tree));
             if (!authorized.contains(tree.toString())) {
                 location = "Access unavailable - " + location;
             }

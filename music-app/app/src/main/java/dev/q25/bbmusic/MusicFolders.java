@@ -101,6 +101,21 @@ final class MusicFolders {
         }
     }
 
+    /**
+     * Display-only SAF folder location. Android's "primary:" volume marker
+     * is an internal document-ID prefix, not part of the folder path.
+     * Keep documentId() unchanged for SAF navigation and permission checks.
+     *
+     * Other volume identifiers remain intact to distinguish their storage
+     * devices. A selection of the primary volume root has no path suffix.
+     */
+    static String displayLocation(String documentId) {
+        if (documentId == null) return "";
+        if (!documentId.startsWith("primary:")) return documentId;
+        String path = documentId.substring("primary:".length());
+        return path.isEmpty() ? "Internal storage" : path;
+    }
+
     /** Remove only this app's allowance and persisted read grant; never files. */
     static boolean remove(Context context, Uri tree) {
         SharedPreferences preferences =

@@ -80,6 +80,14 @@ child folders and files. Selecting a child folder continues the hierarchy to
 any supported depth. Back returns to the previous folder or the Folders menu,
 with the existing list's selection and scroll position preserved.
 
+Folder location subtitles are formatted by the shared
+`MusicFolders.displayLocation()` helper on both **Home → Folders** and
+**Settings → Music Folders**. For example, Android's SAF document ID
+`primary:Music/Albums` displays as `Music/Albums`; `primary:` alone
+displays as `Internal storage`. Other storage volume identifiers remain
+visible to distinguish devices. The original SAF document ID is retained
+unchanged for directory queries, authorization and navigation.
+
 Folder navigation uses the same `MusicListView` / hardware trackpad focus as
 other library pages. Directories appear before files, in case-insensitive name
 order. Only directories not beginning with `.` and audio-file candidates are
