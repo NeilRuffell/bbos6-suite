@@ -1,5 +1,25 @@
 # BBOS6 Recents replacement — one native owner
 
+## BB-key second press opens Recents (0.9.118; Q25 verification pending)
+
+With the transient BB application menu already visible, another physical BB-key
+press now invokes the existing `showNativeRecents()` route instead of merely
+dismissing the popup. The first press still opens the popup; Back still
+dismisses it without launching Recents. Opening the menu from an expanded
+Notifications or Quick Settings shade is unchanged.
+
+Only the existing `CommandQueue.toggleRecentApps()` interception changes:
+the second-press branch reuses the same popup cleanup, native shade dismissal,
+main-looper dispatch and thread-local recursion guard already used by the
+`Switch Application` menu action. No extra hardware-key hook, window,
+Recents renderer, task store or timer is added.
+
+On the Q25, verify BB press -> popup -> BB press -> Recents grid, including
+the case where the menu was opened from an expanded shade. Also verify
+BB press -> popup -> Back only dismisses, and selecting `Switch Application`
+continues to open Recents. Logs of native command queuing are not by themselves
+proof that Quickstep became visible.
+
 ## Decision and hard constraint
 
 Replace the old portrait two-column Quickstep task-card layout with a BlackBerry OS 6-style grid of **application icons**. Continue to use Android's actual task and activity management, and the Q25's existing Launcher3/Quickstep overview entry point. The Vector/LSPosed APK is the current integration vehicle; a native ROM implementation is the target.

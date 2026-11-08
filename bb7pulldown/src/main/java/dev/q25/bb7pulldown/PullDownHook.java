@@ -249,8 +249,10 @@ public final class PullDownHook implements IXposedHookLoadPackage {
                     param.setResult(null);
                     new Handler(Looper.getMainLooper()).post(() -> {
                         if (focusWindow != null) {
-                            dismissStatusFocus();
-                            if (shadeHost != null) shadeHost.focusContent();
+                            // A second BB-key press while the popup is visible
+                            // switches applications through the existing native
+                            // Quickstep route, without creating another menu.
+                            showNativeRecents();
                         } else if (shadeHost != null) {
                             showStatusFocus(shadeHost.getContext());
                             NAVIGATION.openPopupFromBlackBerryKey(shadeHost.page());
