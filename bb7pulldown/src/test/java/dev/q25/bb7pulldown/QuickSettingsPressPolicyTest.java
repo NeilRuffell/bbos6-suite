@@ -1,6 +1,8 @@
 package dev.q25.bb7pulldown;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 public final class QuickSettingsPressPolicyTest {
@@ -18,6 +20,19 @@ public final class QuickSettingsPressPolicyTest {
                 QuickSettingsPressPolicy.select("wifi", false, false));
         assertEquals(QuickSettingsPressPolicy.Action.LONG_PRESS,
                 QuickSettingsPressPolicy.select("wifi", false, true));
+    }
+
+    @Test public void shadeDismissesOnlyAfterSuccessfulNativeLongPress() {
+        assertTrue(QuickSettingsPressPolicy.shouldDismissShade(
+                NativeQuickSettingsTiles.Action.LONG_PRESS, true));
+        assertFalse(QuickSettingsPressPolicy.shouldDismissShade(
+                NativeQuickSettingsTiles.Action.LONG_PRESS, false));
+        for (NativeQuickSettingsTiles.Action action : new NativeQuickSettingsTiles.Action[]{
+                NativeQuickSettingsTiles.Action.PRIMARY,
+                NativeQuickSettingsTiles.Action.SECONDARY}) {
+            assertFalse(QuickSettingsPressPolicy.shouldDismissShade(action, true));
+            assertFalse(QuickSettingsPressPolicy.shouldDismissShade(action, false));
+        }
     }
 
     @Test public void otherTilesRetainTheirOriginalActions() {

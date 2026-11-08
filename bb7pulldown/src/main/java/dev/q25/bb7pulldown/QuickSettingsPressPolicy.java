@@ -26,6 +26,12 @@ final class QuickSettingsPressPolicy {
         return Action.PRIMARY;
     }
 
+    /** Only a successfully dispatched native long-click leaves Quick Settings. */
+    static boolean shouldDismissShade(NativeQuickSettingsTiles.Action action,
+            boolean accepted) {
+        return accepted && action == NativeQuickSettingsTiles.Action.LONG_PRESS;
+    }
+
     static boolean hasVerifiedNativeToggleClick(String spec) {
         return "wifi".equals(spec) || "bt".equals(spec) || "cell".equals(spec);
     }

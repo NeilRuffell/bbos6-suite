@@ -764,16 +764,27 @@ public final class PullDownHook implements IXposedHookLoadPackage {
             dismissShadeImmediately();
             return;
         }
-        // QS activation is not a request to close the shade. Keep its native
-        // listening session, selected list row, and SystemUI window mounted
-        // while the real QSTile handles the click (including native dialogs).
-        // Explicit Back, swipe dismissal, Home and screen-off retain their
-        // existing independent close paths.
-        Log.i(TAG, "Native QS action with shade retained: " + spec
-                + " (" + action + ")");
+        // The installed native QSTile owns the action and Settings launch.
+        // Keep the shade visible for ordinary primary/secondary interactions.
+        // Close it only after a native long-click was accepted, on the next
+        // main-loop turn so the current list/trackpad dispatch can finish.
+        UnifiedShadeHost currentHost = shadeHost;
         boolean accepted = NativeQuickSettingsTiles.activate(spec, action);
         if (!accepted) {
             Log.w(TAG, "Installed native QS tile refused action: " + spec
+                    + " (" + action + ")");
+            return;
+        }
+        if (QuickSettingsPressPolicy.shouldDismissShade(action, accepted)) {
+            new Handler(Looper.getMainLooper()).post(() -> {
+                if (shadeHost == currentHost && quickPanel == root
+                        && quickSettingsPageActive()) {
+                    Log.i(TAG, "Native QS long press: dismissing shade for " + spec);
+                    dismissShadeImmediately();
+                }
+            });
+        } else {
+            Log.i(TAG, "Native QS action with shade retained: " + spec
                     + " (" + action + ")");
         }
     }

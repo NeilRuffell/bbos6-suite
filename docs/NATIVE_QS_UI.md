@@ -1,5 +1,25 @@
 # Native-backed BlackBerry Quick Settings (LineageOS 24.0)
 
+## Long-press Settings navigation closes the shade (0.9.120; Q25 test pending)
+
+The unlocked QS page delegates all actions to the installed native QSTile.
+Primary/secondary clicks keep the BB shade open and preserve list selection.
+After an accepted native long-click, `PullDownHook.activateQuickTile()` now
+posts the existing `dismissShadeImmediately()` cleanup to the main looper
+once the input handler has returned. This releases the BB shade/native shade
+window so the tile's Settings destination is not hidden behind it.
+
+The callback is limited to the same active host, QS panel and QS page
+that dispatched the action; rejected native long-click requests do not
+dismiss the shade. No intent is synthesized, no tile action is duplicated,
+and the restricted lock-screen QS mode is unchanged. A successful native
+`longClick()` dispatch does not prove an activity actually opened.
+
+Q25 verification: normal tap/trackpad press toggles or opens native details
+without closing the shade; touch/trackpad long press opens the corresponding
+Settings page and closes the BB shade; Back, Home and screen-off still work.
+Watch `BB7-PullDown` for `Native QS long press: dismissing shade for`.
+
 Branch: feat/native-qs-ui (from feat/bb6-lockscreen-quick-settings).
 This is a Vector APK; no ROM build, reflash or separate app is needed.
 
