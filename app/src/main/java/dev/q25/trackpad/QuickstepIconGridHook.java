@@ -282,10 +282,38 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
                     }
                 });
             }
-            // Read-only confirmation that Launcher3 applied the intended
-            // tint to the existing native scrim. No extra View is created.
+            // One native ScrimView exists in the Overview host regardless of
+            // which Android HOME application is selected. In the fallback
+            // host, the Overview scrim colour comes from RecentsState, not
+            // Launcher3's OverviewState. Apply the BBUI colour at the common
+            // ScrimView sink, but ONLY while its sibling native RecentsView
+            // is actually visible and enabled for Overview.
+            //
+            // Hook the final background-colour assignment so a different
+            // native state transition cannot overwrite the BBUI tint.
+            // This never creates another view, animation, or drawing layer.
             Class<?> scrimView = XposedHelpers.findClassIfExists(
                     "com.android.launcher3.views.ScrimView", lp.classLoader);
+            if (scrimView != null) {
+                XposedBridge.hookAllMethods(scrimView, "setBackgroundColor",
+                        new XC_MethodHook() {
+                    @Override protected void beforeHookedMethod(MethodHookParam p) {
+                        if (!enabled() || !(p.thisObject instanceof View)
+                                || p.args.length != 1 || !(p.args[0] instanceof Integer))
+                            return;
+                        View scrim = (View) p.thisObject;
+                        if (!activeRecentsScrim(scrim)) return;
+                        int requested = (Integer) p.args[0];
+                        if (requested == OVERVIEW_SCRIM_TINT) return;
+                        p.args[0] = OVERVIEW_SCRIM_TINT;
+                        Log.i(TAG, "SCRIM-COLOR native Recents setter corrected=#"
+                                + Integer.toHexString(requested)
+                                + " to=#" + Integer.toHexString(OVERVIEW_SCRIM_TINT));
+                    }
+                });
+            }
+            // Read-only confirmation that Launcher3 applied the intended
+            // tint to the existing native scrim. No extra View is created.
             if (scrimView != null) {
                 XposedBridge.hookAllMethods(scrimView, "setScrimColors",
                         new XC_MethodHook() {
@@ -313,6 +341,25 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
                     @Override protected void beforeHookedMethod(MethodHookParam p) {
                         if (!enabled() || !(p.thisObject instanceof View)) return;
                         View v = (View) p.thisObject;
+                        // Fallback Quickstep can set the initial colour while
+                        // Overview is not yet visible, before the setter hook
+                        // can safely identify its active Recents sibling.
+                        // Correct that pre-existing native background on its
+                        // first visible draw. Subsequent changes are caught
+                        // at setBackgroundColor above.
+                        if (activeRecentsScrim(v)) {
+                            Drawable bg = v.getBackground();
+                            if (bg instanceof ColorDrawable) {
+                                int displayed = ((ColorDrawable) bg).getColor();
+                                if (displayed != OVERVIEW_SCRIM_TINT) {
+                                    v.setBackgroundColor(OVERVIEW_SCRIM_TINT);
+                                    Log.i(TAG, "SCRIM-COLOR native Recents first-draw corrected=#"
+                                            + Integer.toHexString(displayed)
+                                            + " to=#"
+                                            + Integer.toHexString(OVERVIEW_SCRIM_TINT));
+                                }
+                            }
+                        }
                         int count = SCRIM_DRAW_COUNTS.containsKey(v)
                                 ? SCRIM_DRAW_COUNTS.get(v) : 0;
                         SCRIM_DRAW_COUNTS.put(v, count + 1);
@@ -329,13 +376,39 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
                 });
             }
             Log.i(TAG, "Native Overview background hooks: depth="
-                    + (overviewState != null) + " scrim="
+                    + (overviewState != null) + " launcherScrim="
                     + (overviewState != null && scrimColors != null)
+                    + " sharedScrimSetter=" + (scrimView != null)
                     + " nativeScrimView=" + (scrimView != null));
             Log.i(TAG, "Exclusive native Overview painter registered; requested=" + enabled());
         } catch (Throwable error) {
             Log.e(TAG, "Could not register native Overview replacement", error);
         }
+    }
+
+    /**
+     * Recognize the actual native Overview host from its view hierarchy, not
+     * from the selected HOME launcher. A ScrimView is eligible only when its
+     * sibling RecentsView is on screen and has Overview enabled.
+     *
+     * The active view and its native boolean are authoritative; no package,
+     * desktop launcher, screen size, timeouts, or external navigation checks.
+     */
+    private static boolean activeRecentsScrim(View scrim) {
+        if (!scrim.isShown() || !(scrim.getParent() instanceof ViewGroup)
+                || nativeRecentsType == null) return false;
+        ViewGroup parent = (ViewGroup) scrim.getParent();
+        for (int i = 0; i < parent.getChildCount(); i++) {
+            View sibling = parent.getChildAt(i);
+            if (!nativeRecentsType.isInstance(sibling) || !sibling.isShown()) continue;
+            try {
+                return XposedHelpers.getBooleanField(sibling, "mOverviewStateEnabled");
+            } catch (Throwable error) {
+                // Do not recolour an unknown host's scrim.
+                return false;
+            }
+        }
+        return false;
     }
 
     private static GridState state(View root) {

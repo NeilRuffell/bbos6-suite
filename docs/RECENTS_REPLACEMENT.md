@@ -66,6 +66,44 @@ Q25 validation before merge:
    `RECENTS-STATIC ... unavailable` warning. Do not claim zero animations
    for this first-stage patch.
 
+## Launcher-independent native Overview scrim tint (0.9.124; Q25 retest pending)
+
+The Q25 switched default HOME application and Quickstep began hosting BBUI's
+grid in its **native fallback** activity. The log confirmed a full-screen,
+visible and actively drawing `ScrimView` underneath
+`FallbackActivityRecentsView`, but at `#80FFFFFF` (50%-opaque white)
+instead of BBUI's required `#D9000000` (85%-opaque black).
+
+The earlier 0.9.123 candidate intercepted only the fallback
+`RecentsState.getScrimColor()` source policy. Q25 logs from that build
+**still** showed `#80FFFFFF` and emitted no `SCRIM-POLICY` application.
+That candidate did not fix the problem and must not be described as
+verified. The final-setter approach below replaces it.
+
+Native Launcher3 and fallback Recents both use the same
+`com.android.launcher3.views.ScrimView` as the real background plane.
+BBUI now intercepts **`ScrimView.setBackgroundColor(int)`** before it
+applies the colour, and applies `#D9000000` only when the scrim has a
+**visible, native `RecentsView` sibling with Overview enabled**.
+This test is made from native view relationships and state, not the
+installed HOME app's package or launcher name. The normal `OverviewState`
+policy is also retained. For colours assigned before the Recents view
+becomes visible, BBUI corrects the already-attached native background
+once on its first visible `ScrimView.onDraw`; the native background invalidation ensures the next draw uses the corrected colour.
+
+No new scrim/window, launcher-specific condition, animation, image
+overlay, alternate Recents implementation, or changed system background
+outside active Overview is introduced. Native Recents task/lifecycle
+ownership remains unchanged.
+
+Q25 verification: open Recents after build/install/restart and inspect
+`SCRIM-COLOR` plus `SCRIM-STATE phase=settled`. Expected final state:
+`color=#d9000000 expected=#d9000000`, `isShown=true` and
+`draws` greater than zero. Test both with an alternative HOME launcher
+and with the stock launcher. The experimental
+`debug.bbui.recents.icons` flag still must be enabled after reboot;
+this change does not address that separate persistence issue.
+
 # BBOS6 Recents replacement — one native owner
 
 ## Home dismisses the transient BB menu (0.9.119; Q25 verification pending)
