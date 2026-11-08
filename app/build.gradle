@@ -10,6 +10,14 @@ android {
         versionCode 2
         versionName '0.1.1'
     }
+    // Match TV-DV's ordinary local Release workflow: Gradle automatically
+    // signs the APK with the existing, reusable local Android debug identity.
+    // No separate signing scripts or per-build certificates.
+    buildTypes {
+        release {
+            signingConfig signingConfigs.debug
+        }
+    }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
