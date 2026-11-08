@@ -18,6 +18,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 
+import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -102,6 +103,11 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
         nativeTaskType = task;
         nativeRecentsType = recents;
 
+        // Native StateManager has a real synchronous state-application path.
+        // Route Recents state changes there BEFORE an AnimatorSet is created,
+        // rather than setting a zero duration or concealing animation frames.
+        installImmediateRecentsStateHook(lp.classLoader);
+
         try {
             // This is the decisive renderer boundary. Unlike the former
             // approach, NO native TaskView/card/header paint is executed.
@@ -159,6 +165,10 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
                 @Override protected void afterHookedMethod(MethodHookParam p) {
                     if (p.args.length != 1) return;
                     ViewGroup root = (ViewGroup) p.thisObject;
+                    if (enabled()) {
+                        Log.i(TAG, "RECENTS-STATIC native overview lifecycle enabled="
+                                + p.args[0]);
+                    }
                     if (!Boolean.TRUE.equals(p.args[0])) {
                         if (enabled()) RecentsSelectionBridge.leaveOverview(root.getContext());
                         state(root).lastPublishedSelection = null;
@@ -865,6 +875,74 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
             return detail + " FAIL=" + error.getClass().getName()
                     + ":" + error.getMessage();
         }
+    }
+
+    /**
+     * Apply launcher state transitions involving Overview through Android's
+     * existing non-animated StateManager branch. The 4-argument core method
+     * creates animations only when the incoming 'animated' argument is true;
+     * changing it here keeps native state, callbacks and cleanup intact.
+     *
+     * This does NOT bypass Quickstep remote task animations, Shell window
+     * transitions, or the native RecentsAnimationController. Those require
+     * independent lifecycle analysis, not synthetic Home/Back events.
+     */
+    private static void installImmediateRecentsStateHook(ClassLoader loader) {
+        Class<?> stateManager = XposedHelpers.findClassIfExists(
+                "com.android.launcher3.statemanager.StateManager", loader);
+        Class<?> launcherState = XposedHelpers.findClassIfExists(
+                "com.android.launcher3.LauncherState", loader);
+        if (stateManager == null || launcherState == null) {
+            Log.w(TAG, "RECENTS-STATIC StateManager/LauncherState unavailable");
+            return;
+        }
+        // Hook only the private core method. All public goToState overloads
+        // eventually call this, so no duplicate hooks or alternate routes.
+        for (Method method : stateManager.getDeclaredMethods()) {
+            Class<?>[] args = method.getParameterTypes();
+            if (!"goToState".equals(method.getName()) || args.length != 4
+                    || args[1] != boolean.class || args[2] != long.class
+                    || !"android.animation.Animator$AnimatorListener"
+                            .equals(args[3].getName())) continue;
+            try {
+                XposedBridge.hookMethod(method, new XC_MethodHook() {
+                    @Override protected void beforeHookedMethod(MethodHookParam p) {
+                        if (!enabled()) return;
+                        try {
+                            if (!launcherState.isInstance(p.args[0])) {
+                                Log.w(TAG, "RECENTS-STATIC unexpected StateManager target "
+                                        + p.args[0]);
+                                return;
+                            }
+                            Object current = XposedHelpers.callMethod(
+                                    p.thisObject, "getState");
+                            if (!launcherState.isInstance(current)) return;
+                            boolean enteringOverview = XposedHelpers.getBooleanField(
+                                    p.args[0], "isRecentsViewVisible");
+                            boolean leavingOverview = XposedHelpers.getBooleanField(
+                                    current, "isRecentsViewVisible");
+                            Log.i(TAG, "RECENTS-STATIC state request from=" + current
+                                    + " to=" + p.args[0] + " animated=" + p.args[1]
+                                    + " overview=" + (enteringOverview || leavingOverview));
+                            if (!Boolean.TRUE.equals(p.args[1])
+                                    || (!enteringOverview && !leavingOverview)) return;
+                            p.args[1] = false;
+                            Log.i(TAG, "RECENTS-STATIC native state applied without animation"
+                                    + " from=" + current + " to=" + p.args[0]);
+                        } catch (Throwable error) {
+                            // Do not rewrite unknown state transitions. Keep the
+                            // stock path if a ROM signature differs.
+                            Log.w(TAG, "RECENTS-STATIC unable to validate state", error);
+                        }
+                    }
+                });
+                Log.i(TAG, "RECENTS-STATIC hooked StateManager.goToState core");
+            } catch (Throwable error) {
+                Log.w(TAG, "RECENTS-STATIC StateManager hook unavailable", error);
+            }
+            return;
+        }
+        Log.w(TAG, "RECENTS-STATIC core goToState signature unavailable");
     }
 
     private static boolean handleKey(ViewGroup root, KeyEvent key) {

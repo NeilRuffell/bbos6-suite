@@ -33,6 +33,39 @@ and returning to Overview; a stale selection must never close an app.
 Check `BB7-RecentsMenu`, `BB7-AppMenu` and `BBUI-RecentsIcons` logs.
 Any unvalidated target must leave the app untouched.
 
+## Vector-only first-stage native animation elimination (0.9.122; Q25 unverified)
+
+No ROM source, system APK replacement, synthetic key event, animation-duration
+override, hidden layer, animation cancellation, or extra Recents presenter.
+
+`QuickstepIconGridHook` now hooks the single private 4-argument
+`com.android.launcher3.statemanager.StateManager.goToState` core method.
+When the **existing** Launcher state is Recents-visible or the destination
+state is Recents-visible, it changes the incoming `animated` argument to
+`false` before the native state manager executes. The native
+`goToState(..., animated=false)` branch applies state handlers directly,
+not through its animation-builder branch; native transition callbacks and
+state lifecycle remain intact.
+
+This covers **StateManager-based** Overview entry, exit and changes between
+Overview states. It does **not** purge native Quickstep
+`TaskAnimationManager.startRecentsAnimation` remote task transition creation,
+`OverviewToHomeAnim`, dismissal springs, or Android WindowManager/Shell
+animation ownership. Those still need separate Vector hook points and device
+verification. The original `settleLiveTile` lifecycle callback is retained
+until its controller responsibilities have a proven replacement.
+
+Q25 validation before merge:
+1. Open Recents from Home, a foreground application and the BB menu.
+   Look for `RECENTS-STATIC hooked StateManager.goToState core` and
+   `RECENTS-STATIC native state applied without animation` in launcher logcat.
+2. Test Back/Home, repeated BB toggles, app launch, app Close and reopening.
+   A stuck Overview or a missing Recents list is a **failure**, not grounds
+   to inject navigation or consume additional key events.
+3. Compare against normal native task and focus ownership; review any
+   `RECENTS-STATIC ... unavailable` warning. Do not claim zero animations
+   for this first-stage patch.
+
 # BBOS6 Recents replacement — one native owner
 
 ## Home dismisses the transient BB menu (0.9.119; Q25 verification pending)
