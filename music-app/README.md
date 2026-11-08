@@ -549,9 +549,19 @@ The Now Playing screen is a standalone presentation port of BB UI master
 - Full-height half-radial artwork/metadata background and 50/50 art/text split.
 - 30dp seek strip, shared dark gradient and 2dp/silver divider system,
   BBOS6 white played rail and glossy 56dp seek capsule.
-- 62dp edge-to-edge three-button Previous / Play-Pause / Next toolbar;
-  charcoal gradient, exact button symbols, double gradient separators
+- 62dp edge-to-edge four-button Previous / Play-Pause / Stop / Next toolbar;
+  charcoal gradient, matching button symbols, double gradient separators
   and fixed dark-blue selected-button gradient.
+- **Stop** pauses the audio immediately, seeks the current track to `0:00`,
+  and calls Media3 `stop()`, returning the player to idle without changing
+  the selected track, playlist, or Now Playing screen. **Play** after Stop
+  explicitly prepares the retained item and starts again at the beginning.
+  This differs from Pause, which preserves its prior position.
+- The Media3 `MusicPlaybackService` uses
+  `SHOW_NOTIFICATION_FOR_IDLE_PLAYER_NEVER`, so its active media notification
+  is removed in the idle/stopped state. The system may independently cache a
+  media-resumption suggestion; Android System UI owns that presentation.
+  Normal active playback and background notification remain unchanged.
 - Trackpad navigation: toolbar Up -> seek -> Shuffle/Repeat; Down returns.
   Seek only changes with Left/Right **after** pressing Enter/trackpad to
   enter seek-edit mode; another press exits. Touch-dragging works directly.

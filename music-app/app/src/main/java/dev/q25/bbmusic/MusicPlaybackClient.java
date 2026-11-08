@@ -204,9 +204,28 @@ final class MusicPlaybackClient {
     }
 
     void playPause() {
-        if (controller == null) return;
-        if (controller.getPlayWhenReady()) controller.pause();
-        else controller.play();
+        if (controller == null || controller.getCurrentMediaItem() == null) return;
+        if (controller.getPlayWhenReady()) {
+            controller.pause();
+        } else {
+            // A stopped Media3 player is IDLE. Play alone does not prepare
+            // its retained media item; prepare before starting from 0:00.
+            if (controller.getPlaybackState() == Player.STATE_IDLE) {
+                controller.prepare();
+            }
+            controller.play();
+        }
+    }
+
+    /** BBOS-style Stop: silence, rewind, then release active playback. */
+    void stop() {
+        if (controller == null || controller.getCurrentMediaItem() == null) return;
+        controller.pause();
+        controller.seekTo(0L);
+        // Unlike clearMediaItems, stop() keeps the selected track and queue
+        // for the in-app Now Playing view and a later explicit Play.
+        controller.stop();
+        listener.onPlaybackChanged();
     }
 
     void previous() {

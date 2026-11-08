@@ -27,7 +27,7 @@ import androidx.media3.session.MediaController;
  * Standalone presentation port of the BB UI shade's expanded Now Playing:
  * 40dp header with Repeat on the left, queue position in the center and
  * Shuffle on the right; half-radial artwork/metadata, 30dp seek strip
- * and 62dp three-button transport. Its drawables are ported unchanged into
+ * and 62dp four-button transport. Its drawables share the same chrome in
  * MusicPlayerChrome, MediaChromeDivider and HalfRadialGradientDrawable.
  *
  * Trackpad hierarchy matches TwoColumnPanel: modes -> seek -> transport.
@@ -51,7 +51,7 @@ final class MusicNowPlayingView extends LinearLayout {
     private final TextView total;
     private final SeekBar seekBar;
     private final LinearLayout transportRow;
-    private final ImageView[] transportButtons = new ImageView[3];
+    private final ImageView[] transportButtons = new ImageView[4];
     private final Handler ticker = new Handler(Looper.getMainLooper());
 
     private int zone = ZONE_TRANSPORT;
@@ -226,8 +226,8 @@ final class MusicNowPlayingView extends LinearLayout {
         transportRow.setBackground(MusicPlayerChrome.transportBackground());
         addView(transportRow, new LayoutParams(LayoutParams.MATCH_PARENT, dp(62)));
 
-        String[] descriptions = {"Previous", "Play or pause", "Next"};
-        for (int i = 0; i < 3; i++) {
+        String[] descriptions = {"Previous", "Play or pause", "Stop", "Next"};
+        for (int i = 0; i < transportButtons.length; i++) {
             final int buttonIndex = i;
             ImageView button = new ImageView(context);
             button.setScaleType(ImageView.ScaleType.CENTER);
@@ -399,7 +399,8 @@ final class MusicNowPlayingView extends LinearLayout {
             button.setBackground(selected ? MusicPlayerChrome.transportSelection() : null);
             boolean enabled = controller != null
                     && (i == 0 ? controller.hasPreviousMediaItem()
-                    : i == 2 ? controller.hasNextMediaItem() : true);
+                    : i == 3 ? controller.hasNextMediaItem()
+                    : controller.getCurrentMediaItem() != null);
             button.setAlpha(enabled ? 1f : 0.35f);
         }
     }
@@ -427,7 +428,8 @@ final class MusicNowPlayingView extends LinearLayout {
             } else if (zone == ZONE_MODE) {
                 selectedMode = Math.max(0, Math.min(1, selectedMode + step));
             } else {
-                selectedButton = Math.max(0, Math.min(2, selectedButton + step));
+                selectedButton = Math.max(0, Math.min(transportButtons.length - 1,
+                        selectedButton + step));
             }
         }
         renderFocus();
@@ -456,6 +458,7 @@ final class MusicNowPlayingView extends LinearLayout {
         } else {
             if (selectedButton == 0) client.previous();
             else if (selectedButton == 1) client.playPause();
+            else if (selectedButton == 2) client.stop();
             else client.next();
         }
         render();
