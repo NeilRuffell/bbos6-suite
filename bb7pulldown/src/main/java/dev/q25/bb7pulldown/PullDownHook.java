@@ -381,21 +381,43 @@ public final class PullDownHook implements IXposedHookLoadPackage {
         if (focusReceiver != null) return;
         BroadcastReceiver receiver = new BroadcastReceiver() {
             @Override public void onReceive(Context c, Intent intent) {
-                if (Intent.ACTION_SCREEN_OFF.equals(intent.getAction())) {
+                String action = intent.getAction();
+                if (Intent.ACTION_CLOSE_SYSTEM_DIALOGS.equals(action)) {
+                    // The framework owns Home; its close-dialogs event dismisses
+                    // our transient popup without consuming or synthesizing a key.
+                    if ("homekey".equals(intent.getStringExtra("reason"))) {
+                        Log.i(TAG, "BB application menu dismissed on Home");
+                        dismissStatusFocus();
+                    }
+                } else if (Intent.ACTION_SCREEN_OFF.equals(action)) {
                     if (shadeHost != null) dismissShadeImmediately();
                     else dismissStatusFocus();
                 }
             }
         };
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(Intent.ACTION_CLOSE_SYSTEM_DIALOGS);
+        filter.addAction(Intent.ACTION_SCREEN_OFF);
         try {
-            context.registerReceiver(receiver, new IntentFilter(Intent.ACTION_SCREEN_OFF),
-                    Context.RECEIVER_NOT_EXPORTED);
-            focusReceiver = receiver;
-            focusReceiverContext = context;
-        } catch (RuntimeException error) {
-            // Retain the keyboard selector if a ROM restricts registration.
-            Log.w(TAG, "Selector screen-off cleanup receiver unavailable", error);
+            context.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } catch (SecurityException registrationError) {
+            // A ROM may restrict this system broadcast. Keep existing
+            // screen-off cleanup even when Home observation is unavailable.
+            Log.w(TAG, "BB popup Home receiver rejected; using screen-off only",
+                    registrationError);
+            try {
+                context.registerReceiver(receiver, new IntentFilter(Intent.ACTION_SCREEN_OFF),
+                        Context.RECEIVER_NOT_EXPORTED);
+            } catch (RuntimeException fallbackError) {
+                Log.w(TAG, "Selector screen-off cleanup receiver unavailable", fallbackError);
+                return;
+            }
+        } catch (RuntimeException registrationError) {
+            Log.w(TAG, "Selector cleanup receiver unavailable", registrationError);
+            return;
         }
+        focusReceiver = receiver;
+        focusReceiverContext = context;
     }
 
     private static void unregisterSelectorScreenOffReceiver() {

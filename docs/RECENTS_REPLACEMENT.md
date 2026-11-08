@@ -1,6 +1,26 @@
 # BBOS6 Recents replacement — one native owner
 
-## BB-key second press opens Recents (0.9.118; Q25 verification pending)
+## Home dismisses the transient BB menu (0.9.119; Q25 verification pending)
+
+The standalone BB application menu now observes Android's protected
+`ACTION_CLOSE_SYSTEM_DIALOGS` system broadcast while it is visible.
+Only the platform's `reason=homekey` closes the popup. Native Home
+navigation is untouched; the menu does not intercept or synthesize Home.
+Other close-system-dialogs reasons are ignored, preserving BB-key menu
+opening and the existing native Quickstep route.
+
+This extends the popup's existing screen-off-only receiver with the same
+broadcast-registration approach already used by the expanded BB shade.
+The receiver is registered only while the popup is visible and is removed
+by existing `dismissStatusFocus()` cleanup. On a ROM that rejects the
+Home receiver, it falls back to the existing screen-off cleanup.
+
+Q25 test: open an app -> BB -> Home; the launcher must become visible
+with no popup left onscreen. Also verify BB -> BB still opens Recents,
+BB -> Back only closes the popup, and screen-off still dismisses it.
+Inspect `BB7-PullDown` for `BB application menu dismissed on Home`.
+
+## BB-key second press opens Recents (0.9.118; verified on Q25)
 
 With the transient BB application menu already visible, another physical BB-key
 press now invokes the existing `showNativeRecents()` route instead of merely
