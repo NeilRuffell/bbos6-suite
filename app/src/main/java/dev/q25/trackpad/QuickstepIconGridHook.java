@@ -2,6 +2,7 @@ package dev.q25.trackpad;
 
 import android.content.Context;
 import android.content.Intent;
+import dev.q25.bb7pulldown.RecentsSelectionBridge;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.Color;
@@ -85,6 +86,7 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
         int lastDrawableCount = -1;
         int diagnosticCount;
         String lastSelectionLogKey;
+        String lastPublishedSelection;
     }
 
     @Override public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lp) {
@@ -155,19 +157,29 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
             XposedBridge.hookAllMethods(recents, "setOverviewStateEnabled",
                     new XC_MethodHook() {
                 @Override protected void afterHookedMethod(MethodHookParam p) {
-                    if (!enabled() || p.args.length != 1
-                            || !Boolean.TRUE.equals(p.args[0])) return;
+                    if (p.args.length != 1) return;
                     ViewGroup root = (ViewGroup) p.thisObject;
+                    if (!Boolean.TRUE.equals(p.args[0])) {
+                        if (enabled()) RecentsSelectionBridge.leaveOverview(root.getContext());
+                        state(root).lastPublishedSelection = null;
+                        return;
+                    }
+                    if (!enabled()) return;
+                    // The previous Overview's selection must never survive entry.
+                    RecentsSelectionBridge.clear(root.getContext());
                     GridState state = state(root);
                     state.selected = -1;
                     state.page = 0;
                     state.lastSelectionLogKey = null;
+                    state.lastPublishedSelection = null;
                     root.setFocusable(true);
                     root.post(() -> {
                         if (!enabled()) return;
                         removeStockChrome(root);
                         root.requestFocus();
                         root.invalidate();
+                        // Native TaskViews are the only source of task IDs.
+                        publishSelectedTask(root);
                         settleLiveTile(root);
                         // Read-only snapshot after Overview entry settles,
                         // not just when a scrim colour is assigned.
@@ -202,7 +214,11 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
             // Native task data/icon updates invalidate this *one* painter.
             XposedBridge.hookAllMethods(recents, "onLayout", new XC_MethodHook() {
                 @Override protected void afterHookedMethod(MethodHookParam p) {
-                    if (enabled()) ((View) p.thisObject).invalidate();
+                    if (enabled()) {
+                        ViewGroup root = (ViewGroup) p.thisObject;
+                        root.invalidate();
+                        root.post(() -> publishSelectedTask(root));
+                    }
                 }
             });
             Class<?> chip = XposedHelpers.findClassIfExists(
@@ -461,7 +477,37 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
             state.lastSelectionLogKey = key;
             Log.i(TAG, "SELECT " + key
                     + " label=" + appLabel(task, identity));
+            // Do not perform cross-process IPC inside Canvas.draw().
+            root.post(() -> publishSelectedTask(root));
         }
+    }
+
+    /**
+     * Publish only a real, currently bound native Quickstep task selection.
+     * This is an ephemeral identity bridge, not a second task model.
+     */
+    private static void publishSelectedTask(ViewGroup root) {
+        if (!enabled() || !root.isShown()) return;
+        try {
+            if (!XposedHelpers.getBooleanField(root, "mOverviewStateEnabled")) return;
+        } catch (Throwable ignored) {
+            return; // Unknown host state: fail closed, do not publish.
+        }
+        GridState state = state(root);
+        List<View> all = tasks(root);
+        normalize(state, all.size());
+        // A split/group TaskView binds several tasks. Do not silently close
+        // only its first member: stock swipe dismisses the complete group.
+        TaskIdentity identity = state.selected >= 0 && state.selected < all.size()
+                && iconCount(all.get(state.selected)) == 1
+                ? taskIdentity(all.get(state.selected), 0) : null;
+        String key = identity == null ? "" : identity.toString();
+        if (key.equals(state.lastPublishedSelection)) return;
+        boolean ok = identity == null
+                ? RecentsSelectionBridge.clear(root.getContext())
+                : RecentsSelectionBridge.publish(root.getContext(),
+                        identity.id, identity.user, identity.pkg);
+        if (ok) state.lastPublishedSelection = key;
     }
 
     private static int iconCount(View task) {
@@ -478,7 +524,13 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
         // The wallpaper tint is composed by Launcher3's native ScrimView
         // below this view, not by painting black into the icon surface.
         List<View> all = tasks(root);
-        if (all.isEmpty()) return;
+        if (all.isEmpty()) {
+            GridState state = state(root);
+            if (!"".equals(state.lastPublishedSelection)) {
+                root.post(() -> publishSelectedTask(root));
+            }
+            return;
+        }
         RecentsIconGridLayout grid = geometry(root, all.size());
         if (grid == null) return;
         GridState state = state(root);
@@ -866,6 +918,7 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
                 state.page = destination / RecentsIconGridLayout.PAGE_SIZE;
             }
         }
+        publishSelectedTask(root);
         root.invalidate();
         return true;
     }
@@ -897,6 +950,7 @@ public final class QuickstepIconGridHook implements IXposedHookLoadPackage {
                     if (next >= 0 && next < grid.pageCount) {
                         state.page = next;
                         state.selected = next * RecentsIconGridLayout.PAGE_SIZE;
+                        publishSelectedTask(root);
                         root.invalidate();
                     }
                 } else if (!state.swiping && Math.abs(yDistance) < dp(root, 20)) {

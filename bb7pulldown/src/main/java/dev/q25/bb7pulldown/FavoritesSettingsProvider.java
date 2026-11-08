@@ -10,27 +10,44 @@ import android.database.MatrixCursor;
 import android.net.Uri;
 import android.os.Binder;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.os.Process;
 
 import org.json.JSONArray;
 
 /**
- * Small read-only configuration bridge from the BB UI app to hooked SystemUI.
- * The only external caller permitted is the actual com.android.systemui UID.
- * This provider never accepts arbitrary app writes to favorite settings.
+ * Existing BB UI interprocess bridge: SystemUI-only Favorites configuration,
+ * and a volatile Quickstep selection snapshot for the BB application menu.
+ * Quickstep may update ONLY the selection; it cannot read or change Favorites.
  */
 public final class FavoritesSettingsProvider extends ContentProvider {
     static final String AUTHORITY = "dev.q25.trackpad.favorites";
     static final Uri RULES_URI = Uri.parse("content://" + AUTHORITY + "/rules");
     static final Uri CONVERSATIONS_URI = Uri.parse("content://" + AUTHORITY + "/conversations");
     static final Uri MODE_URI = Uri.parse("content://" + AUTHORITY + "/shadeMode");
+    static final Uri RECENTS_URI = Uri.parse("content://" + AUTHORITY + "/recentsSelection");
     static final String METHOD_REPORT_CONVERSATIONS = "reportConversations";
+    static final String METHOD_PUBLISH_RECENTS_SELECTION = "publishRecentsSelection";
+    static final String METHOD_GET_RECENTS_SELECTION = "getRecentsSelection";
+    static final String RECENTS_TASK_ID = "taskId";
+    static final String RECENTS_USER_ID = "userId";
+    static final String RECENTS_PACKAGE = "packageName";
+    static final String RECENTS_OVERVIEW_ACTIVE = "overviewActive";
+    static final String RECENTS_PUBLISHER_TOKEN = "publisherToken";
     private static final String PREFS = "bbui_favorites";
     private static final String RULES_KEY = "rules";
     private static final String MODE_KEY = "shade_mode";
     private static final String OBSERVED_KEY = "observed";
     private static final String DEFAULT_RULES =
             "{\"version\":1,\"enabled\":false,\"apps\":[]}";
+    // In-memory only: never persist a task selection past a provider restart.
+    private final Object recentsLock = new Object();
+    private int selectedRecentTaskId = -1;
+    private int selectedRecentUserId = -1;
+    private String selectedRecentPackage = "";
+    private boolean overviewActive;
+    // Remote Binder proxy becomes dead if the Launcher3 process exits.
+    private IBinder selectionPublisher;
 
     @Override public boolean onCreate() { return true; }
 
@@ -96,6 +113,17 @@ public final class FavoritesSettingsProvider extends ContentProvider {
         throw new SecurityException("Favorites configuration is private to BB UI and SystemUI");
     }
 
+    private void enforceLauncherCaller() {
+        Context context = getContext();
+        if (context == null) throw new SecurityException("BB UI provider unavailable");
+        try {
+            int launcherUid = context.getPackageManager().getPackageUid(
+                    "com.android.launcher3", 0);
+            if (Binder.getCallingUid() == launcherUid) return;
+        } catch (PackageManager.NameNotFoundException ignored) { }
+        throw new SecurityException("Only Quickstep may publish a Recents selection");
+    }
+
     @Override public Cursor query(Uri uri, String[] projection, String selection,
             String[] selectionArgs, String sortOrder) {
         enforceCaller();
@@ -117,7 +145,43 @@ public final class FavoritesSettingsProvider extends ContentProvider {
     }
 
     @Override public Bundle call(String method, String arg, Bundle extras) {
+        if (METHOD_PUBLISH_RECENTS_SELECTION.equals(method)) {
+            enforceLauncherCaller();
+            int id = extras == null ? -1 : extras.getInt(RECENTS_TASK_ID, -1);
+            int user = extras == null ? -1 : extras.getInt(RECENTS_USER_ID, -1);
+            String pkg = extras == null ? null : extras.getString(RECENTS_PACKAGE);
+            boolean active = extras != null
+                    && extras.getBoolean(RECENTS_OVERVIEW_ACTIVE, false);
+            IBinder publisher = extras == null
+                    ? null : extras.getBinder(RECENTS_PUBLISHER_TOKEN);
+            if (publisher == null || !publisher.isBinderAlive()) {
+                throw new SecurityException("Live Launcher3 selection publisher required");
+            }
+            synchronized (recentsLock) {
+                selectionPublisher = publisher;
+                overviewActive = active;
+                selectedRecentTaskId = active && id > 0 && pkg != null && !pkg.isEmpty()
+                        ? id : -1;
+                selectedRecentUserId = selectedRecentTaskId > 0 ? user : -1;
+                selectedRecentPackage = selectedRecentTaskId > 0 ? pkg : "";
+            }
+            return Bundle.EMPTY;
+        }
+        // The Launcher3 UID is deliberately NOT allowed to read this result,
+        // and never passes the Favorites configuration authorization above.
         enforceCaller();
+        if (METHOD_GET_RECENTS_SELECTION.equals(method)) {
+            Bundle result = new Bundle();
+            synchronized (recentsLock) {
+                boolean valid = selectionPublisher != null
+                        && selectionPublisher.isBinderAlive();
+                result.putBoolean(RECENTS_OVERVIEW_ACTIVE, valid && overviewActive);
+                result.putInt(RECENTS_TASK_ID, valid ? selectedRecentTaskId : -1);
+                result.putInt(RECENTS_USER_ID, valid ? selectedRecentUserId : -1);
+                result.putString(RECENTS_PACKAGE, valid ? selectedRecentPackage : "");
+            }
+            return result;
+        }
         Context context = getContext();
         if (context == null || !METHOD_REPORT_CONVERSATIONS.equals(method)) {
             return super.call(method, arg, extras);

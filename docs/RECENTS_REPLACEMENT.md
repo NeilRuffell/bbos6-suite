@@ -1,3 +1,38 @@
+## Close highlighted Recents application from the BB menu (Q25 test pending)
+
+The BlackBerry menu can now expose its existing **Close Application** row
+while the native Quickstep icon grid is showing. It targets precisely the
+currently highlighted Quickstep task, not the launcher, previous foreground app,
+a guessed RecentTaskInfo index, or another task sharing that app package.
+
+Quickstep's `QuickstepIconGridHook` publishes the native bound TaskKey
+(ID, user and package) through a volatile method on the **existing**
+`FavoritesSettingsProvider`, already used as BBUI's interprocess bridge.
+Only the actual Launcher3 UID can publish the selection; only SystemUI
+can read it. No extra provider, background service, second task store,
+Recents overlay or navigation mechanism is introduced. Selection is cleared on native Overview entry/exit and when the grid
+empties. A live Launcher3 Binder token ensures a crashed/restarted Quickstep
+process cannot leave a valid stale selection. Grouped/split TaskViews do
+not publish a single arbitrary member as the target; Close is hidden for
+those ambiguous entries.
+
+Both foreground and Recents menu actions reuse
+`ForegroundTaskActions.closeCapturedApplication()` and the **same**
+`ActivityTaskManager.removeTask(taskId)` backend. The existing foreground
+identity check is preserved; Recents targets are verified by their exact
+task ID, user and base package against Android's actual recent-task list.
+The action is equivalent to stock Recents removing a task; it is **not**
+a package-wide Force Stop. No simulated swipes, launcher redirection,
+fallback app closures or synthetic key presses occur.
+
+Q25 validation: open Overview, highlight app A, press BB, choose Close,
+and confirm A is removed from the icon grid while app B remains.
+Repeat with different pages and multiple tasks from the same app.
+Also test the original foreground Close Application, Home/Back dismissal,
+and returning to Overview; a stale selection must never close an app.
+Check `BB7-RecentsMenu`, `BB7-AppMenu` and `BBUI-RecentsIcons` logs.
+Any unvalidated target must leave the app untouched.
+
 # BBOS6 Recents replacement — one native owner
 
 ## Home dismisses the transient BB menu (0.9.119; Q25 verification pending)

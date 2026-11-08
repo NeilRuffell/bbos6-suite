@@ -5,6 +5,7 @@ import dev.q25.trackpad.theme.BB7Theme;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
+import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.TextView;
@@ -52,6 +53,10 @@ final class ShadeDateHeader extends LinearLayout {
         addRow(quickSettingsRow);
     }
 
+    void setCloseApplicationLabel(String applicationLabel) {
+        closeApplicationRow.setText("Close " + applicationLabel);
+    }
+
     private void addRow(TextView row) {
         addView(row, new LinearLayout.LayoutParams(
                 LayoutParams.MATCH_PARENT, dp(ROW_HEIGHT_DP)));
@@ -65,6 +70,7 @@ final class ShadeDateHeader extends LinearLayout {
         view.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
         view.setPadding(dp(14), 0, dp(10), 0);
         view.setSingleLine(true);
+        view.setEllipsize(TextUtils.TruncateAt.END);
         view.setFocusable(false);
         view.setClickable(false);
         return view;

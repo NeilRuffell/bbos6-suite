@@ -467,8 +467,15 @@ public final class PullDownHook implements IXposedHookLoadPackage {
         if (openingOrClosing || focusWindow != null || locked(context)) return;
         WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
         if (wm == null) return;
-        ForegroundTaskActions.Target target = shadeHost == null
-                ? ForegroundTaskActions.currentApplication(context) : null;
+        ForegroundTaskActions.Target target = null;
+        if (shadeHost == null) {
+            // Native Quickstep selection takes priority over the prior foreground
+            // task. This also hides Close on ambiguous grouped Recents entries.
+            RecentsSelectionBridge.Snapshot recents =
+                    RecentsSelectionBridge.snapshot(context);
+            target = recents.overviewActive ? recents.target
+                    : ForegroundTaskActions.currentApplication(context);
+        }
         boolean closeAvailable = target != null;
         NAVIGATION.setCloseApplicationAvailable(closeAvailable);
         FrameLayout root = new FrameLayout(context) {
@@ -481,6 +488,10 @@ public final class PullDownHook implements IXposedHookLoadPackage {
         root.setFocusableInTouchMode(true);
         root.setBackgroundColor(Color.TRANSPARENT);
         ShadeDateHeader popup = new ShadeDateHeader(context, closeAvailable);
+        if (target != null) {
+            popup.setCloseApplicationLabel(
+                    ForegroundTaskActions.applicationLabel(context, target));
+        }
         int popupWidth = ShadeDateHeader.widthPx(context);
         int popupHeight = ShadeDateHeader.heightPx(context, closeAvailable);
         root.addView(popup, new FrameLayout.LayoutParams(popupWidth, popupHeight));
@@ -518,10 +529,12 @@ public final class PullDownHook implements IXposedHookLoadPackage {
                         | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
                 PixelFormat.TRANSLUCENT);
         params.setTitle("BB UI application menu");
-        params.gravity = Gravity.BOTTOM | Gravity.START;
-        params.x = dp(context, 4);
-        params.y = dp(context, 8);
-        params.setFitInsetsTypes(android.view.WindowInsets.Type.navigationBars());
+        // Anchor to the physical bottom-left display corner, not the inset
+        // navigation-bar content frame or an RTL-dependent START edge.
+        params.gravity = Gravity.BOTTOM | Gravity.LEFT;
+        params.x = 0;
+        params.y = 0;
+        params.setFitInsetsTypes(0);
         try {
             wm.addView(root, params);
             focusManager = wm;
