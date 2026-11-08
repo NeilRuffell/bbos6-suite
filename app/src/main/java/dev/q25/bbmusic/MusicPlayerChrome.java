@@ -218,12 +218,16 @@ final class MusicPlayerChrome {
             shape.lineTo(8f, 12f);
             shape.lineTo(18f, 19f);
             shape.close();
-        } else if (action == 2) {
+        } else if (action == 3) {
             shape.moveTo(6f, 5f);
             shape.lineTo(16f, 12f);
             shape.lineTo(6f, 19f);
             shape.close();
             shape.addRect(17f, 5f, 19f, 19f, Path.Direction.CW);
+        } else if (action == 2) {
+            // Standard square Stop symbol, using the same 24-unit canvas
+            // and white transport-icon styling as Play and Previous/Next.
+            shape.addRect(6f, 6f, 18f, 18f, Path.Direction.CW);
         } else if (pause) {
             shape.addRect(6f, 5f, 10f, 19f, Path.Direction.CW);
             shape.addRect(14f, 5f, 18f, 19f, Path.Direction.CW);

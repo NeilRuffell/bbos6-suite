@@ -23,6 +23,11 @@ public final class MusicPlaybackService extends MediaSessionService {
     @Override
     public void onCreate() {
         super.onCreate();
+        // Keep active playback notifications, but hide the media notification
+        // when Stop transitions the player to STATE_IDLE. Media3 defaults to
+        // showing a notification after stop unless this is explicitly set.
+        setShowNotificationForIdlePlayer(
+                SHOW_NOTIFICATION_FOR_IDLE_PLAYER_NEVER);
         // All indexed tracks are local SAF content:// audio documents,
         // not HLS/DASH/SS manifests. DefaultMediaSourceFactory can infer a
         // streaming format from a document URI and then reflectively load
