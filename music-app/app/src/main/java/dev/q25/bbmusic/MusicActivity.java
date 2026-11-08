@@ -29,6 +29,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -61,6 +62,12 @@ public final class MusicActivity extends Activity {
     private static final int ROW_FOLDER = 5;
     private static final int ROW_NOW_PLAYING = 6;
     private static final int ROW_SETTINGS_HEADER = 7;
+    private static final int ROW_BROWSER_DIRECTORY = 8;
+    private static final int ROW_BROWSER_FILE = 9;
+    private static final int ROW_BROWSER_UNAVAILABLE = 10;
+    private static final int ROW_BROWSER_ROOT = 11;
+    // Existing menu indices 0-6 are reserved for their original actions.
+    private static final int MENU_FOLDERS = 7;
     private static final String[] MENU = {
             "All Songs",
             "Artists",
@@ -68,7 +75,8 @@ public final class MusicActivity extends Activity {
             "Genres",
             "Playlists",
             "Shuffle Songs",
-            "Settings"
+            "Settings",
+            "Folders"
     };
 
     private MusicListView list;
@@ -86,6 +94,7 @@ public final class MusicActivity extends Activity {
     private int searchOriginalTop;
     private TrackpadPressHandler trackpadPress;
     private LocalMusicSource localSource;
+    private MusicFolderBrowser folderBrowser;
     private Map<String, List<Uri>> albumArtworkSources = Collections.emptyMap();
     private MusicPlaybackClient playback;
     private FrameLayout safeViewport;
@@ -160,6 +169,26 @@ public final class MusicActivity extends Activity {
             return new MenuRow(name, ROW_FOLDER, -1, -1,
                     null, null, tree, location);
         }
+
+        static MenuRow browserRoot(String name, Uri tree, String documentId) {
+            return new MenuRow(name, ROW_BROWSER_ROOT, -1, -1,
+                    null, null, tree, documentId);
+        }
+
+        static MenuRow browserDirectory(String name, Uri tree, String documentId) {
+            return new MenuRow(name, ROW_BROWSER_DIRECTORY, -1, -1,
+                    null, null, tree, documentId);
+        }
+
+        static MenuRow browserUnavailable(String name) {
+            return new MenuRow(name, ROW_BROWSER_UNAVAILABLE, -1, -1,
+                    null, null, null, null);
+        }
+
+        static MenuRow browserFile(String filename, LocalMusicSource.Song song) {
+            return new MenuRow(filename, song == null ? ROW_BROWSER_FILE : ROW_SONG,
+                    -1, -1, null, song, null, null);
+        }
     }
 
     private static final class Page {
@@ -167,6 +196,10 @@ public final class MusicActivity extends Activity {
         final List<MenuRow> rows;
         // Only a page opened directly from an album group has this header.
         final MenuRow albumGroup;
+        // Set only on filesystem pages; entries are cached per visited page
+        // so a library refresh can rebind song availability without requerying.
+        Uri browserTree;
+        List<MusicFolderBrowser.Entry> browserEntries;
         int selected;
         int selectedTop;
 
@@ -203,6 +236,7 @@ public final class MusicActivity extends Activity {
         trackpadPress = new TrackpadPressHandler(this::activateSelected,
                 () -> { /* Long-press behavior will be specified later. */ });
         localSource = new LocalMusicSource(this);
+        folderBrowser = new MusicFolderBrowser(this);
         playback = new MusicPlaybackClient(this, new MusicPlaybackClient.Listener() {
             @Override public void onPlaybackChanged() {
                 updateNowPlayingHomeRow();
@@ -214,8 +248,11 @@ public final class MusicActivity extends Activity {
             }
         });
         ArrayList<MenuRow> rootRows = new ArrayList<>();
-        for (int index = 0; index < MENU.length; index++) {
+        for (int index = 0; index < MENU.length - 1; index++) {
             rootRows.add(MenuRow.root(MENU[index], index));
+            // Preserve existing menu indices and place Folders with library
+            // categories instead of changing Shuffle/Settings routing.
+            if (index == 4) rootRows.add(MenuRow.root(MENU[MENU_FOLDERS], MENU_FOLDERS));
         }
         currentPage = new Page("Music", rootRows);
         rootPage = currentPage;
@@ -345,6 +382,10 @@ public final class MusicActivity extends Activity {
         // counts and folder locations keep their original subtitle policies.
         String subtitle = row.kind == ROW_SONG ? row.song.artist
                 : row.kind == ROW_FOLDER ? row.folderLocation
+                : row.kind == ROW_BROWSER_ROOT ? row.folderLocation
+                : row.kind == ROW_BROWSER_DIRECTORY ? "Folder"
+                : row.kind == ROW_BROWSER_UNAVAILABLE ? "Access unavailable"
+                : row.kind == ROW_BROWSER_FILE ? "Not in music library"
                 : row.kind == ROW_SETTING && "Auto refresh on launch".equals(row.title)
                         ? (autoRefreshEnabled() ? "On" : "Off")
                         : childCountLabel(row);
@@ -352,7 +393,9 @@ public final class MusicActivity extends Activity {
                 ? MediaSeekPolicy.formatTime(row.song.durationMs) : null;
         return new MusicListView.RowData(
                 row.title, subtitle,
-                row.kind != ROW_MESSAGE && row.kind != ROW_SETTINGS_HEADER,
+                row.kind != ROW_MESSAGE && row.kind != ROW_SETTINGS_HEADER
+                        && row.kind != ROW_BROWSER_FILE
+                        && row.kind != ROW_BROWSER_UNAVAILABLE,
                 hasArtwork, albumFallback,
                 menuIconForRow(row), trackNumber, duration,
                 albumKey == null ? null : "album:" + albumKey,
@@ -369,6 +412,14 @@ public final class MusicActivity extends Activity {
         if (row.kind == ROW_NOW_PLAYING) {
             return R.drawable.bbos6_menu_now_playing; // 341.png
         }
+        // All configured folder roots and recursively browsed directories
+        // share the same verified original BBOS6 112.png icon, including
+        // unavailable roots and removable Settings > Music Folders entries.
+        if (row.kind == ROW_FOLDER || row.kind == ROW_BROWSER_ROOT
+                || row.kind == ROW_BROWSER_DIRECTORY
+                || row.kind == ROW_BROWSER_UNAVAILABLE) {
+            return R.drawable.bbos6_menu_folders; // 112.png
+        }
         if (row.kind != ROW_MENU) return 0;
         switch (row.menuIndex) {
             case 0: return R.drawable.bbos6_menu_all_songs;      // 350.png
@@ -378,6 +429,7 @@ public final class MusicActivity extends Activity {
             case 4: return R.drawable.bbos6_menu_playlists;      // 337.png
             case 5: return R.drawable.bbos6_menu_shuffle_songs; // 339.png
             case 6: return R.drawable.bbos6_menu_settings;      // 3412.png
+            case MENU_FOLDERS: return R.drawable.bbos6_menu_folders; // 112.png
             default: return 0;
         }
     }
@@ -455,6 +507,7 @@ public final class MusicActivity extends Activity {
             // Playlist storage is not implemented, hence no playlist children.
             return "0 Items";
         }
+        if (row.menuIndex == MENU_FOLDERS) return null;
         // Shuffle Songs and Settings have no child-count subtitle.
         return null;
     }
@@ -504,6 +557,8 @@ public final class MusicActivity extends Activity {
             } else if (row.menuIndex == 6) {
                 settingsPage = new Page("Settings", buildSettingsRows());
                 navigateTo(settingsPage);
+            } else if (row.menuIndex == MENU_FOLDERS) {
+                openFolders();
             }
         } else if (row.kind == ROW_SETTING) {
             if ("Music Folders".equals(row.title)) {
@@ -523,6 +578,9 @@ public final class MusicActivity extends Activity {
             }
         } else if (row.kind == ROW_FOLDER) {
             confirmFolderRemoval(row);
+        } else if (row.kind == ROW_BROWSER_DIRECTORY
+                || row.kind == ROW_BROWSER_ROOT) {
+            openBrowserDirectory(row);
         } else if (row.kind == ROW_GROUP) {
             List<LocalMusicSource.Song> groupSongs = new ArrayList<>(row.songs);
             if (row.groupCategory == 2) {
@@ -573,6 +631,114 @@ public final class MusicActivity extends Activity {
                 .setPositiveButton("Rescan",
                         (dialog, which) -> startLocalScan(true, true, true))
                 .show();
+    }
+
+    /** Each configured SAF root appears in Folders, including revoked roots. */
+    private void openFolders() {
+        ArrayList<MenuRow> rows = new ArrayList<>();
+        Set<String> authorized = new HashSet<>();
+        for (Uri tree : MusicFolders.selectedTrees(this)) {
+            authorized.add(tree.toString());
+        }
+        List<Uri> saved = MusicFolders.savedTrees(this);
+        for (Uri tree : saved) {
+            String name = MusicFolders.displayName(this, tree);
+            if (!MusicFilePolicy.isVisibleDirectory(name)) continue;
+            if (authorized.contains(tree.toString())) {
+                rows.add(MenuRow.browserRoot(name, tree,
+                        MusicFolders.documentId(tree)));
+            } else {
+                rows.add(MenuRow.browserUnavailable(name));
+            }
+        }
+        if (rows.isEmpty()) rows.add(MenuRow.message(
+                saved.isEmpty() ? "No folders selected" : "No visible folders"));
+        navigateTo(new Page("Folders", rows));
+    }
+
+    /** Open exactly one directory beneath a persisted, authorized SAF tree. */
+    private void openBrowserDirectory(MenuRow row) {
+        if (row.folderTree == null || row.folderLocation == null) return;
+        Page page = new Page(row.title, new ArrayList<>());
+        page.browserTree = row.folderTree;
+        page.rows.add(MenuRow.message("Loading folder..."));
+        navigateTo(page);
+        folderBrowser.listChildren(row.folderTree, row.folderLocation,
+                new MusicFolderBrowser.Listener() {
+                    @Override public void onLoaded(List<MusicFolderBrowser.Entry> entries) {
+                        page.browserEntries = entries;
+                        page.rows.clear();
+                        page.rows.addAll(browserRows(page));
+                        refreshBrowserPage(page);
+                    }
+
+                    @Override public void onError(String message) {
+                        page.rows.clear();
+                        page.rows.add(MenuRow.message(message));
+                        refreshBrowserPage(page);
+                    }
+                });
+    }
+
+    /** Folder structure is read directly from SAF; playback uses the index. */
+    private List<MenuRow> browserRows(Page page) {
+        ArrayList<MenuRow> rows = new ArrayList<>();
+        if (page.browserEntries == null) return rows;
+        Map<String, LocalMusicSource.Song> indexed = new HashMap<>();
+        if (localSongs != null) {
+            for (LocalMusicSource.Song song : localSongs) {
+                if (song.sourceTree.equals(page.browserTree)) {
+                    indexed.put(song.uri.toString(), song);
+                }
+            }
+        }
+        for (MusicFolderBrowser.Entry entry : page.browserEntries) {
+            if (entry.directory) {
+                rows.add(MenuRow.browserDirectory(entry.name,
+                        page.browserTree, entry.documentId));
+            } else {
+                rows.add(MenuRow.browserFile(entry.name,
+                        indexed.get(entry.uri.toString())));
+            }
+        }
+        if (rows.isEmpty()) rows.add(MenuRow.message("Empty folder"));
+        return rows;
+    }
+
+    /** Shared ListView stays mounted and retains selection/scroll on updates. */
+    private void refreshBrowserPage(Page page) {
+        if (currentPage != page) return;
+        if (searchOpen) {
+            updateSearchResults();
+            return;
+        }
+        int selected = list.getSelectedItemPosition();
+        View selectedView = list.getSelectedView();
+        int top = selectedView == null ? 0 : selectedView.getTop();
+        visibleRows = page.rows;
+        list.notifyRowsChanged();
+        list.post(() -> {
+            if (currentPage != page || searchOpen || nowPlayingVisible
+                    || isFinishing() || isDestroyed()) return;
+            list.requestFocus();
+            list.setSelectionFromTop(Math.max(0,
+                    Math.min(selected, page.rows.size() - 1)), top);
+            list.refreshSelection();
+        });
+    }
+
+    /** A completed metadata scan can make previously listed files playable. */
+    private void refreshBrowsedSongs() {
+        for (Page page : backStack) {
+            if (page.browserEntries == null) continue;
+            page.rows.clear();
+            page.rows.addAll(browserRows(page));
+        }
+        if (currentPage.browserEntries != null) {
+            currentPage.rows.clear();
+            currentPage.rows.addAll(browserRows(currentPage));
+            refreshBrowserPage(currentPage);
+        }
     }
 
     /** Folder management is a nested page; only saved SAF trees are listed. */
@@ -903,6 +1069,7 @@ public final class MusicActivity extends Activity {
                 }
                 updateAlbumArtworkSources();
                 updateLocalCategoryCounts();
+                refreshBrowsedSongs();
                 if (searchOpen) updateSearchResults();
                 Log.i(TAG, "Selected-folder music ready: " + songs.size()
                         + " tracks");
@@ -1283,6 +1450,7 @@ public final class MusicActivity extends Activity {
         playback.disconnect();
         list.dispose();
         localSource.close();
+        folderBrowser.close();
         super.onDestroy();
     }
 

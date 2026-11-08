@@ -4,6 +4,27 @@ BB Music is an ordinary Android APK (`dev.q25.bbmusic`). It does not require
 BB UI, Vector, LSPosed, root, another player, a custom ROM or SystemUI access.
 It has its own Gradle project under `music-app/`.
 
+## Standard local Release workflow (same as TV-DV)
+
+Build and test the **release** APK on the Q25 before publishing:
+```bash
+gradle -p music-app :app:assembleRelease
+adb -s 202512003630 install -r music-app/app/build/outputs/apk/release/app-release.apk
+```
+After Q25 approval, publish **the same APK** using GitHub CLI (no rebuild):
+```bash
+gh release create "bb-music-$(date -u +%Y%m%d-%H%M%S)" \
+  "music-app/app/build/outputs/apk/release/app-release.apk#BBMusic.apk" \
+  --repo NeilRuffell/bb-ui --target "$(git rev-parse HEAD)" \
+  --title "BB Music" --notes "Tested release APK for direct installation."
+```
+Gradle handles APK signing using the same local Android debug identity across
+builds, like TV-DV's Release build; do not generate disposable keys. Keep
+`~/.android/debug.keystore` safe. The old GitHub Actions job that signed
+each APK with a *new* certificate was removed. Existing installations
+signed by that job cannot be upgraded in-place using a different identity.
+
+
 ## UI and navigation
 
 The BlackBerry OS 6-style home screen uses a native Android `ListView` and
@@ -26,8 +47,9 @@ Home screen, in order:
 4. Albums
 5. Genres
 6. Playlists (not implemented yet)
-7. Shuffle Songs (first-party shuffled playback)
-8. Settings
+7. **Folders** — browse directories chosen in Settings
+8. Shuffle Songs (first-party shuffled playback)
+9. Settings
 
 The **Now Playing...** item is the first row of the existing shared native
 `MusicListView`, with the original BBOS6 `341.png` icon and identical
@@ -37,7 +59,8 @@ Tapping or pressing Enter on this item reopens the existing Now Playing
 screen for the **same** Media3 session; it does **not** restart, resume, or
 requeue the song, so paused audio remains paused. The same row appears
 when resuming the app if the live session still has a current track.
-The original seven menu indices remain unchanged in code. Updates modify
+The original seven menu indices remain unchanged in code; Folders has index 7.
+Updates modify
 only `rootPage.rows` and preserve existing list selection/Back navigation;
 the shortcut is not included in the home screen's song-search results.
 
@@ -47,6 +70,48 @@ and a live list of saved folders, each with a **Remove** control. The group
 also contains **Refresh library** (incremental), **Full rescan** (complete
 metadata recheck) and **Auto refresh on launch** (On/Off, initially On).
 Removing a folder does not delete the files on the device.
+
+### Folders browsing
+
+**Home → Folders** lists the directories saved under **Settings → Music
+Folders**, using their actual SAF display names. For example, selecting
+`Internal Storage/music` shows a **music** row; opening it lists its immediate
+child folders and files. Selecting a child folder continues the hierarchy to
+any supported depth. Back returns to the previous folder or the Folders menu,
+with the existing list's selection and scroll position preserved.
+
+Folder navigation uses the same `MusicListView` / hardware trackpad focus as
+other library pages. Directories appear before files, in case-insensitive name
+order. Only directories not beginning with `.` and audio-file candidates are
+shown. Hidden directories such as `.thumbnails`, cover artwork, playlists and
+other non-audio files are omitted, including from configured-root entries
+when a root's display name starts with `.`. This affects only Folders browsing:
+Settings can still manage all configured roots and the library scanner's
+existing selection remains unchanged.
+
+Audio candidates use the same MIME/extension/playlist exclusion policy as the
+library scanner, centralized in `MusicFilePolicy`. A matching extension or
+provider MIME type alone does not establish playability: files absent from the
+verified music catalog remain non-selectable. Indexed music files show artist,
+duration and artwork where available and play through the existing Media3
+session. Previous/Next uses the playable tracks in the displayed folder (or
+its current filtered results), not the entire library.
+
+`MusicFolderBrowser` queries only the immediate children of a directory
+through Android's Storage Access Framework, on a background worker. It reads
+only saved roots with an active persisted read grant, uses no broad device
+storage permissions, and does not mutate or delete device files. Revoked roots
+remain visible in Folders as **Access unavailable** until permission is
+restored from Settings. No independently maintained folder allowlist or
+device-wide directory scan is introduced. Completing an existing music library
+scan makes newly indexed files playable in previously opened browse pages
+without discarding their navigation history.
+
+The original BBOS6 `112.png` folder icon appears in the home **Folders**
+entry, the saved folder rows in **Settings → Music Folders**, the configured
+roots in **Folders**, and every recursively browsed subdirectory. Revoked
+root entries use the same icon. All instances reuse the existing
+`MusicListView` menu icon rendering/caching; no list component is duplicated.
 
 ### Persistent offline catalog (Room)
 
@@ -130,6 +195,7 @@ OS 6 Music home menu supplied for this project:
 | Albums | `351.png` | `bbos6_menu_albums.png` |
 | Genres | `348.png` | `bbos6_menu_genres.png` |
 | Playlists | `337.png` | `bbos6_menu_playlists.png` |
+| Folders (home and directory rows) | `112.png` | `bbos6_menu_folders.png` |
 | Shuffle Songs | `339.png` | `bbos6_menu_shuffle_songs.png` |
 | Settings (Options wrench) | `3412.png` | `bbos6_menu_settings.png` |
 

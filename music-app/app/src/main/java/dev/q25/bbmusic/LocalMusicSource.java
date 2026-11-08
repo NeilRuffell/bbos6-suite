@@ -429,35 +429,7 @@ final class LocalMusicSource {
     }
 
     private static boolean isAudio(String filename, String mime) {
-        if (DocumentsContract.Document.MIME_TYPE_DIR.equals(mime)) return false;
-        // A playlist is not an audio stream even when a provider publishes it
-        // with an audio/* MIME label. Do not query it as a child directory.
-        if (filename != null) {
-            String lower = filename.toLowerCase(Locale.ROOT);
-            if (lower.endsWith(".m3u") || lower.endsWith(".m3u8")
-                    || lower.endsWith(".pls") || lower.endsWith(".xspf")) {
-                return false;
-            }
-        }
-        if (mime != null && mime.toLowerCase(Locale.ROOT).startsWith("audio/")) {
-            return true;
-        }
-        if (mime != null && mime.toLowerCase(Locale.ROOT).startsWith("video/")) {
-            return false;
-        }
-        return hasAudioExtension(filename);
-    }
-
-    private static boolean hasAudioExtension(String filename) {
-        if (filename == null) return false;
-        String lower = filename.toLowerCase(Locale.ROOT);
-        return lower.endsWith(".mp3") || lower.endsWith(".m4a")
-                || lower.endsWith(".aac") || lower.endsWith(".flac")
-                || lower.endsWith(".ogg") || lower.endsWith(".opus")
-                || lower.endsWith(".wav") || lower.endsWith(".wma")
-                || lower.endsWith(".aiff") || lower.endsWith(".aif")
-                || lower.endsWith(".alac") || lower.endsWith(".ape")
-                || lower.endsWith(".amr");
+        return MusicFilePolicy.isAudio(filename, mime);
     }
 
     /**
