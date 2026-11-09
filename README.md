@@ -331,6 +331,35 @@ lifecycle and releases it when the Activity is destroyed.
 The current standalone implementation still does not depend on BB UI,
 Vector/LSPosed, a custom ROM, or another music app.
 
+### Shared long-press input
+
+BB Music uses native Android long-press detection for touch and the existing
+`TrackpadPressHandler` for hardware confirm/trackpad holds. Both routes emit
+the same logical long-press callback without firing the corresponding click:
+
+- **Library/menu rows:** `MusicListView` owns a single native
+  `OnItemLongClickListener` and forwards the touched enabled row through
+  `DataSource.longPress(position)`. The same Activity callback receives a
+  hold of the selected row via the trackpad.
+- **Now Playing:** the existing clickable Repeat, Shuffle, Artist, Album,
+  Previous, Play/Pause, Stop and Next views use native
+  `OnLongClickListener`; trackpad holds use the currently focused control.
+  Seek-bar dragging remains native and is not replaced by a custom
+  touch detector. A trackpad hold in the seek zone is also recognized.
+- **Timing and cancellation:** the trackpad detector uses
+  `ViewConfiguration.getLongPressTimeout()`, matching the Android touch
+  configuration. It fires once per hold and suppresses the release click.
+  Pending holds are canceled on navigation keys, touch, window focus loss
+  and Activity stop. Native touch long-click listeners consume the gesture.
+- **Actions:** no contextual menu or media action is assigned yet.
+  Registered long presses produce `BBMusic` debug log entries identifying
+  the row kind/index or Now Playing control, without logging music titles,
+  file paths or metadata. Hardware holds request native long-press haptics.
+
+Run `gradle -p music-app :app:testDebugUnitTest` for the hardware press
+state-machine regression tests, then test touch and Q25 trackpad interaction
+with a locally built APK before merging.
+
 ### Album detail header (BBOS6 Music)
 
 Opening an entry on the **Albums** page displays an 88dp-tall black
