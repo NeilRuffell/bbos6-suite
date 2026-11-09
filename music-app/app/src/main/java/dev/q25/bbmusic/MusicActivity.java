@@ -25,6 +25,9 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.media3.common.MediaItem;
+import androidx.media3.session.MediaController;
+
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -583,13 +586,7 @@ public final class MusicActivity extends Activity {
                 || row.kind == ROW_BROWSER_ROOT) {
             openBrowserDirectory(row);
         } else if (row.kind == ROW_GROUP) {
-            List<LocalMusicSource.Song> groupSongs = new ArrayList<>(row.songs);
-            if (row.groupCategory == 2) {
-                // Tagged track numbers provide album ordering where available.
-                groupSongs.sort(Comparator.comparingInt(song -> song.trackNumber));
-            }
-            navigateTo(new Page(row.title, songRows(groupSongs),
-                    row.groupCategory == 2 ? row : null));
+            navigateTo(pageForGroup(row));
         } else if (row.kind == ROW_SONG) {
             // Play this track within its currently displayed folder-scoped
             // song list, preserving the order for native Previous/Next.
@@ -919,7 +916,16 @@ public final class MusicActivity extends Activity {
         View selectedRow = list.getSelectedView();
         savedListTop = selectedRow == null ? 0 : selectedRow.getTop();
         safeViewport.removeView(libraryShell);
-        nowPlaying = new MusicNowPlayingView(this, playback);
+        nowPlaying = new MusicNowPlayingView(this, playback,
+                new MusicNowPlayingView.MetadataNavigation() {
+                    @Override public void openArtist() {
+                        openCurrentTrackGroup(1);
+                    }
+
+                    @Override public void openAlbum() {
+                        openCurrentTrackGroup(2);
+                    }
+                });
         safeViewport.addView(nowPlaying, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
@@ -930,6 +936,10 @@ public final class MusicActivity extends Activity {
     }
 
     private void closeNowPlaying() {
+        closeNowPlaying(true);
+    }
+
+    private void closeNowPlaying(boolean restoreListPosition) {
         if (!nowPlayingVisible) return;
         nowPlayingVisible = false;
         if (nowPlaying != null) {
@@ -941,12 +951,83 @@ public final class MusicActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
         if (backStack.isEmpty() && !searchOpen) unregisterNestedBack();
-        list.post(() -> {
-            if (nowPlayingVisible || isFinishing() || isDestroyed()) return;
-            list.requestFocus();
-            list.setSelectionFromTop(Math.max(0, savedListPosition), savedListTop);
-            list.refreshSelection();
-        });
+        if (restoreListPosition) {
+            list.post(() -> {
+                if (nowPlayingVisible || isFinishing() || isDestroyed()) return;
+                list.requestFocus();
+                list.setSelectionFromTop(Math.max(0, savedListPosition), savedListTop);
+                list.refreshSelection();
+            });
+        }
+    }
+
+    /**
+     * Metadata links enter the normal library hierarchy, rather than
+     * retaining Now Playing as a parent page. For example:
+     * Music -> Albums -> [current album] -> Back -> Albums -> Back -> Music.
+     *
+     * Match by the current queue item's exact SAF media ID, not by label:
+     * different albums can share a title and artist display names can repeat.
+     */
+    private void openCurrentTrackGroup(int category) {
+        if (!nowPlayingVisible || (category != 1 && category != 2)) return;
+        MediaController controller = playback.controller();
+        MediaItem playing = controller == null ? null : controller.getCurrentMediaItem();
+        if (playing == null) return;
+        if (localSongs == null) {
+            Toast.makeText(this, "Music library is still loading",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Use the same group builder and same group-page constructor as
+        // Home -> Artists / Albums. The original active queue stays intact.
+        List<MenuRow> categoryRows = groupedRows(category);
+        MenuRow target = null;
+        int targetPosition = -1;
+        for (int i = 0; i < categoryRows.size() && target == null; i++) {
+            MenuRow candidate = categoryRows.get(i);
+            if (candidate.kind != ROW_GROUP || candidate.songs == null) continue;
+            for (LocalMusicSource.Song song : candidate.songs) {
+                if (playing.mediaId.equals(song.uri.toString())) {
+                    target = candidate;
+                    targetPosition = i;
+                    break;
+                }
+            }
+        }
+        if (target == null) {
+            Toast.makeText(this, "This track is not in the current music library",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        int rootPosition = -1;
+        for (int i = 0; i < rootPage.rows.size(); i++) {
+            MenuRow row = rootPage.rows.get(i);
+            if (row.kind == ROW_MENU && row.menuIndex == category) {
+                rootPosition = i;
+                break;
+            }
+        }
+        if (rootPosition < 0) return;
+
+        // Now Playing is a detached presentation, not a parent in the
+        // library's Back stack. Discard the prior browsing route and create
+        // precisely the breadcrumb pages reached by normal menu traversal.
+        if (searchOpen) closeSearch(false);
+        closeNowPlaying(false);
+        pendingMenu = -1;
+        backStack.clear();
+        rootPage.selected = rootPosition;
+        rootPage.selectedTop = 0;
+        Page categoryPage = new Page(MENU[category], categoryRows);
+        categoryPage.selected = targetPosition;
+        categoryPage.selectedTop = 0;
+        backStack.push(rootPage);
+        backStack.push(categoryPage);
+        ensureBackCallback();
+        showPage(pageForGroup(target));
     }
 
     @Override protected void onStart() {
@@ -1133,6 +1214,17 @@ public final class MusicActivity extends Activity {
         }
         navigateTo(new Page(MENU[category], rows));
         pendingMenu = -1;
+    }
+
+    /** Shared detail page for normal group activation and metadata links. */
+    private Page pageForGroup(MenuRow group) {
+        List<LocalMusicSource.Song> songs = new ArrayList<>(group.songs);
+        if (group.groupCategory == 2) {
+            // Preserve the existing album track ordering and header.
+            songs.sort(Comparator.comparingInt(song -> song.trackNumber));
+        }
+        return new Page(group.title, songRows(songs),
+                group.groupCategory == 2 ? group : null);
     }
 
     private List<MenuRow> songRows(List<LocalMusicSource.Song> songs) {
