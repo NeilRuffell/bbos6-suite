@@ -33,7 +33,8 @@ final class MusicBeveledTextLabel extends TextView {
         setShadowLayer(dp(0.8f), 0f, dp(0.5f), 0x99000000);
 
         idleBackground = beveledBackground();
-        focusedBackground = MusicSelectionGradient.create(context);
+        // Use the brighter BBOS6 blue rather than the muted night-mode blue.
+        focusedBackground = MusicSelectionGradient.createVivid();
         focusedBackground.setCornerRadius(dp(5));
         focusedBackground.setStroke(dp(1), MusicPlayerChrome.BLUE_BORDER);
         setBackground(idleBackground);
