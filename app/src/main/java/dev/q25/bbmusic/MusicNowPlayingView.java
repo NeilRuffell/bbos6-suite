@@ -31,9 +31,10 @@ import androidx.media3.session.MediaController;
  * seek strip and four-button transport. MusicPlayerChrome defines shared
  * height ratios and drawables; HalfRadialGradientDrawable draws the art stage.
  *
- * Trackpad hierarchy matches TwoColumnPanel: modes -> seek -> transport.
- * Trackpad confirmation toggles seek edit mode; left/right seek only while
- * editing. This is a View, not a SystemUI hook or independent player.
+ * Trackpad moves vertically through modes, artist, album, seek and
+ * transport, skipping absent metadata. Enter activates the focused link or
+ * control; left/right seeks only while seek editing is enabled. This remains
+ * a View, not a SystemUI hook or independent player.
  */
 final class MusicNowPlayingView extends LinearLayout {
     private static final int ZONE_MODE = 0;
