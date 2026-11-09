@@ -49,8 +49,13 @@ final class MusicNowPlayingView extends LinearLayout {
         void openAlbum();
     }
 
+    interface LongPressListener {
+        void onLongPress(String control, boolean hardware);
+    }
+
     private final MusicPlaybackClient client;
     private final MetadataNavigation metadataNavigation;
+    private final LongPressListener longPressListener;
     private final MusicArtworkLoader artworkLoader;
     private final ImageView modeShuffle;
     private final ImageView modeRepeat;
@@ -83,10 +88,11 @@ final class MusicNowPlayingView extends LinearLayout {
     };
 
     MusicNowPlayingView(Context context, MusicPlaybackClient client,
-            MetadataNavigation metadataNavigation) {
+            MetadataNavigation metadataNavigation, LongPressListener longPressListener) {
         super(context);
         this.client = client;
         this.metadataNavigation = metadataNavigation;
+        this.longPressListener = longPressListener;
         artworkLoader = new MusicArtworkLoader(context);
         setOrientation(VERTICAL);
         setBackgroundColor(Color.BLACK);
@@ -106,6 +112,7 @@ final class MusicNowPlayingView extends LinearLayout {
         modeRepeat.setScaleType(ImageView.ScaleType.FIT_CENTER);
         modeRepeat.setPadding(0, 0, 0, 0);
         modeRepeat.setContentDescription("Repeat unavailable");
+        modeRepeat.setOnLongClickListener(view -> longPressTouch(ZONE_MODE, 0));
         modeRepeat.setOnClickListener(view -> {
             zone = ZONE_MODE;
             selectedMode = 0;
@@ -128,6 +135,7 @@ final class MusicNowPlayingView extends LinearLayout {
         modeShuffle.setScaleType(ImageView.ScaleType.FIT_CENTER);
         modeShuffle.setPadding(0, 0, 0, 0);
         modeShuffle.setContentDescription("Shuffle unavailable");
+        modeShuffle.setOnLongClickListener(view -> longPressTouch(ZONE_MODE, 1));
         modeShuffle.setOnClickListener(view -> {
             zone = ZONE_MODE;
             selectedMode = 1;
@@ -187,6 +195,7 @@ final class MusicNowPlayingView extends LinearLayout {
         trackArtist = new MusicBeveledTextLabel(context, 13);
         trackArtist.setFocusable(false);
         trackArtist.setOnClickListener(view -> activateMetadata(ZONE_ARTIST));
+        trackArtist.setOnLongClickListener(view -> longPressTouch(ZONE_ARTIST, 0));
         LayoutParams artistParams = new LayoutParams(
                 LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
         artistParams.gravity = Gravity.CENTER_HORIZONTAL;
@@ -196,6 +205,7 @@ final class MusicNowPlayingView extends LinearLayout {
         trackAlbum = new MusicBeveledTextLabel(context, 12);
         trackAlbum.setFocusable(false);
         trackAlbum.setOnClickListener(view -> activateMetadata(ZONE_ALBUM));
+        trackAlbum.setOnLongClickListener(view -> longPressTouch(ZONE_ALBUM, 0));
         LayoutParams albumParams = new LayoutParams(
                 LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
         albumParams.gravity = Gravity.CENTER_HORIZONTAL;
@@ -304,6 +314,8 @@ final class MusicNowPlayingView extends LinearLayout {
             // 6dp vertical insets; horizontal padding is unchanged.
             button.setPadding(dp(10), dp(6), dp(10), dp(6));
             button.setContentDescription(descriptions[i]);
+            button.setOnLongClickListener(view ->
+                    longPressTouch(ZONE_TRANSPORT, buttonIndex));
             button.setOnClickListener(view -> {
                 zone = ZONE_TRANSPORT;
                 selectedButton = buttonIndex;
@@ -505,6 +517,41 @@ final class MusicNowPlayingView extends LinearLayout {
         renderFocus();
         if (targetZone == ZONE_ARTIST) metadataNavigation.openArtist();
         else metadataNavigation.openAlbum();
+    }
+
+    /** A touchscreen hold resolves the exact touched control, not old focus. */
+    private boolean longPressTouch(int targetZone, int index) {
+        if (!active || !zoneAvailable(targetZone)) return false;
+        zone = targetZone;
+        if (targetZone == ZONE_MODE) selectedMode = index;
+        if (targetZone == ZONE_TRANSPORT) selectedButton = index;
+        requestFocus();
+        renderFocus();
+        notifyLongPress(false);
+        return true;
+    }
+
+    /** Hardware holds resolve the currently selected Now Playing control. */
+    void longPressSelected() {
+        if (!active || !zoneAvailable(zone)) return;
+        notifyLongPress(true);
+    }
+
+    private void notifyLongPress(boolean hardware) {
+        String control;
+        if (zone == ZONE_MODE) {
+            control = selectedMode == 0 ? "repeat" : "shuffle";
+        } else if (zone == ZONE_ARTIST) {
+            control = "artist";
+        } else if (zone == ZONE_ALBUM) {
+            control = "album";
+        } else if (zone == ZONE_SEEK) {
+            control = "seek";
+        } else {
+            String[] actions = {"previous", "play_pause", "stop", "next"};
+            control = actions[selectedButton];
+        }
+        longPressListener.onLongPress(control, hardware);
     }
 
     void directional(int code) {
