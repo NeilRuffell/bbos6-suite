@@ -28,6 +28,9 @@ android {
 // Xposed/Vector, SystemUI APIs, root, privileged permissions, or audio engine.
 
 dependencies {
+    // Native, reusable BBOS6 property popup; no music-specific code.
+    implementation project(':bbos6-ui')
+
     // Standalone first-party player, independent of Symfonium and BB UI.
     // Same stable Media3 version for player, session, and MediaController.
     def media3Version = '1.9.4'
