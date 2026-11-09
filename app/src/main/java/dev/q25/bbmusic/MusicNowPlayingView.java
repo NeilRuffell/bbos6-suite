@@ -25,10 +25,10 @@ import androidx.media3.session.MediaController;
 
 /**
  * Standalone presentation port of the BB UI shade's expanded Now Playing:
- * 40dp header with Repeat on the left, queue position in the center and
- * Shuffle on the right; half-radial artwork/metadata, 30dp seek strip
- * and 62dp four-button transport. Its drawables share the same chrome in
- * MusicPlayerChrome, MediaChromeDivider and HalfRadialGradientDrawable.
+ * proportionally sized header with Repeat on the left, queue position in the
+ * center and Shuffle on the right; flexible half-radial artwork/metadata,
+ * seek strip and four-button transport. MusicPlayerChrome defines shared
+ * height ratios and drawables; HalfRadialGradientDrawable draws the art stage.
  *
  * Trackpad hierarchy matches TwoColumnPanel: modes -> seek -> transport.
  * Trackpad confirmation toggles seek edit mode; left/right seek only while
@@ -84,7 +84,8 @@ final class MusicNowPlayingView extends LinearLayout {
         modeHeader.setGravity(Gravity.CENTER_VERTICAL);
         modeHeader.setPadding(0, 0, 0, 0);
         modeHeader.setBackground(MusicPlayerChrome.modeHeaderBackground(context));
-        addView(modeHeader, new LayoutParams(LayoutParams.MATCH_PARENT, dp(40)));
+        addView(modeHeader, new LayoutParams(LayoutParams.MATCH_PARENT,
+                dp(MusicPlayerChrome.MODE_HEADER_HEIGHT_DP)));
 
         // Repeat occupies the left-hand header slot formerly used by "Media".
         modeRepeat = new ImageView(context);
@@ -123,8 +124,9 @@ final class MusicNowPlayingView extends LinearLayout {
         modeHeader.addView(modeShuffle, new LayoutParams(
                 dp(48), LayoutParams.MATCH_PARENT));
 
-        // The BB UI expanded player uses its artwork stage to consume all
-        // available height, preserving the compact fixed-size bottom controls.
+        // All remaining viewport height belongs to the artwork/metadata stage;
+        // mode header, seek strip and transport heights share the reference
+        // proportions in MusicPlayerChrome.
         FrameLayout artStage = new FrameLayout(context);
         artStage.setBackground(new HalfRadialGradientDrawable());
         addView(artStage, new LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f));
@@ -173,7 +175,8 @@ final class MusicNowPlayingView extends LinearLayout {
         seekRow.setGravity(Gravity.CENTER_VERTICAL);
         seekRow.setPadding(dp(10), 0, dp(10), 0);
         seekRow.setBackground(MusicPlayerChrome.seekBackground(context));
-        addView(seekRow, new LayoutParams(LayoutParams.MATCH_PARENT, dp(30)));
+        addView(seekRow, new LayoutParams(LayoutParams.MATCH_PARENT,
+                dp(MusicPlayerChrome.SEEK_PANEL_HEIGHT_DP)));
 
         elapsed = text("0:00", 14, 0xff99aab8);
         elapsed.setGravity(Gravity.CENTER_VERTICAL);
@@ -214,7 +217,7 @@ final class MusicNowPlayingView extends LinearLayout {
                 renderProgress();
             }
         });
-        seekRow.addView(seekBar, new LayoutParams(0, dp(30), 1f));
+        seekRow.addView(seekBar, new LayoutParams(0, LayoutParams.MATCH_PARENT, 1f));
 
         total = text("--:--", 14, 0xff99aab8);
         total.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
@@ -224,7 +227,8 @@ final class MusicNowPlayingView extends LinearLayout {
         transportRow.setGravity(Gravity.CENTER_VERTICAL);
         transportRow.setOrientation(HORIZONTAL);
         transportRow.setBackground(MusicPlayerChrome.transportBackground());
-        addView(transportRow, new LayoutParams(LayoutParams.MATCH_PARENT, dp(62)));
+        addView(transportRow, new LayoutParams(LayoutParams.MATCH_PARENT,
+                dp(MusicPlayerChrome.TRANSPORT_HEIGHT_DP)));
 
         String[] descriptions = {"Previous", "Play or pause", "Stop", "Next"};
         for (int i = 0; i < transportButtons.length; i++) {
@@ -232,7 +236,9 @@ final class MusicNowPlayingView extends LinearLayout {
             ImageView button = new ImageView(context);
             button.setScaleType(ImageView.ScaleType.CENTER);
             button.setImageDrawable(MusicPlayerChrome.transportIcon(context, i, false));
-            button.setPadding(dp(10), dp(10), dp(10), dp(10));
+            // A 36dp transport glyph fits the compact 48dp button with
+            // 6dp vertical insets; horizontal padding is unchanged.
+            button.setPadding(dp(10), dp(6), dp(10), dp(6));
             button.setContentDescription(descriptions[i]);
             button.setOnClickListener(view -> {
                 zone = ZONE_TRANSPORT;
