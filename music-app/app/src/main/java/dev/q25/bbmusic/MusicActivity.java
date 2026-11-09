@@ -252,7 +252,9 @@ public final class MusicActivity extends Activity {
         });
         ArrayList<MenuRow> rootRows = new ArrayList<>();
         for (int index = 0; index < MENU.length - 1; index++) {
-            rootRows.add(MenuRow.root(MENU[index], index));
+            // Playlists (index 4) is reserved for future support. Hide only
+            // its home row; retain the menu definition, icon and handler.
+            if (index != 4) rootRows.add(MenuRow.root(MENU[index], index));
             // Preserve existing menu indices and place Folders with library
             // categories instead of changing Shuffle/Settings routing.
             if (index == 4) rootRows.add(MenuRow.root(MENU[MENU_FOLDERS], MENU_FOLDERS));
