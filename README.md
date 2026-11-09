@@ -1,5 +1,10 @@
 # BB Music — standalone Android application
 
+The installed application's display name is **Music** (Android manifest
+label), and its Media3 browsable library root also advertises **Music**.
+The package ID remains `dev.q25.bbmusic`, so this does not create a separate
+installation or change the existing local signing/update workflow.
+
 BB Music is an ordinary Android APK (`dev.q25.bbmusic`). It does not require
 BB UI, Vector, LSPosed, root, another player, a custom ROM or SystemUI access.
 It has its own Gradle project under `music-app/`.
@@ -94,7 +99,8 @@ shadow.
 Artist and album labels are interactive on touch and the Q25 trackpad.
 On Now Playing, Up/Down visits Repeat/Shuffle, artist, album, seek and
 transport in vertical order, skipping any missing artist/album labels. The
-focused metadata label uses the existing BBOS6 Music selection gradient;
+focused metadata label uses the vivid blue palette of the shared BBOS6
+Music selection gradient regardless of Android night mode;
 Left/Right remains reserved for Repeat/Shuffle, seek editing and transport.
 Pressing Enter/trackpad on a metadata label opens the current song's existing
 Artist or Album group page (including the existing album header).
