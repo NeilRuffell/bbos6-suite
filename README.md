@@ -51,10 +51,14 @@ Home screen, in order:
 3. Artists
 4. Albums
 5. Genres
-6. Playlists (not implemented yet)
-7. **Folders** — browse directories chosen in Settings
-8. Shuffle Songs (first-party shuffled playback)
-9. Settings
+6. **Folders** — browse directories chosen in Settings
+7. Shuffle Songs (first-party shuffled playback)
+8. Settings
+
+**Playlists** (internal menu index 4) is temporarily hidden from the home
+screen until playlist functionality is implemented. Its menu definition, icon,
+placeholder activation handler and numeric routing are retained unchanged,
+so the entry can be restored without reconstructing the feature.
 
 The **Now Playing...** item is the first row of the existing shared native
 `MusicListView`, with the original BBOS6 `341.png` icon and identical
