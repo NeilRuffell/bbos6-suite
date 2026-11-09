@@ -27,7 +27,7 @@ final class TrackpadPressHandler {
         timeout = () -> {
             // Other Music controls remain ordinary click-only targets, even
             // when the confirm button is held beyond the long-press timeout.
-            if (this.longPressEnabled.getAsBoolean() && state.fireLongPress()) {
+            if (state.fireLongPress(this.longPressEnabled.getAsBoolean())) {
                 this.longClick.run();
             }
         };
