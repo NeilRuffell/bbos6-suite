@@ -30,4 +30,15 @@ final class MusicSelectionGradient {
         gradient.setCornerRadius(0);
         return gradient;
     }
+
+    /**
+     * Strong BBOS6 blue for selected metadata labels regardless of Android's
+     * night-mode palette. Other list and control selections stay untouched.
+     */
+    static GradientDrawable createVivid() {
+        GradientDrawable gradient = new GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM, LIGHT_SELECTION);
+        gradient.setCornerRadius(0);
+        return gradient;
+    }
 }
