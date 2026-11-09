@@ -22,6 +22,11 @@ final class TrackpadPressState {
         return true;
     }
 
+    /** Ineligible rows keep their normal short-press action on release. */
+    boolean fireLongPress(boolean enabled) {
+        return enabled && fireLongPress();
+    }
+
     boolean release(int keyCode) {
         boolean click = heldKey == keyCode && !longFired;
         reset();
