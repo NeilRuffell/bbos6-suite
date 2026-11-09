@@ -86,6 +86,15 @@ by `MusicPlaybackClient`; playback logic and the unboxed track title are
 unchanged. The metadata parent disables child clipping to preserve the native
 shadow.
 
+### Now Playing mode selection bounds
+
+Repeat and Shuffle focus backgrounds use the shared
+`MusicPlayerChrome.modeSelectionBackground()` drawable. It wraps the
+existing `MusicSelectionGradient` in a vertical 1dp `InsetDrawable`,
+leaving the mode header's original top highlight and bottom bevel exposed.
+The buttons retain their full touch and trackpad target heights. This does
+not alter library list selection gradients or the seek/transport panels.
+
 ### Folders browsing
 
 **Home → Folders** lists the directories saved under **Settings → Music
