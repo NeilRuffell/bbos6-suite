@@ -333,32 +333,35 @@ Vector/LSPosed, a custom ROM, or another music app.
 
 ### Shared long-press input
 
-BB Music uses native Android long-press detection for touch and the existing
-`TrackpadPressHandler` for hardware confirm/trackpad holds. Both routes emit
-the same logical long-press callback without firing the corresponding click:
+BB Music uses the platform's long-press gesture handling for **music library
+entries only**. Touch and physical Q25 trackpad holds share the same Activity
+callback, with no media actions or context menus assigned yet.
 
-- **Library/menu rows:** `MusicListView` owns a single native
-  `OnItemLongClickListener` and forwards the touched enabled row through
-  `DataSource.longPress(position)`. The same Activity callback receives a
-  hold of the selected row via the trackpad.
-- **Now Playing:** the existing clickable Repeat, Shuffle, Artist, Album,
-  Previous, Play/Pause, Stop and Next views use native
-  `OnLongClickListener`; trackpad holds use the currently focused control.
-  Seek-bar dragging remains native and is not replaced by a custom
-  touch detector. A trackpad hold in the seek zone is also recognized.
-- **Timing and cancellation:** the trackpad detector uses
-  `ViewConfiguration.getLongPressTimeout()`, matching the Android touch
-  configuration. It fires once per hold and suppresses the release click.
-  Pending holds are canceled on navigation keys, touch, window focus loss
-  and Activity stop. Native touch long-click listeners consume the gesture.
-- **Actions:** no contextual menu or media action is assigned yet.
-  Registered long presses produce `BBMusic` debug log entries identifying
-  the row kind/index or Now Playing control, without logging music titles,
-  file paths or metadata. Hardware holds request native long-press haptics.
+- **Allowed rows:** playable songs/tracks; artist, album and genre group rows;
+  and folder rows, configured roots and subdirectories (including entries
+  opened via the Folders browser). These are checked centrally through
+  `MusicActivity.supportsRowLongPress()`.
+- **Excluded:** every home-menu shortcut, Now Playing (including its transport,
+  seek, artist/album metadata controls and Repeat/Shuffle), Settings options,
+  the folder Remove control, disabled entries, unavailable/unindexed files,
+  and other non-library controls.
+- **Touch:** the reusable `MusicListView` owns a native
+  `OnItemLongClickListener`, forwarding only eligible rows through the
+  existing `DataSource.longPress(position)` callback. Regular click behavior
+  is unchanged; the folder Remove child is not a long-press target.
+- **Trackpad:** the existing `TrackpadPressHandler` uses Android's
+  `ViewConfiguration.getLongPressTimeout()` and checks the selected
+  item's eligibility before dispatch. Ineligible controls still perform
+  their normal short-click action on release even after a long hold.
+  Eligible holds fire once and suppress the release click.
+  Pending holds are canceled on other keys, touch, focus loss and Activity stop.
+- **Diagnostics:** eligible long presses log only the row kind/index through
+  `BBMusic` without logging song titles or filesystem paths. Hardware
+  long presses request Android native haptic feedback.
 
-Run `gradle -p music-app :app:testDebugUnitTest` for the hardware press
-state-machine regression tests, then test touch and Q25 trackpad interaction
-with a locally built APK before merging.
+Run `gradle -p music-app :app:testDebugUnitTest` for the
+press-state gating regression tests, then verify touchscreen and Q25
+trackpad behavior using a locally built APK before merging.
 
 ### Album detail header (BBOS6 Music)
 
