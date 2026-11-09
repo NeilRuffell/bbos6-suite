@@ -71,6 +71,30 @@ also contains **Refresh library** (incremental), **Full rescan** (complete
 metadata recheck) and **Auto refresh on launch** (On/Off, initially On).
 Removing a folder does not delete the files on the device.
 
+### Now Playing metadata plates
+
+The Now Playing stage displays the plain song title above separate, compact
+BBOS6-style raised labels for artist and album. `MusicBeveledTextLabel` is the
+shared native Android view for these metadata plates: a vertical dark gradient,
+subtle rounded border, and native elevation shadow, without any PNG artwork or
+third-party dependency. Labels size to their text, are centred in the metadata
+column, and ellipsize long values to avoid overlapping the album artwork.
+Missing artist or album metadata hides only its corresponding label.
+
+The album is read from `MediaItem.mediaMetadata.albumTitle` already supplied
+by `MusicPlaybackClient`; playback logic and the unboxed track title are
+unchanged. The metadata parent disables child clipping to preserve the native
+shadow.
+
+### Now Playing mode selection bounds
+
+Repeat and Shuffle focus backgrounds use the shared
+`MusicPlayerChrome.modeSelectionBackground()` drawable. It wraps the
+existing `MusicSelectionGradient` in a vertical 1dp `InsetDrawable`,
+leaving the mode header's original top highlight and bottom bevel exposed.
+The buttons retain their full touch and trackpad target heights. This does
+not alter library list selection gradients or the seek/transport panels.
+
 ### Folders browsing
 
 **Home → Folders** lists the directories saved under **Settings → Music
