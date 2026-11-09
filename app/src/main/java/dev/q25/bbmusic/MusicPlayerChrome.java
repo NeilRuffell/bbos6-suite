@@ -136,8 +136,8 @@ final class MusicPlayerChrome {
      * and a faint lower bevel. Use smooth gradients for the underlying shape:
      * the small palette steps in the indexed PNG are not copied as UI bands.
      *
-     * This header is independent of the seek strip's shared media divider and
-     * the Now Playing transport background; neither is modified here.
+     * This header is independent of the seek strip's 2486.png treatment
+     * and the Now Playing transport background; neither is modified here.
      */
     static Drawable modeHeaderBackground(Context context) {
         GradientDrawable body = new GradientDrawable();
