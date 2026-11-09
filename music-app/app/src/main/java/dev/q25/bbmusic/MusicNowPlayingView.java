@@ -48,6 +48,7 @@ final class MusicNowPlayingView extends LinearLayout {
     private final ImageView artworkImage;
     private final TextView trackTitle;
     private final TextView trackArtist;
+    private final TextView trackAlbum;
     private final TextView elapsed;
     private final TextView remaining;
     private final SeekBar seekBar;
@@ -136,6 +137,7 @@ final class MusicNowPlayingView extends LinearLayout {
         artInfo.setOrientation(HORIZONTAL);
         artInfo.setGravity(Gravity.CENTER_VERTICAL);
         artInfo.setPadding(dp(10), dp(8), dp(10), dp(8));
+        artInfo.setClipChildren(false);
         artStage.addView(artInfo, new FrameLayout.LayoutParams(
                 LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
 
@@ -156,6 +158,8 @@ final class MusicNowPlayingView extends LinearLayout {
         trackInfo.setOrientation(VERTICAL);
         trackInfo.setGravity(Gravity.CENTER_VERTICAL);
         trackInfo.setPadding(dp(14), dp(8), dp(8), dp(8));
+        trackInfo.setClipChildren(false);
+        trackInfo.setClipToPadding(false);
         artInfo.addView(trackInfo, new LayoutParams(0, LayoutParams.MATCH_PARENT, 1f));
 
         trackTitle = text("Now playing", 18, Color.WHITE);
@@ -164,12 +168,21 @@ final class MusicNowPlayingView extends LinearLayout {
         trackInfo.addView(trackTitle, new LayoutParams(
                 LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
 
-        trackArtist = text("", 13, 0xff99aab8);
-        trackArtist.setMaxLines(3);
-        trackArtist.setEllipsize(TextUtils.TruncateAt.END);
-        trackArtist.setPadding(0, dp(8), 0, 0);
-        trackInfo.addView(trackArtist, new LayoutParams(
-                LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
+        // The original BBOS6 metadata text sits on independent, subtly raised
+        // plates sized to its contents. The song title remains undecorated.
+        trackArtist = new MusicBeveledTextLabel(context, 13);
+        LayoutParams artistParams = new LayoutParams(
+                LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+        artistParams.gravity = Gravity.CENTER_HORIZONTAL;
+        artistParams.topMargin = dp(6);
+        trackInfo.addView(trackArtist, artistParams);
+
+        trackAlbum = new MusicBeveledTextLabel(context, 12);
+        LayoutParams albumParams = new LayoutParams(
+                LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+        albumParams.gravity = Gravity.CENTER_HORIZONTAL;
+        albumParams.topMargin = dp(4);
+        trackInfo.addView(trackAlbum, albumParams);
 
         LinearLayout seekRow = new LinearLayout(context);
         seekRow.setOrientation(HORIZONTAL);
@@ -310,14 +323,20 @@ final class MusicNowPlayingView extends LinearLayout {
             trackTitle.setText("Now playing");
             trackArtist.setText("");
             trackArtist.setVisibility(View.GONE);
+            trackAlbum.setText("");
+            trackAlbum.setVisibility(View.GONE);
             updateArtwork(null);
         } else {
             CharSequence title = item.mediaMetadata.title;
             CharSequence artist = item.mediaMetadata.artist;
+            CharSequence album = item.mediaMetadata.albumTitle;
             trackTitle.setText(title == null || title.length() == 0
                     ? "Now playing" : title);
             trackArtist.setText(artist == null ? "" : artist);
             trackArtist.setVisibility(artist == null || artist.length() == 0
+                    ? View.GONE : View.VISIBLE);
+            trackAlbum.setText(album == null ? "" : album);
+            trackAlbum.setVisibility(album == null || album.length() == 0
                     ? View.GONE : View.VISIBLE);
             // A MediaSession may omit LocalConfiguration from the
             // controller-facing MediaItem. Our own mediaId preserves the
