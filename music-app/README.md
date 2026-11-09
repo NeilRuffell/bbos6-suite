@@ -552,6 +552,15 @@ The Now Playing screen is a standalone presentation port of BB UI master
 - 62dp edge-to-edge four-button Previous / Play-Pause / Stop / Next toolbar;
   charcoal gradient, matching button symbols, double gradient separators
   and fixed dark-blue selected-button gradient.
+  **Transport background reference matching:** `MusicPlayerChrome.transportBackground()`
+  draws the 59 sampled pixel rows from the supplied 480×60 BBOS6 palette
+  image (its top silver divider is drawn separately), with nearest-row
+  vertical scaling and no smooth colour interpolation. The Q25 screenshot
+  of the prior gradient showed an approximately 12% white lift across both
+  transport and other player chrome relative to authored colours. The
+  background is inversely compensated for that observed rendering only;
+  the cause of the whole-window lift is not established. Selection colours,
+  transport separators, dimensions and playback controls are unchanged.
 - **Stop** pauses the audio immediately, seeks the current track to `0:00`,
   and calls Media3 `stop()`, returning the player to idle without changing
   the selected track, playlist, or Now Playing screen. **Play** after Stop

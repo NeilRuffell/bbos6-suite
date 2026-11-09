@@ -145,14 +145,84 @@ final class MusicPlayerChrome {
         return layered;
     }
 
-    static GradientDrawable transportBackground() {
-        GradientDrawable drawable = new GradientDrawable();
-        drawable.setOrientation(GradientDrawable.Orientation.TOP_BOTTOM);
-        drawable.setColors(new int[] {
-                0xff6b7173, 0xff5a5d63, 0xff42454a,
-                0xff313839, 0xff212021
-        }, new float[] {0f, 0.17f, 0.34f, 0.51f, 1f});
-        return drawable;
+    // Pixel rows 1..59 of the supplied 480x60 BBOS6 media-control reference
+    // (row 0 is the silver seek/transport divider, already drawn elsewhere).
+    // The indexed PNG has discrete palette bands. A five-stop interpolated
+    // GradientDrawable loses those characteristic horizontal steps.
+    private static final int[] TRANSPORT_REFERENCE_ROWS = {
+            0xff6b6d73, 0xff6b6d73, 0xff6b6d73, 0xff636973, 0xff63696b, 0xff63656b,
+            0xff5a656b, 0xff5a6163, 0xff5a6163, 0xff5a5d63, 0xff52595a, 0xff52595a,
+            0xff52555a, 0xff52555a, 0xff4a515a, 0xff4a5152, 0xff4a4d52, 0xff424d52,
+            0xff42494a, 0xff42454a, 0xff42454a, 0xff394142, 0xff394142, 0xff393c42,
+            0xff393c42, 0xff393c42, 0xff313842, 0xff313839, 0xff313842, 0xff313839,
+            0xff313839, 0xff313439, 0xff313439, 0xff313439, 0xff313439, 0xff313031,
+            0xff293031, 0xff313031, 0xff293031, 0xff293031, 0xff292c31, 0xff292c31,
+            0xff292c31, 0xff292c31, 0xff292c31, 0xff292829, 0xff212829, 0xff292829,
+            0xff292829, 0xff212829, 0xff212429, 0xff212429, 0xff212829, 0xff212429,
+            0xff212429, 0xff212429, 0xff212421, 0xff212021, 0xff212421
+    };
+
+    // Measured against the Q25 capture: both transport and other player chrome
+    // are brightened by approximately 12% white relative to the authored
+    // opaque colours. The source of this whole-window lift is not established.
+    // Compensate *only this sampled background* for the currently observed Q25
+    // rendering; separators, selected button and other chrome are unchanged.
+    private static final float TRANSPORT_SCREEN_WHITE_LIFT = 0.12f;
+
+    private static int transportSourceChannel(int reference) {
+        float lift = TRANSPORT_SCREEN_WHITE_LIFT;
+        return Math.max(0, Math.min(255,
+                Math.round((reference - 255f * lift) / (1f - lift))));
+    }
+
+    private static int transportSourceColor(int reference) {
+        return Color.rgb(
+                transportSourceChannel(Color.red(reference)),
+                transportSourceChannel(Color.green(reference)),
+                transportSourceChannel(Color.blue(reference)));
+    }
+
+    static Drawable transportBackground() {
+        return new Drawable() {
+            private final Paint paint = new Paint();
+            private final int[] sourceRows = new int[TRANSPORT_REFERENCE_ROWS.length];
+            private int alpha = 255;
+
+            {
+                // No bitmap asset, and no interpolation/dithering between
+                // reference palette rows: scale the bands by screen height.
+                paint.setAntiAlias(false);
+                paint.setDither(false);
+                for (int i = 0; i < sourceRows.length; i++) {
+                    sourceRows[i] = transportSourceColor(TRANSPORT_REFERENCE_ROWS[i]);
+                }
+            }
+
+            @Override public void draw(Canvas canvas) {
+                Rect bounds = getBounds();
+                int height = bounds.height();
+                if (height <= 0) return;
+                for (int y = bounds.top; y < bounds.bottom; y++) {
+                    int sample = (int) ((long) (y - bounds.top)
+                            * sourceRows.length / height);
+                    paint.setColor(sourceRows[sample]);
+                    paint.setAlpha(alpha);
+                    canvas.drawRect(bounds.left, y, bounds.right, y + 1, paint);
+                }
+            }
+
+            @Override public void setAlpha(int value) {
+                alpha = value;
+                invalidateSelf();
+            }
+            @Override public void setColorFilter(ColorFilter filter) {
+                paint.setColorFilter(filter);
+                invalidateSelf();
+            }
+            @Override public int getOpacity() {
+                return alpha == 255 ? PixelFormat.OPAQUE : PixelFormat.TRANSLUCENT;
+            }
+        };
     }
 
     static GradientDrawable transportSelection() {
