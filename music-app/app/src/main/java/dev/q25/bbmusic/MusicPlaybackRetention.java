@@ -68,9 +68,10 @@ final class MusicPlaybackRetention {
         try {
             if (!DocumentsContract.isTreeUri(file)) return false;
             String fileTree = DocumentsContract.getTreeDocumentId(file);
-            String document = DocumentsContract.getDocumentId(file);
-            if (fileTree == null || document == null
-                    || !(document.equals(fileTree) || document.startsWith(fileTree + "/"))) {
+            // SAF document IDs are opaque provider-defined values. Do not
+            // assume they encode paths or have hierarchical prefixes.
+            if (fileTree == null || DocumentsContract.getDocumentId(file) == null
+                    || !file.getPathSegments().contains("document")) {
                 return false;
             }
             for (Uri tree : selectedTrees) {
