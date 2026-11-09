@@ -37,9 +37,10 @@ import java.util.concurrent.Executors;
  */
 final class LocalMusicSource {
     private static final String TAG = "BBMusic-Local";
-    // Rebuild previously indexed libraries once after introducing actual
-    // audio-track validation. No database schema/data reset is required.
-    private static final String INDEX_RULES_VERSION = "verified-audio-v2:";
+    // v3 preserves absent album tags as empty strings instead of inventing
+    // "Unknown Album". The changed key triggers one enumeration; ambiguous
+    // legacy rows are re-inspected even if file fingerprints are unchanged.
+    private static final String INDEX_RULES_VERSION = "verified-audio-v3-album-tags:";
     private final Context context;
     private final ContentResolver resolver;
     private final MusicLibraryDatabase libraryDatabase;
@@ -165,6 +166,8 @@ final class LocalMusicSource {
                 MusicLibraryDatabase.LibraryDao dao = libraryDatabase.libraryDao();
                 MusicLibraryDatabase.ScanRow state = dao.scanState();
                 List<MusicLibraryDatabase.TrackRow> oldRows = dao.tracks();
+                boolean verifyLegacyAlbums = state == null
+                        || !state.selectedTreesKey.startsWith(INDEX_RULES_VERSION);
                 List<Song> songs;
                 ScanSummary summary;
 
@@ -195,7 +198,7 @@ final class LocalMusicSource {
                     // SAF exposes no universal directory-change journal; walk
                     // every selected directory, then check candidate signatures.
                     ScanResult result = scanSelectedFolders(
-                            request, trees, previous, fullRescan);
+                            request, trees, previous, fullRescan, verifyLegacyAlbums);
                     if (closed || request != latestRequest) return;
                     MusicLibraryDatabase.ScanRow next =
                             new MusicLibraryDatabase.ScanRow();
@@ -305,14 +308,15 @@ final class LocalMusicSource {
 
     private ScanResult scanSelectedFolders(int request, List<Uri> trees,
             Map<String, MusicLibraryDatabase.TrackRow> previous,
-            boolean fullRescan) {
+            boolean fullRescan, boolean verifyLegacyAlbums) {
         ScanResult result = new ScanResult();
         Set<String> visited = new HashSet<>();
         int readableTrees = 0;
         for (Uri tree : trees) {
             if (closed || request != latestRequest) break;
             try {
-                scanTree(tree, request, visited, previous, fullRescan, result);
+                scanTree(tree, request, visited, previous,
+                        fullRescan, verifyLegacyAlbums, result);
                 readableTrees++;
             } catch (SecurityException exception) {
                 Log.w(TAG, "Lost access to selected folder " + tree, exception);
@@ -339,7 +343,7 @@ final class LocalMusicSource {
 
     private void scanTree(Uri tree, int request, Set<String> visited,
             Map<String, MusicLibraryDatabase.TrackRow> previous,
-            boolean fullRescan, ScanResult result) {
+            boolean fullRescan, boolean verifyLegacyAlbums, ScanResult result) {
         String rootId = DocumentsContract.getTreeDocumentId(tree);
         ArrayDeque<String> directories = new ArrayDeque<>();
         directories.add(rootId);
@@ -391,6 +395,11 @@ final class LocalMusicSource {
                         MusicLibraryDatabase.TrackRow cached = previous.get(uri);
                         boolean reuse = !fullRescan && cached != null
                                 && tree.toString().equals(cached.sourceTree)
+                                // Old records cannot distinguish a real tag
+                                // from the generated "Unknown Album" fallback.
+                                && !(verifyLegacyAlbums
+                                        && MusicAlbumTag.requiresLegacyVerification(
+                                                cached.album))
                                 && MusicFileChangeDetector.unchanged(
                                         cached.fileSize, cached.lastModified,
                                         cached.fileName, size, modified, name);
@@ -476,7 +485,7 @@ final class LocalMusicSource {
 
         String title = fallbackTitle;
         String artist = "Unknown Artist";
-        String album = "Unknown Album";
+        String album = "";
         String genre = "Unknown Genre";
         long duration = verifiedDurationMs;
         int track = 0;
@@ -489,8 +498,8 @@ final class LocalMusicSource {
                     MediaMetadataRetriever.METADATA_KEY_TITLE), fallbackTitle);
             artist = name(metadata.extractMetadata(
                     MediaMetadataRetriever.METADATA_KEY_ARTIST), artist);
-            album = name(metadata.extractMetadata(
-                    MediaMetadataRetriever.METADATA_KEY_ALBUM), album);
+            album = MusicAlbumTag.normalize(metadata.extractMetadata(
+                    MediaMetadataRetriever.METADATA_KEY_ALBUM));
             genre = name(metadata.extractMetadata(
                     MediaMetadataRetriever.METADATA_KEY_GENRE), genre);
             long taggedDuration = parseLong(metadata.extractMetadata(

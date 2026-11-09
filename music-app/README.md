@@ -51,10 +51,14 @@ Home screen, in order:
 3. Artists
 4. Albums
 5. Genres
-6. Playlists (not implemented yet)
-7. **Folders** — browse directories chosen in Settings
-8. Shuffle Songs (first-party shuffled playback)
-9. Settings
+6. **Folders** — browse directories chosen in Settings
+7. Shuffle Songs (first-party shuffled playback)
+8. Settings
+
+**Playlists** (internal menu index 4) is temporarily hidden from the home
+screen until playlist functionality is implemented. Its menu definition, icon,
+placeholder activation handler and numeric routing are retained unchanged,
+so the entry can be restored without reconstructing the feature.
 
 The **Now Playing...** item is the first row of the existing shared native
 `MusicListView`, with the original BBOS6 `341.png` icon and identical
@@ -89,12 +93,13 @@ assets, custom drawing or third-party dependencies. The brighter upper edge
 and darker lower edge deliberately replace the former uniform blue-grey stroke.
 Labels size to their text, are centred in the metadata column, and ellipsize
 long values to avoid overlapping the album artwork.
-Missing artist or album metadata hides only its corresponding label.
-
-The album is read from `MediaItem.mediaMetadata.albumTitle` already supplied
-by `MusicPlaybackClient`; playback logic and the unboxed track title are
-unchanged. The metadata parent disables child clipping to preserve the native
-shadow.
+Missing artist metadata hides the artist label. Missing album metadata
+is stored as an empty string and hides the album label; the exact, literal
+tag `Unknown Album` remains visible and selectable. When playback is
+restored from an older queue, Now Playing resolves its album through the
+current indexed track so stale synthetic labels disappear after the catalog
+loads. Playback logic and the unboxed track title are unchanged. The
+metadata parent disables child clipping to preserve the native shadow.
 
 Artist and album labels are interactive on touch and the Q25 trackpad.
 On Now Playing, Up/Down visits Repeat/Shuffle, artist, album, seek and
@@ -215,8 +220,22 @@ reports an audio MIME type; a successful child-query cursor does **not**
 prove that a document is a folder. The scanner excludes unrecognized or
 unsupported audio candidates rather than adding them as playable songs
 with zero duration. `MediaExtractor` may also reject otherwise legitimate
-formats such as WMA when no extractor is available on the device. A playable audio file with unreadable title tags still uses
-its filename and Unknown Artist/Album/Genre fallbacks.
+formats such as WMA when no extractor is available on the device. A playable audio file with unreadable title tags still uses its filename
+and Unknown Artist/Genre fallbacks. Missing album tags remain empty: they
+are not given a synthetic `Unknown Album` value. Albums browsing and counts
+include only tracks with a real, non-blank album tag. Such tracks remain
+available under All Songs, Artists and Folders; an album literally tagged
+`Unknown Album` remains a valid browsable album.
+
+**Album metadata index upgrade (v3):** The scan marker is versioned without
+changing the Room database schema. On first launch following the upgrade, the
+app enumerates the authorized music folders once, re-examining only cached
+entries whose album was exactly `Unknown Album` (because previous versions
+could not distinguish missing tags from that literal value). Unchanged
+other files still reuse metadata signatures; the scan preserves selected
+folders, SAF grants and existing data. After the successful atomic scan,
+the new marker restores fast cached startup. A failed scan retains the prior
+catalog intact, as with existing refresh behavior.
 
 **Room v1 to v2 migration:** Existing metadata, scan marker and selected-folder
 SAF permissions remain intact. Previous tracks have unknown fingerprints;
@@ -512,7 +531,8 @@ With no selections there are no media queries.
   Room without rescanning.
 - All Songs, Artists, Albums and Genres use the same recycled list rows.
   Album/artist/genre grouping uses file metadata; untagged audio remains
-  visible by filename with Unknown Artist/Album/Genre labels.
+  visible by filename, with Unknown Artist/Genre fallbacks. Missing albums
+  do not generate an Albums entry or a Now Playing album pill.
 - Songs retain their `content://` document URIs for the first-party Media3
   player. Selecting a track opens Now Playing and starts playback.
 - The original Symfonium adapter is preserved but never automatically

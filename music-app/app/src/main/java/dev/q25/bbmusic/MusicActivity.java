@@ -252,7 +252,9 @@ public final class MusicActivity extends Activity {
         });
         ArrayList<MenuRow> rootRows = new ArrayList<>();
         for (int index = 0; index < MENU.length - 1; index++) {
-            rootRows.add(MenuRow.root(MENU[index], index));
+            // Playlists (index 4) is reserved for future support. Hide only
+            // its home row; retain the menu definition, icon and handler.
+            if (index != 4) rootRows.add(MenuRow.root(MENU[index], index));
             // Preserve existing menu indices and place Folders with library
             // categories instead of changing Shuffle/Settings routing.
             if (index == 4) rootRows.add(MenuRow.root(MENU[MENU_FOLDERS], MENU_FOLDERS));
@@ -455,7 +457,7 @@ public final class MusicActivity extends Activity {
     private static String artworkAlbumKey(LocalMusicSource.Song song) {
         // No album tag means no verified album association. Such tracks must
         // not borrow a different untagged song's embedded image.
-        if ("Unknown Album".equalsIgnoreCase(song.album)) {
+        if (!MusicAlbumTag.present(song.album)) {
             return "untagged:" + song.uri;
         }
         return groupKey(song, 2);
@@ -526,6 +528,7 @@ public final class MusicActivity extends Activity {
         for (int category = 1; category <= 3; category++) {
             Set<String> keys = new HashSet<>();
             for (LocalMusicSource.Song song : localSongs) {
+                if (category == 2 && !MusicAlbumTag.present(song.album)) continue;
                 keys.add(groupKey(song, category));
             }
             localCategoryCounts[category] = keys.size();
@@ -918,6 +921,19 @@ public final class MusicActivity extends Activity {
         safeViewport.removeView(libraryShell);
         nowPlaying = new MusicNowPlayingView(this, playback,
                 new MusicNowPlayingView.MetadataNavigation() {
+                    @Override public CharSequence albumFor(MediaItem item) {
+                        // A retained queue may predate our no-fallback album
+                        // policy. Prefer the refreshed catalog when available.
+                        if (localSongs != null) {
+                            for (LocalMusicSource.Song song : localSongs) {
+                                if (item.mediaId.equals(song.uri.toString())) {
+                                    return song.album;
+                                }
+                            }
+                        }
+                        return item.mediaMetadata.albumTitle;
+                    }
+
                     @Override public void openArtist() {
                         openCurrentTrackGroup(1);
                     }
@@ -1153,6 +1169,9 @@ public final class MusicActivity extends Activity {
                 updateAlbumArtworkSources();
                 updateLocalCategoryCounts();
                 refreshBrowsedSongs();
+                // A resumed Media3 queue can carry pre-migration metadata.
+                // Rebind Now Playing from the newly verified local catalog.
+                if (nowPlayingVisible && nowPlaying != null) nowPlaying.render();
                 if (searchOpen) updateSearchResults();
                 Log.i(TAG, "Selected-folder music ready: " + songs.size()
                         + " tracks");
@@ -1238,6 +1257,8 @@ public final class MusicActivity extends Activity {
         // All grouping is read-only; no secondary music scanner is required.
         Map<String, Group> groups = new LinkedHashMap<>();
         for (LocalMusicSource.Song song : localSongs) {
+            // A missing album tag does not define a browsable album.
+            if (category == 2 && !MusicAlbumTag.present(song.album)) continue;
             String label = category == 1 ? song.artist
                     : category == 2 ? song.album : song.genre;
             String key = groupKey(song, category);
