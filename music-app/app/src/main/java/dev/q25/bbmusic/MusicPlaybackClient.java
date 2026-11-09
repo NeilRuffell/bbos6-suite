@@ -149,6 +149,8 @@ final class MusicPlaybackClient {
                     .setTitle(song.title)
                     .setArtist(song.artist)
                     .setAlbumTitle(song.album)
+                    .setIsPlayable(true)
+                    .setIsBrowsable(false)
                     .build();
             items.add(new MediaItem.Builder()
                     .setMediaId(song.uri.toString())
