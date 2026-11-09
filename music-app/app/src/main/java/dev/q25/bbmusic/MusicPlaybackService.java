@@ -21,7 +21,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -102,13 +101,8 @@ public final class MusicPlaybackService extends MediaLibraryService {
 
     /** The recent queue is the only browsable subtree: never scan other files. */
     private List<MediaItem> recentQueue() {
-        if (player != null && player.getMediaItemCount() > 0) {
-            ArrayList<MediaItem> result = new ArrayList<>();
-            for (int i = 0; i < player.getMediaItemCount(); i++) {
-                result.add(player.getMediaItemAt(i));
-            }
-            return result;
-        }
+        // Even an already-running session must not expose a queue from a tree
+        // whose saved selection/read permission has since been revoked.
         MusicPlaybackRetention.Saved saved =
                 MusicPlaybackRetention.restore(this);
         return saved == null ? Collections.emptyList() : saved.items;
