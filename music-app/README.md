@@ -504,7 +504,7 @@ the UI derives a label from its tree document ID.
 ## Native playback and the BB UI Now Playing port
 
 BB Music now includes its own `MusicPlaybackService` with AndroidX
-Media3 1.9.4 ExoPlayer and a MediaSessionService. The independent
+Media3 1.9.4 ExoPlayer and a MediaLibraryService. The independent
 `MusicPlaybackClient` controls it from the Activity. Neither Symfonium
 nor the BB UI Vector module is needed for local playback.
 
@@ -647,11 +647,11 @@ notification, including background playback. The Activity disconnects its
 controller on Stop, but does not stop the service. Standard Android media
 buttons and system controls can operate the MediaSession.
 
-**Status:** The implementation is committed but not yet compiled or run on
-the Q25. The device build will download the new Media3 dependencies.
+**Status:** Playback retention and system resumption changes are committed
+on a feature branch; building and Q25 validation remain outstanding.
 The shade's original code is unchanged; this is a copied presentation,
-not a runtime dependency. There is no automatic music-service resumption
-after reboot yet, and no separate playback mini-bar in the library.
+not a runtime dependency. Android's native playback resumption callback
+is implemented, and no separate playback mini-bar is added in the library.
 
 `SymfoniumSource.java` remains an unused, optional adapter. Direct OneDrive
 Microsoft Graph authentication, cloud indexing and downloads are future
