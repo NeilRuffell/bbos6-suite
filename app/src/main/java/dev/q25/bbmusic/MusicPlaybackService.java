@@ -177,7 +177,8 @@ public final class MusicPlaybackService extends MediaLibraryService {
                     return Futures.immediateFuture(LibraryResult.ofItem(item, null));
                 }
             }
-            return super.onGetItem(mediaSession, browser, mediaId);
+            return MediaLibrarySession.Callback.super.onGetItem(
+                    mediaSession, browser, mediaId);
         }
     };
 
