@@ -27,6 +27,20 @@ public final class TrackpadPressStateTest {
         assertFalse(state.fireLongPress());
     }
 
+    @Test public void ineligibleControlHeldPastTimeoutStillShortClicks() {
+        TrackpadPressState state = new TrackpadPressState();
+        assertTrue(state.press(CONFIRM));
+        assertFalse(state.fireLongPress(false));
+        assertTrue(state.release(CONFIRM));
+    }
+
+    @Test public void eligibleRowLongPressConsumesReleaseClick() {
+        TrackpadPressState state = new TrackpadPressState();
+        assertTrue(state.press(CONFIRM));
+        assertTrue(state.fireLongPress(true));
+        assertFalse(state.release(CONFIRM));
+    }
+
     @Test public void canceledHoldNeverActivates() {
         TrackpadPressState state = new TrackpadPressState();
         assertTrue(state.press(CONFIRM));
