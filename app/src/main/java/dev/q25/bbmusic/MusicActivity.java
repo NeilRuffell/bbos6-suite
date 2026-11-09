@@ -12,6 +12,7 @@ import android.provider.DocumentsContract;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Gravity;
+import android.view.HapticFeedbackConstants;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
@@ -237,7 +238,7 @@ public final class MusicActivity extends Activity {
     protected void onCreate(Bundle state) {
         super.onCreate(state);
         trackpadPress = new TrackpadPressHandler(this::activateSelected,
-                () -> { /* Long-press behavior will be specified later. */ });
+                this::longPressSelected);
         localSource = new LocalMusicSource(this);
         folderBrowser = new MusicFolderBrowser(this);
         playback = new MusicPlaybackClient(this, new MusicPlaybackClient.Listener() {
@@ -274,6 +275,10 @@ public final class MusicActivity extends Activity {
 
             @Override public void activate(int position) {
                 MusicActivity.this.activate(position);
+            }
+
+            @Override public void longPress(int position) {
+                longPressRow(position, false);
             }
         });
 
@@ -544,6 +549,32 @@ public final class MusicActivity extends Activity {
         } else {
             activate(list.getSelectedItemPosition());
         }
+    }
+
+    /** Native touch long clicks and held trackpad confirms share this route. */
+    private void longPressSelected() {
+        if (nowPlayingVisible) {
+            if (nowPlaying != null) nowPlaying.longPressSelected();
+        } else {
+            longPressRow(list.getSelectedItemPosition(), true);
+        }
+    }
+
+    private void longPressRow(int position, boolean hardware) {
+        if (position < 0 || position >= visibleRows.size()
+                || !rowPresentation(visibleRows.get(position)).enabled) return;
+        if (hardware) list.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+        // Gesture plumbing only: contextual actions are not yet defined.
+        // Log only row identity, never private music titles or file paths.
+        Log.d(TAG, "Long press: row kind=" + visibleRows.get(position).kind
+                + " index=" + position);
+    }
+
+    private void longPressPlayerControl(String control, boolean hardware) {
+        if (hardware && nowPlaying != null) {
+            nowPlaying.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+        }
+        Log.d(TAG, "Long press: now-playing control=" + control);
     }
 
     private void activate(int position) {
@@ -941,7 +972,7 @@ public final class MusicActivity extends Activity {
                     @Override public void openAlbum() {
                         openCurrentTrackGroup(2);
                     }
-                });
+                }, this::longPressPlayerControl);
         safeViewport.addView(nowPlaying, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
