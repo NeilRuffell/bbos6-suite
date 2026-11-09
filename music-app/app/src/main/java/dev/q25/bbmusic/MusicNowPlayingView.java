@@ -44,6 +44,7 @@ final class MusicNowPlayingView extends LinearLayout {
     private static final int ZONE_TRANSPORT = 4;
 
     interface MetadataNavigation {
+        CharSequence albumFor(MediaItem item);
         void openArtist();
         void openAlbum();
     }
@@ -346,7 +347,10 @@ final class MusicNowPlayingView extends LinearLayout {
         } else {
             CharSequence title = item.mediaMetadata.title;
             CharSequence artist = item.mediaMetadata.artist;
-            CharSequence album = item.mediaMetadata.albumTitle;
+            // Live Media3 queues restored from older versions can still carry
+            // the synthetic label. Resolve through the verified local catalog
+            // when available, preserving a genuinely tagged "Unknown Album".
+            CharSequence album = metadataNavigation.albumFor(item);
             trackTitle.setText(title == null || title.length() == 0
                     ? "Now playing" : title);
             trackArtist.setText(artist == null ? "" : artist);
