@@ -553,11 +553,11 @@ The Now Playing screen is a standalone presentation port of BB UI master
   ~7dp. Its own 1dp top border runs from silver at the sides to white at the
   centre, and its 1dp bottom border is a very subtle, dark horizontal bevel.
   The old 2dp dark bottom rule is removed for this bar only. Reference
-  colours use the same Q25 screenshot brightness compensation already used
-  by the transport background; only its calibration helper is reused, while
-  the transport's sampled rendering remains unchanged. The seek bar's shared
-  media divider, repeat/shuffle focus backgrounds and artwork stage are
-  unaffected.
+  colours use the same Q25 screenshot brightness compensation as the
+  transport background. The header bevel, borders and dimensions are not
+  altered by the transport's separate smooth-gradient experiment. The seek
+  bar's shared media divider, repeat/shuffle focus backgrounds and artwork
+  stage are unaffected.
 - Full-height half-radial artwork/metadata background and 50/50 art/text split.
 - 30dp seek strip, shared dark gradient and 2dp/silver divider system,
   BBOS6 white played rail and glossy 56dp seek capsule.
