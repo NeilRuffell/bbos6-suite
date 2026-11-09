@@ -238,7 +238,7 @@ public final class MusicActivity extends Activity {
     protected void onCreate(Bundle state) {
         super.onCreate(state);
         trackpadPress = new TrackpadPressHandler(this::activateSelected,
-                this::longPressSelected);
+                this::longPressSelected, this::supportsSelectedLongPress);
         localSource = new LocalMusicSource(this);
         folderBrowser = new MusicFolderBrowser(this);
         playback = new MusicPlaybackClient(this, new MusicPlaybackClient.Listener() {
@@ -279,6 +279,10 @@ public final class MusicActivity extends Activity {
 
             @Override public void longPress(int position) {
                 longPressRow(position, false);
+            }
+
+            @Override public boolean supportsLongPress(int position) {
+                return supportsRowLongPress(position);
             }
         });
 
@@ -551,30 +555,45 @@ public final class MusicActivity extends Activity {
         }
     }
 
-    /** Native touch long clicks and held trackpad confirms share this route. */
-    private void longPressSelected() {
-        if (nowPlayingVisible) {
-            if (nowPlaying != null) nowPlaying.longPressSelected();
-        } else {
-            longPressRow(list.getSelectedItemPosition(), true);
+    /** Only actual music/library entries expose long-press gestures. */
+    private boolean supportsRowLongPress(int position) {
+        if (nowPlayingVisible || position < 0 || position >= visibleRows.size()) {
+            return false;
         }
+        MenuRow row = visibleRows.get(position);
+        if (!rowPresentation(row).enabled) return false;
+        switch (row.kind) {
+            case ROW_SONG:
+                return row.song != null;
+            case ROW_GROUP:
+                // 1 = Artists, 2 = Albums, 3 = Genres. No menu shortcuts.
+                return row.groupCategory >= 1 && row.groupCategory <= 3;
+            case ROW_FOLDER:
+            case ROW_BROWSER_ROOT:
+            case ROW_BROWSER_DIRECTORY:
+                return true;
+            default:
+                // Home, Settings, unavailable files and all other controls.
+                return false;
+        }
+    }
+
+    private boolean supportsSelectedLongPress() {
+        return supportsRowLongPress(list.getSelectedItemPosition());
+    }
+
+    /** Touch and trackpad share the same eligible-row action channel. */
+    private void longPressSelected() {
+        longPressRow(list.getSelectedItemPosition(), true);
     }
 
     private void longPressRow(int position, boolean hardware) {
-        if (position < 0 || position >= visibleRows.size()
-                || !rowPresentation(visibleRows.get(position)).enabled) return;
+        if (!supportsRowLongPress(position)) return;
         if (hardware) list.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
-        // Gesture plumbing only: contextual actions are not yet defined.
-        // Log only row identity, never private music titles or file paths.
+        // Contextual actions are intentionally not implemented yet.
+        // Log only row identity, never private titles or file paths.
         Log.d(TAG, "Long press: row kind=" + visibleRows.get(position).kind
                 + " index=" + position);
-    }
-
-    private void longPressPlayerControl(String control, boolean hardware) {
-        if (hardware && nowPlaying != null) {
-            nowPlaying.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
-        }
-        Log.d(TAG, "Long press: now-playing control=" + control);
     }
 
     private void activate(int position) {
@@ -972,7 +991,7 @@ public final class MusicActivity extends Activity {
                     @Override public void openAlbum() {
                         openCurrentTrackGroup(2);
                     }
-                }, this::longPressPlayerControl);
+                });
         safeViewport.addView(nowPlaying, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
