@@ -15,6 +15,10 @@ import android.widget.TextView;
  * its children to draw outside their own bounds for the drop shadow.
  */
 final class MusicBeveledTextLabel extends TextView {
+    private final GradientDrawable idleBackground;
+    private final GradientDrawable focusedBackground;
+    private boolean metadataFocused;
+
     MusicBeveledTextLabel(Context context, float textSizeSp) {
         super(context);
         setTextSize(textSizeSp);
@@ -31,8 +35,19 @@ final class MusicBeveledTextLabel extends TextView {
         bevel.setCornerRadius(dp(4));
         bevel.setStroke(dp(1), 0xff626a76);
         bevel.setDither(true);
-        setBackground(bevel);
+        idleBackground = bevel;
+        focusedBackground = MusicSelectionGradient.create(context);
+        focusedBackground.setCornerRadius(dp(4));
+        focusedBackground.setStroke(dp(1), MusicPlayerChrome.BLUE_BORDER);
+        setBackground(idleBackground);
         setElevation(dp(2));
+    }
+
+    /** Trackpad focus is managed by Now Playing, not Android TextView focus. */
+    void setMetadataFocused(boolean focused) {
+        if (metadataFocused == focused) return;
+        metadataFocused = focused;
+        setBackground(focused ? focusedBackground : idleBackground);
     }
 
     private int dp(float value) {
