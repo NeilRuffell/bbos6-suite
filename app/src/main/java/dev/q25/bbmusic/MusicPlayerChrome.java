@@ -224,21 +224,27 @@ final class MusicPlayerChrome {
         return layered;
     }
 
-    // Pixel rows 1..59 of the supplied 480x60 BBOS6 media-control reference
-    // (row 0 is the silver seek/transport divider, already drawn elsewhere).
-    // The indexed PNG has discrete palette bands. A five-stop interpolated
-    // GradientDrawable loses those characteristic horizontal steps.
-    private static final int[] TRANSPORT_REFERENCE_ROWS = {
-            0xff6b6d73, 0xff6b6d73, 0xff6b6d73, 0xff636973, 0xff63696b, 0xff63656b,
-            0xff5a656b, 0xff5a6163, 0xff5a6163, 0xff5a5d63, 0xff52595a, 0xff52595a,
-            0xff52555a, 0xff52555a, 0xff4a515a, 0xff4a5152, 0xff4a4d52, 0xff424d52,
-            0xff42494a, 0xff42454a, 0xff42454a, 0xff394142, 0xff394142, 0xff393c42,
-            0xff393c42, 0xff393c42, 0xff313842, 0xff313839, 0xff313842, 0xff313839,
-            0xff313839, 0xff313439, 0xff313439, 0xff313439, 0xff313439, 0xff313031,
-            0xff293031, 0xff313031, 0xff293031, 0xff293031, 0xff292c31, 0xff292c31,
-            0xff292c31, 0xff292c31, 0xff292c31, 0xff292829, 0xff212829, 0xff292829,
-            0xff292829, 0xff212829, 0xff212429, 0xff212429, 0xff212829, 0xff212429,
-            0xff212429, 0xff212429, 0xff212421, 0xff212021, 0xff212421
+    // Reference 3246.png is an indexed-colour screenshot of BBOS6 Sound
+    // Recorder controls. Its tiny repeated palette bands are quantization
+    // artefacts, not evidence of intentionally stepped UI rendering.
+    //
+    // These stop colours/positions preserve the stronger falloff in the upper
+    // third and flatter charcoal lower half without copying compression noise.
+    private static final int[] TRANSPORT_SMOOTH_COLORS = {
+            0xff6b6d73, // reference row 1: top, below the silver divider
+            0xff63656b, // ~10%
+            0xff5a5d63, // ~17%
+            0xff4a515a, // ~25%
+            0xff42454a, // ~34%
+            0xff393c42, // ~42%
+            0xff313839, // ~51%
+            0xff293031, // ~67%
+            0xff212829, // ~82%
+            0xff212421  // bottom
+    };
+    private static final float[] TRANSPORT_SMOOTH_STOPS = {
+            0f, 0.10f, 0.17f, 0.25f, 0.34f,
+            0.42f, 0.51f, 0.67f, 0.82f, 1f
     };
 
     // Measured against the Q25 capture: the transport and other player chrome
@@ -270,47 +276,13 @@ final class MusicPlayerChrome {
         return corrected;
     }
 
-    static Drawable transportBackground() {
-        return new Drawable() {
-            private final Paint paint = new Paint();
-            private final int[] sourceRows = new int[TRANSPORT_REFERENCE_ROWS.length];
-            private int alpha = 255;
-
-            {
-                // No bitmap asset, and no interpolation/dithering between
-                // reference palette rows: scale the bands by screen height.
-                paint.setAntiAlias(false);
-                paint.setDither(false);
-                for (int i = 0; i < sourceRows.length; i++) {
-                    sourceRows[i] = referenceSourceColor(TRANSPORT_REFERENCE_ROWS[i]);
-                }
-            }
-
-            @Override public void draw(Canvas canvas) {
-                Rect bounds = getBounds();
-                int height = bounds.height();
-                if (height <= 0) return;
-                for (int y = bounds.top; y < bounds.bottom; y++) {
-                    int sample = (int) ((long) (y - bounds.top)
-                            * sourceRows.length / height);
-                    paint.setColor(sourceRows[sample]);
-                    paint.setAlpha(alpha);
-                    canvas.drawRect(bounds.left, y, bounds.right, y + 1, paint);
-                }
-            }
-
-            @Override public void setAlpha(int value) {
-                alpha = value;
-                invalidateSelf();
-            }
-            @Override public void setColorFilter(ColorFilter filter) {
-                paint.setColorFilter(filter);
-                invalidateSelf();
-            }
-            @Override public int getOpacity() {
-                return alpha == 255 ? PixelFormat.OPAQUE : PixelFormat.TRANSLUCENT;
-            }
-        };
+    static GradientDrawable transportBackground() {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setOrientation(GradientDrawable.Orientation.TOP_BOTTOM);
+        drawable.setColors(referenceSourceColors(TRANSPORT_SMOOTH_COLORS),
+                TRANSPORT_SMOOTH_STOPS);
+        drawable.setDither(true);
+        return drawable;
     }
 
     static GradientDrawable transportSelection() {
