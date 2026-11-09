@@ -94,7 +94,10 @@ final class MusicPlaybackClient {
                 controller.addListener(playerListener);
                 Log.i(TAG, "Media3 controller connected; queuePending="
                         + (pendingItems != null));
+                boolean hadNewQueue = pendingItems != null;
                 flushPendingQueue();
+                // A new user-selected queue always takes precedence over old state.
+                if (!hadNewQueue) restorePausedSession();
                 listener.onPlaybackChanged();
             }, context.getMainExecutor());
         } catch (RuntimeException exception) {
@@ -146,6 +149,8 @@ final class MusicPlaybackClient {
                     .setTitle(song.title)
                     .setArtist(song.artist)
                     .setAlbumTitle(song.album)
+                    .setIsPlayable(true)
+                    .setIsBrowsable(false)
                     .build();
             items.add(new MediaItem.Builder()
                     .setMediaId(song.uri.toString())
@@ -187,6 +192,35 @@ final class MusicPlaybackClient {
         }
     }
 
+    /**
+     * Restore only on a fresh app connection to an empty service. A system
+     * media button may already have resumed playback; never interrupt it.
+     */
+    private void restorePausedSession() {
+        if (controller == null || controller.getMediaItemCount() != 0) return;
+        MusicPlaybackRetention.Saved saved = MusicPlaybackRetention.restore(context);
+        if (saved == null) return;
+        try {
+            controller.setPlayWhenReady(false);
+            controller.setShuffleModeEnabled(saved.shuffle);
+            controller.setRepeatMode(saved.repeat);
+            controller.setMediaItems(saved.items, saved.index, saved.positionMs);
+            controller.prepare();
+            Log.i(TAG, "Restored paused Media3 queue at " + saved.positionMs + " ms");
+        } catch (RuntimeException exception) {
+            Log.w(TAG, "Cannot restore previous playback", exception);
+            MusicPlaybackRetention.clear(context);
+        }
+    }
+
+    /** A deliberate root Back exit pauses; Home retains Android background audio. */
+    void pauseForExit() {
+        if (controller != null && controller.getCurrentMediaItem() != null
+                && controller.getPlayWhenReady()) {
+            controller.pause();
+        }
+    }
+
     MediaController controller() {
         return controller;
     }
@@ -225,6 +259,8 @@ final class MusicPlaybackClient {
         // Unlike clearMediaItems, stop() keeps the selected track and queue
         // for the in-app Now Playing view and a later explicit Play.
         controller.stop();
+        // Stop is not Pause: do not offer a stale system resumption card.
+        MusicPlaybackRetention.clear(context);
         listener.onPlaybackChanged();
     }
 

@@ -504,7 +504,7 @@ the UI derives a label from its tree document ID.
 ## Native playback and the BB UI Now Playing port
 
 BB Music now includes its own `MusicPlaybackService` with AndroidX
-Media3 1.9.4 ExoPlayer and a MediaSessionService. The independent
+Media3 1.9.4 ExoPlayer and a MediaLibraryService. The independent
 `MusicPlaybackClient` controls it from the Activity. Neither Symfonium
 nor the BB UI Vector module is needed for local playback.
 
@@ -647,11 +647,11 @@ notification, including background playback. The Activity disconnects its
 controller on Stop, but does not stop the service. Standard Android media
 buttons and system controls can operate the MediaSession.
 
-**Status:** The implementation is committed but not yet compiled or run on
-the Q25. The device build will download the new Media3 dependencies.
+**Status:** Playback retention and system resumption changes are committed
+on a feature branch; building and Q25 validation remain outstanding.
 The shade's original code is unchanged; this is a copied presentation,
-not a runtime dependency. There is no automatic music-service resumption
-after reboot yet, and no separate playback mini-bar in the library.
+not a runtime dependency. Android's native playback resumption callback
+is implemented, and no separate playback mini-bar is added in the library.
 
 `SymfoniumSource.java` remains an unused, optional adapter. Direct OneDrive
 Microsoft Graph authentication, cloud indexing and downloads are future
@@ -839,10 +839,91 @@ BB Music APK (dev.q25.bbmusic)
     Atomic changed-row updates + selected-tree scan marker
         |
         v
-  Native Media3 playback -> MediaSessionService + ExoPlayer (implemented)
+  Native Media3 playback -> MediaLibraryService + ExoPlayer (implemented)
+    MusicPlaybackRetention -> private selected-tree queue / position checkpoints
+    MediaLibrarySession -> Android media keys + System UI resumption
 
   Now Playing view — ported BB UI visuals and trackpad seek model
   SymfoniumSource — optional/unused until explicitly selected
 
 BB UI APK (dev.q25.trackpad) — separate, no runtime/build dependency
 ```
+
+## Playback retention and Android native resumption
+
+`MusicPlaybackRetention.java` is the shared persistence authority for the
+Media3 playback queue, selected track, seek position in milliseconds, shuffle
+and repeat state. The existing ExoPlayer remains the sole audio engine; no
+page-specific playback storage, second service, MediaStore scan, or external
+player integration is introduced. State is saved in app-private
+`bbmusic_playback` preferences. Queue/metadata is serialized on playlist
+changes; position is periodically checkpointed (5 seconds while playing)
+and committed on pause/service teardown. Process death can lose at most
+the last unsaved interval, not an entire playback session.
+
+When Music connects to an **empty** playback session, the existing
+`MusicPlaybackClient` validates the saved SAF documents against the current
+selected folder allowlist/read grants, sets the Media3 queue and seek
+position, then prepares it with `playWhenReady=false`. The home
+**Now Playing...** entry uses the existing `hasCurrentTrack()` / event flow;
+opening the entry never starts playback. A fresh play request from the user
+overrides the saved queue. Reconnecting to an active session (including one
+started by Bluetooth/system controls) never pauses or rewinds it.
+
+`MusicPlaybackService` is now a `MediaLibraryService` with a
+`MediaLibrarySession`, retaining native Android notification/transport
+controls. The standard Media3 `MediaButtonReceiver` and
+`MediaSession.Callback.onPlaybackResumption(..., isForPlayback)` are used
+for Bluetooth and system initiated playback after termination/reboot:
+`isForPlayback=false` returns one metadata-rich item for a resumption
+card; `true` returns the saved playlist, index and position for actual
+playback. The library browser exposes only the recent selected-folder
+queue, not other storage. System UI resumption visibility depends on the
+Android build and user media settings.
+
+**Closing versus backgrounding:** Home backgrounds Music and preserves
+normal Media3 background playback. Exiting the root screen via Back pauses
+before disconnecting the controller. Dismissing the task from Recents
+pauses, checkpoints and shuts down the service. An unexpected system kill
+relies on the most recent checkpoint. Stopping from the BBOS Now Playing
+controls retains the existing player-level rewind-to-zero / IDLE semantics
+but clears persistent resumption so Stop cannot generate a stale Android
+playback-resumption card.
+
+**Regression checklist (test the locally built release APK on Q25):**
+
+1. Play track A, seek to a nonzero position, exit with Back and reopen:
+   Now Playing is present, paused at the saved position; Play resumes.
+2. Pause track A, remove Music from Recents and reopen: position persists,
+   no automatic playback.
+3. Play track B, press Home, return to Music: background audio continues;
+   no seek/queue override occurs.
+4. While playing, swipe Music away from Recents: playback pauses, the
+   service stops and a new launch restores the paused track.
+5. Use Android notification/lockscreen/Bluetooth Play after a closed
+   session: Media3 resumes the saved track and position. Verify system
+   resumption after a device reboot where the ROM supports it.
+6. Press BBOS Stop, leave and reopen: it must not resurrect the prior
+   position or cause a stale system resumption card.
+7. Remove/revoke the saved track's SAF folder, reopen and test the media
+   button: it must never resume a now-disallowed document.
+8. Change shuffle/repeat and switch tracks: verify retained context.
+   Verify remaining-time seekbar and all existing Now Playing controls.
+9. Force-stop the package to verify no crash. Note: Android's force-stop
+   state intentionally blocks manifest receivers until an explicit app
+   launch, so do not treat force-stop as a Bluetooth resumption test.
+
+Build without uninstalling or clearing the existing app data:
+
+```sh
+cd ~/Projects/bb-ui
+git fetch origin
+git switch feat/music-playback-retention-system-resumption
+git pull --ff-only
+gradle -p music-app :app:assembleRelease
+adb -s 202512003630 install -r music-app/app/build/outputs/apk/release/app-release.apk
+```
+
+Do not merge to master or publish a GitHub Release until this exact APK
+has passed on-device validation and explicit approval. Retain the
+existing signing identity for updates.
