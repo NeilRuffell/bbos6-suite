@@ -1441,6 +1441,9 @@ public final class MusicActivity extends Activity {
     @Override
     protected void onStop() {
         trackpadPress.cancel();
+        // Finishing via root Back is a close, not background navigation.
+        // Let the service retain the position before disconnecting.
+        if (isFinishing()) playback.pauseForExit();
         playback.disconnect();
         super.onStop();
     }
