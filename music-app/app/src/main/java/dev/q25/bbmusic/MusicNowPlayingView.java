@@ -424,7 +424,7 @@ final class MusicNowPlayingView extends LinearLayout {
         // No persistent active-state background: highlight only the focused
         // Shuffle control with the exact same selection as library list rows.
         modeShuffle.setBackground(shuffleFocused
-                ? MusicSelectionGradient.create(getContext()) : null);
+                ? MusicPlayerChrome.modeSelectionBackground(getContext()) : null);
         // Preserve the supplied PNG colors, including the unavailable variant.
         modeShuffle.setAlpha(1f);
         boolean repeatAvailable = controller != null
@@ -446,7 +446,7 @@ final class MusicNowPlayingView extends LinearLayout {
         boolean repeatFocused = repeatAvailable && focused
                 && zone == ZONE_MODE && selectedMode == 0;
         modeRepeat.setBackground(repeatFocused
-                ? MusicSelectionGradient.create(getContext()) : null);
+                ? MusicPlayerChrome.modeSelectionBackground(getContext()) : null);
         modeRepeat.setAlpha(1f);
         seekBar.setThumb(MusicPlayerChrome.seekThumb(getContext(),
                 focused && zone == ZONE_SEEK,
