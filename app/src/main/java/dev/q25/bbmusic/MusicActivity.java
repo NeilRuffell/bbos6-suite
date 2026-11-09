@@ -2,6 +2,7 @@ package dev.q25.bbmusic;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.Intent;
 import android.graphics.Color;
 import android.text.Editable;
@@ -25,6 +26,8 @@ import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import dev.q25.bbos6.ui.Bbos6PropertiesPopup;
 
 import androidx.media3.common.MediaItem;
 import androidx.media3.session.MediaController;
@@ -99,6 +102,9 @@ public final class MusicActivity extends Activity {
     private TrackpadPressHandler trackpadPress;
     private LocalMusicSource localSource;
     private MusicFolderBrowser folderBrowser;
+    private MusicTrackPropertiesReader trackPropertiesReader;
+    private Dialog propertiesDialog;
+    private int propertiesRequestSerial;
     private Map<String, List<Uri>> albumArtworkSources = Collections.emptyMap();
     private MusicPlaybackClient playback;
     private FrameLayout safeViewport;
@@ -241,6 +247,7 @@ public final class MusicActivity extends Activity {
                 this::longPressSelected, this::supportsSelectedLongPress);
         localSource = new LocalMusicSource(this);
         folderBrowser = new MusicFolderBrowser(this);
+        trackPropertiesReader = new MusicTrackPropertiesReader(this);
         playback = new MusicPlaybackClient(this, new MusicPlaybackClient.Listener() {
             @Override public void onPlaybackChanged() {
                 updateNowPlayingHomeRow();
@@ -590,10 +597,32 @@ public final class MusicActivity extends Activity {
     private void longPressRow(int position, boolean hardware) {
         if (!supportsRowLongPress(position)) return;
         if (hardware) list.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
-        // Contextual actions are intentionally not implemented yet.
-        // Log only row identity, never private titles or file paths.
-        Log.d(TAG, "Long press: row kind=" + visibleRows.get(position).kind
-                + " index=" + position);
+        MenuRow row = visibleRows.get(position);
+        // Only actual playable track rows have a Properties dialog.
+        // Artist/Album/Genre/Folder long presses remain unassigned.
+        if (row.kind != ROW_SONG || row.song == null) return;
+        showTrackProperties(row);
+    }
+
+    private void showTrackProperties(MenuRow row) {
+        final int request = ++propertiesRequestSerial;
+        final Page page = currentPage;
+        trackPropertiesReader.load(row.song, items -> {
+            // A slow SAF query must not display the previous track's popup
+            // after Back, new navigation, searching or a newer long press.
+            if (request != propertiesRequestSerial || isFinishing() || isDestroyed()
+                    || nowPlayingVisible || page != currentPage
+                    || !visibleRows.contains(row)) return;
+            if (items.isEmpty()) {
+                Toast.makeText(this, "Track properties unavailable",
+                        Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (propertiesDialog != null && propertiesDialog.isShowing()) {
+                propertiesDialog.dismiss();
+            }
+            propertiesDialog = Bbos6PropertiesPopup.show(this, items);
+        });
     }
 
     private void activate(int position) {
@@ -1604,6 +1633,11 @@ public final class MusicActivity extends Activity {
     @Override
     protected void onStop() {
         trackpadPress.cancel();
+        propertiesRequestSerial++;
+        if (propertiesDialog != null) {
+            propertiesDialog.dismiss();
+            propertiesDialog = null;
+        }
         // Finishing via root Back is a close, not background navigation.
         // Let the service retain the position before disconnecting.
         if (isFinishing()) playback.pauseForExit();
@@ -1619,6 +1653,7 @@ public final class MusicActivity extends Activity {
         list.dispose();
         localSource.close();
         folderBrowser.close();
+        trackPropertiesReader.close();
         super.onDestroy();
     }
 
