@@ -581,8 +581,29 @@ to trackpad, touch or media playback logic.
   artwork stage or the transport controls. The dark background fades from
   `#212421` near the top into `#181818` below, with no literal PNG
   palette steps. Reference colours are used directly with no brightness
-  compensation. The white played rail, seek thumb and touch/trackpad
-  playback behaviour are unchanged.
+  compensation. Seek progress and trackpad playback behaviour remain
+  unchanged.
+  **Curve 9300 seek geometry:** The supplied 320×226 screen reference shows
+  an approximately 30×9px pill, a thin ~2px rail and time readouts close
+  to the left/right screen edges. The 32dp seek panel now uses a 42×13dp
+  rounded thumb (same outer size for selected and unselected states) and
+  3dp rail. The seek-row outer padding is 4dp per side; elapsed and
+  remaining readouts use their measured content widths (minimum 34dp and
+  42dp, respectively), so longer hour-formatted times cannot be clipped
+  by fixed-width label slots. The remaining area belongs to the weighted
+  SeekBar, with 2dp margins. Its horizontal end padding is derived from
+  half the thumb width plus a 2dp guard, and the native thumb offset is
+  explicitly half its width. The pill cannot overlap either time label
+  at 0% or 100%. One full-width background drawable now renders BOTH
+  the dark unplayed rail and white completed progress from the same starting
+  coordinate, ending 2dp before the SeekBar allocation edges. Native progress
+  drawing is suppressed, since its clipping to the padded thumb range caused
+  the completed white line to start too far inward. The white endpoint is
+  calculated as `left + (right - left) * progressFraction` while native
+  thumb travel still uses the half-pill + 2dp guard. Consequently, the pill's
+  left edge covers the rail start at 0% and its right edge covers the rail end
+  at 100%; at intermediate values, the white endpoint sits under the pill.
+  Playback seeking, trackpad navigation and touch dragging are unchanged.
   **Seek time labels:** The left label shows elapsed track time, while the
   right label shows time remaining prefixed with a minus sign, e.g.
   `0:09` and `-6:28` for a 6:37 track. Remaining time is computed as

@@ -10,13 +10,12 @@ import android.graphics.Path;
 import android.graphics.PixelFormat;
 import android.graphics.Rect;
 import android.graphics.Shader;
-import android.graphics.drawable.ClipDrawable;
-import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.LayerDrawable;
 import android.view.Gravity;
 import android.widget.ImageView;
+import android.widget.SeekBar;
 
 /**
  * Resource-independent visual port of BB UI's expanded BBOS6 player chrome.
@@ -38,6 +37,15 @@ final class MusicPlayerChrome {
             Math.round(TRANSPORT_HEIGHT_DP * 22f / 30f); // 35dp
     static final int SEEK_PANEL_HEIGHT_DP =
             Math.round(TRANSPORT_HEIGHT_DP * 20f / 30f); // 32dp
+
+    // Curve 9300 seek strip: the pill is ~30x9px within a 320x20px
+    // reference strip, with a ~2px-high rail. Adapt its aspect/vertical
+    // proportions to our 32dp strip, but keep its width compact on Q25
+    // so a useful length of rail remains between the time labels.
+    static final int SEEK_THUMB_WIDTH_DP = 42;
+    static final int SEEK_THUMB_HEIGHT_DP = 13;
+    static final int SEEK_TRACK_HEIGHT_DP = 3;
+    static final int SEEK_END_GUARD_DP = 2;
 
     private MusicPlayerChrome() {}
 
@@ -233,46 +241,62 @@ final class MusicPlayerChrome {
         return layers;
     }
 
-    static Drawable seekTrack(Context context) {
-        final int railHeight = dp(context, 4);
-        Drawable base = new Drawable() {
+    /**
+     * Draw the entire seek rail and its completed portion in one coordinate
+     * space. The native thumb uses padding (halfThumb + guard) and offset
+     * halfThumb; its outer left/right bounds coincide with the rail endpoints
+     * at 0% and 100%. The white progress endpoint stays beneath the thumb.
+     */
+    static Drawable seekRailBackground(Context context, SeekBar seekBar) {
+        final int railHeight = dp(context, SEEK_TRACK_HEIGHT_DP);
+        final int guard = dp(context, SEEK_END_GUARD_DP);
+        return new Drawable() {
             private final Paint top = new Paint();
             private final Paint bottom = new Paint();
+            private final Paint played = new Paint();
 
             {
                 top.setColor(TRACK_TOP);
                 bottom.setColor(TRACK_BOTTOM);
+                played.setColor(Color.WHITE);
             }
 
             @Override public void draw(Canvas canvas) {
-                Rect rect = getBounds();
-                int y = rect.centerY() - railHeight / 2;
-                canvas.drawRect(rect.left, y, rect.right, y + railHeight / 2, top);
-                canvas.drawRect(rect.left, y + railHeight / 2,
-                        rect.right, y + railHeight, bottom);
+                Rect bounds = getBounds();
+                float left = bounds.left + guard;
+                float right = bounds.right - guard;
+                if (right <= left) return;
+
+                float fraction = seekBar.getMax() > 0
+                        ? Math.max(0f, Math.min(1f,
+                                seekBar.getProgress() / (float) seekBar.getMax()))
+                        : 0f;
+                float filledRight = left + (right - left) * fraction;
+                int y = bounds.centerY() - railHeight / 2;
+                int middle = y + railHeight / 2;
+
+                canvas.drawRect(left, y, right, middle, top);
+                canvas.drawRect(left, middle, right, y + railHeight, bottom);
+                if (filledRight > left) {
+                    canvas.drawRect(left, y, filledRight, y + railHeight, played);
+                }
             }
+
             @Override public int getIntrinsicHeight() { return railHeight; }
             @Override public void setAlpha(int alpha) {
                 top.setAlpha(alpha);
                 bottom.setAlpha(alpha);
+                played.setAlpha(alpha);
                 invalidateSelf();
             }
             @Override public void setColorFilter(ColorFilter filter) {
                 top.setColorFilter(filter);
                 bottom.setColorFilter(filter);
+                played.setColorFilter(filter);
                 invalidateSelf();
             }
             @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
         };
-
-        ClipDrawable played = new ClipDrawable(new ColorDrawable(Color.WHITE),
-                Gravity.LEFT, ClipDrawable.HORIZONTAL);
-        LayerDrawable result = new LayerDrawable(new Drawable[] {base, played});
-        result.setId(0, android.R.id.background);
-        result.setId(1, android.R.id.progress);
-        result.setLayerHeight(1, railHeight);
-        result.setLayerGravity(1, Gravity.CENTER_VERTICAL | Gravity.FILL_HORIZONTAL);
-        return result;
     }
 
     static Drawable seekThumb(Context context, boolean highlighted, boolean selected) {
@@ -285,8 +309,9 @@ final class MusicPlayerChrome {
                             0xff1075e7, 0xff1071e7, 0xff106dde,
                             0xff1069de, 0xff1065de
                     });
-            pill.setCornerRadius(dp(context, 10));
-            pill.setSize(dp(context, 56), dp(context, 18));
+            pill.setCornerRadius(dp(context, SEEK_THUMB_HEIGHT_DP / 2f));
+            pill.setSize(dp(context, SEEK_THUMB_WIDTH_DP),
+                    dp(context, SEEK_THUMB_HEIGHT_DP));
             pill.setStroke(dp(context, 2), BLUE_BORDER);
             return pill;
         }
@@ -295,8 +320,9 @@ final class MusicPlayerChrome {
                 highlighted
                         ? new int[] {0xff19466e, 0xff477eac, 0xff12365c}
                         : new int[] {0xff636563, 0xff929396, 0xff525253});
-        shell.setCornerRadius(dp(context, 8));
-        shell.setSize(dp(context, 54), dp(context, 16));
+        shell.setCornerRadius(dp(context, SEEK_THUMB_HEIGHT_DP / 2f));
+        shell.setSize(dp(context, SEEK_THUMB_WIDTH_DP),
+                dp(context, SEEK_THUMB_HEIGHT_DP));
         GradientDrawable body = new GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM,
                 highlighted
@@ -310,8 +336,9 @@ final class MusicPlayerChrome {
                             0xffa5bace, 0xffbdcbde, 0xffced7e7,
                             0xffdee3ef, 0xffefeff7, 0xffadaaad
                           });
-        body.setCornerRadius(dp(context, 7));
-        body.setSize(dp(context, 52), dp(context, 14));
+        body.setCornerRadius(dp(context, (SEEK_THUMB_HEIGHT_DP - 2) / 2f));
+        body.setSize(dp(context, SEEK_THUMB_WIDTH_DP - 2),
+                dp(context, SEEK_THUMB_HEIGHT_DP - 2));
         LayerDrawable layered = new LayerDrawable(new Drawable[] {shell, body});
         layered.setLayerInset(1, dp(context, 1), dp(context, 1),
                 dp(context, 1), dp(context, 1));

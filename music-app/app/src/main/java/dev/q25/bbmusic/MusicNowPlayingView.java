@@ -3,6 +3,7 @@ package dev.q25.bbmusic;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Handler;
@@ -173,24 +174,42 @@ final class MusicNowPlayingView extends LinearLayout {
         LinearLayout seekRow = new LinearLayout(context);
         seekRow.setOrientation(HORIZONTAL);
         seekRow.setGravity(Gravity.CENTER_VERTICAL);
-        seekRow.setPadding(dp(10), 0, dp(10), 0);
+        // Curve 9300 reference: time labels sit near the display edges.
+        // The SeekBar owns its dead zones, not the entire seek row.
+        seekRow.setPadding(dp(4), 0, dp(4), 0);
         seekRow.setBackground(MusicPlayerChrome.seekBackground(context));
         addView(seekRow, new LayoutParams(LayoutParams.MATCH_PARENT,
                 dp(MusicPlayerChrome.SEEK_PANEL_HEIGHT_DP)));
 
         elapsed = text("0:00", 14, 0xff99aab8);
         elapsed.setGravity(Gravity.CENTER_VERTICAL);
-        seekRow.addView(elapsed, new LayoutParams(dp(45), LayoutParams.MATCH_PARENT));
+        // Reserve just enough for the label; use WRAP_CONTENT for hour-long
+        // tracks instead of a hard slot that can clip text.
+        elapsed.setMinWidth(dp(34));
+        seekRow.addView(elapsed, new LayoutParams(
+                LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT));
 
         seekBar = new SeekBar(context);
         seekBar.setMax(MediaSeekPolicy.PROGRESS_MAX);
+        // A single shared background renders the full dark rail AND the white
+        // completed portion; only the pill uses native padded travel bounds.
+        seekBar.setBackground(MusicPlayerChrome.seekRailBackground(
+                context, seekBar));
         seekBar.setFocusable(false);
         seekBar.setFocusableInTouchMode(false);
-        seekBar.setPadding(dp(32), 0, dp(32), 0);
+        // Native thumb travel is inset by half a pill + 2dp. With the
+        // matching thumbOffset, the pill's outer edges meet the full rail
+        // endpoints at 0% and 100%, without overlapping the time labels.
+        int thumbHalf = dp(MusicPlayerChrome.SEEK_THUMB_WIDTH_DP) / 2;
+        int thumbInset = thumbHalf + dp(MusicPlayerChrome.SEEK_END_GUARD_DP);
+        seekBar.setPadding(thumbInset, 0, thumbInset, 0);
+        seekBar.setThumbOffset(thumbHalf);
         seekBar.setProgressTintList(null);
         seekBar.setProgressBackgroundTintList(null);
         seekBar.setSecondaryProgressTintList(null);
-        seekBar.setProgressDrawable(MusicPlayerChrome.seekTrack(context));
+        // Hide the native progress layer: it is clipped to the padded travel
+        // region and cannot share the background rail's endpoints.
+        seekBar.setProgressDrawable(new ColorDrawable(Color.TRANSPARENT));
         seekBar.setThumbTintList(null);
         seekBar.setThumb(MusicPlayerChrome.seekThumb(context, false, false));
         seekBar.setContentDescription("Playback position");
@@ -205,6 +224,9 @@ final class MusicNowPlayingView extends LinearLayout {
 
             @Override public void onProgressChanged(SeekBar bar,
                     int progress, boolean fromUser) {
+                // Progress now paints in the full-width SeekBar background.
+                // Explicit invalidation also handles programmatic ticks.
+                bar.invalidate();
                 if (fromUser && seekDragging) {
                     long previewPosition = MediaSeekPolicy.fromProgress(
                             progress, durationMs);
@@ -220,11 +242,19 @@ final class MusicNowPlayingView extends LinearLayout {
                 renderProgress();
             }
         });
-        seekRow.addView(seekBar, new LayoutParams(0, LayoutParams.MATCH_PARENT, 1f));
+        // Fill every remaining pixel between labels; keep only a narrow
+        // 2dp separation on each side of the SeekBar's protected bounds.
+        LayoutParams seekParams = new LayoutParams(
+                0, LayoutParams.MATCH_PARENT, 1f);
+        seekParams.leftMargin = dp(2);
+        seekParams.rightMargin = dp(2);
+        seekRow.addView(seekBar, seekParams);
 
         remaining = text("--:--", 14, 0xff99aab8);
         remaining.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
-        seekRow.addView(remaining, new LayoutParams(dp(52), LayoutParams.MATCH_PARENT));
+        remaining.setMinWidth(dp(42));
+        seekRow.addView(remaining, new LayoutParams(
+                LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT));
 
         transportRow = new LinearLayout(context);
         transportRow.setGravity(Gravity.CENTER_VERTICAL);
