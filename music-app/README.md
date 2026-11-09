@@ -554,13 +554,22 @@ The Now Playing screen is a standalone presentation port of BB UI master
   centre, and its 1dp bottom border is a very subtle, dark horizontal bevel.
   The old 2dp dark bottom rule is removed for this bar only. Reference
   colours use the same Q25 screenshot brightness compensation as the
-  transport background. The header bevel, borders and dimensions are not
-  altered by the transport's separate smooth-gradient experiment. The seek
-  bar's shared media divider, repeat/shuffle focus backgrounds and artwork
-  stage are unaffected.
+  transport background. Header bevel, borders and dimensions are unchanged
+  by the seekbar background update; repeat/shuffle focus backgrounds and
+  the artwork stage are unaffected.
 - Full-height half-radial artwork/metadata background and 50/50 art/text split.
-- 30dp seek strip, shared dark gradient and 2dp/silver divider system,
-  BBOS6 white played rail and glossy 56dp seek capsule.
+- 30dp seek strip styled after BBOS6 `2486.png` (a 480×30 indexed
+  bottom-panel reference), with its **own** smooth charcoal background,
+  muted dark horizontally graduated top border, centre-brightened lower
+  bevel and 1dp silver-to-white-to-silver bottom border. The seek strip
+  supplies the separator above the four-button transport row; the transport
+  background adds no duplicate top line. The bottom border and bevel come
+  from the same `MusicPlayerChrome.seekBackground()` helper, not from the
+  artwork stage or the transport controls. The dark background fades from
+  `#212421` near the top into `#181818` below, with no literal PNG
+  palette steps. The existing Q25 screenshot brightness correction is
+  reused consistently for reference stop colours. The white played rail,
+  seek thumb and touch/trackpad playback behaviour are unchanged.
 - 62dp edge-to-edge four-button Previous / Play-Pause / Stop / Next toolbar;
   charcoal gradient, matching button symbols, double gradient separators
   and fixed dark-blue selected-button gradient.

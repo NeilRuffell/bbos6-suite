@@ -34,16 +34,99 @@ final class MusicPlayerChrome {
         return Math.round(context.getResources().getDisplayMetrics().density * value);
     }
 
+    /**
+     * Smooth interpretation of the 480x30 BBOS6 2486.png bottom-panel sample.
+     * The seek strip owns BOTH its dark top highlight and silver lower edge.
+     * Indexed-PNG palette steps are omitted, but its pronounced lower-centre
+     * bevel is preserved. The media transport below draws no extra top rule.
+     */
     static Drawable seekBackground(Context context) {
+        GradientDrawable body = new GradientDrawable();
+        body.setOrientation(GradientDrawable.Orientation.TOP_BOTTOM);
+        body.setColors(referenceSourceColors(new int[] {
+                0xff212421, 0xff212021, 0xff181c18, 0xff181818,
+                0xff181818
+        }), new float[] {0f, 0.28f, 0.53f, 0.68f, 1f});
+        body.setDither(true);
+
+        // 2486.png row 0: muted dark highlight, strongest near the middle
+        // and right half of the panel (unlike the silver bottom border).
+        GradientDrawable topRule = new GradientDrawable();
+        topRule.setOrientation(GradientDrawable.Orientation.LEFT_RIGHT);
+        topRule.setColors(referenceSourceColors(new int[] {
+                0xff393839, 0xff4a494a, 0xff5a5d5a, 0xff5a6163
+        }), new float[] {0f, 0.23f, 0.51f, 1f});
+
+        // The 2486.png lower bevel brightens over its last four body rows,
+        // especially at the horizontal centre. Reproduce its smooth 2D
+        // falloff without the indexed source image's palette dither/noise.
+        Drawable lowerBevel = new Drawable() {
+            private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            private int drawableAlpha = 255;
+
+            @Override protected void onBoundsChange(Rect bounds) {
+                super.onBoundsChange(bounds);
+                if (bounds.isEmpty()) {
+                    paint.setShader(null);
+                    return;
+                }
+                paint.setShader(new LinearGradient(
+                        bounds.left, bounds.top, bounds.right, bounds.top,
+                        new int[] {
+                                0x00ffffff, 0x00ffffff, 0xffffffff,
+                                0x00ffffff, 0x00ffffff
+                        }, new float[] {0f, 0.21f, 0.50f, 0.79f, 1f},
+                        Shader.TileMode.CLAMP));
+            }
+
+            @Override public void draw(Canvas canvas) {
+                Rect bounds = getBounds();
+                if (bounds.isEmpty()) return;
+                // Reserve the final physical dp for the separate silver rule.
+                int end = bounds.bottom - dp(context, 1);
+                int start = Math.max(bounds.top + dp(context, 1),
+                        end - dp(context, 5));
+                int height = end - start;
+                if (height <= 0) return;
+
+                for (int y = start; y < end; y++) {
+                    float rise = (float) (y - start + 1) / height;
+                    int alpha = Math.round(52f * (float) Math.pow(rise, 3.2)
+                            * drawableAlpha / 255f);
+                    paint.setAlpha(alpha);
+                    canvas.drawRect(bounds.left, y, bounds.right, y + 1, paint);
+                }
+            }
+
+            @Override public void setAlpha(int alpha) {
+                drawableAlpha = alpha;
+                invalidateSelf();
+            }
+            @Override public void setColorFilter(ColorFilter filter) {
+                paint.setColorFilter(filter);
+                invalidateSelf();
+            }
+            @Override public int getOpacity() {
+                return PixelFormat.TRANSLUCENT;
+            }
+        };
+
+        // 2486.png row 29: bright silver-to-white-to-silver separator.
+        // This bottom rule belongs to the seekbar panel, not the buttons.
+        GradientDrawable silverBottomRule = new GradientDrawable();
+        silverBottomRule.setOrientation(GradientDrawable.Orientation.LEFT_RIGHT);
+        silverBottomRule.setColors(referenceSourceColors(new int[] {
+                0xff949294, 0xfff7f7f7, 0xffffffff,
+                0xfff7f7f7, 0xff9c9a9c
+        }), new float[] {0f, 0.36f, 0.45f, 0.64f, 1f});
+
         LayerDrawable layers = new LayerDrawable(new Drawable[] {
-                MediaChromeDivider.darkMediaBackground(),
-                MediaChromeDivider.darkRule(),
-                MediaChromeDivider.silverLine()
+                body, lowerBevel, topRule, silverBottomRule
         });
-        layers.setLayerHeight(1, dp(context, MediaChromeDivider.DARK_RULE_HEIGHT_DP));
-        layers.setLayerGravity(1, Gravity.TOP | Gravity.FILL_HORIZONTAL);
-        layers.setLayerHeight(2, dp(context, MediaChromeDivider.HEIGHT_DP));
-        layers.setLayerGravity(2, Gravity.BOTTOM | Gravity.FILL_HORIZONTAL);
+        layers.setLayerHeight(2, dp(context, 1));
+        layers.setLayerGravity(2, Gravity.TOP | Gravity.FILL_HORIZONTAL);
+        layers.setLayerHeight(3, dp(context, 1));
+        layers.setLayerGravity(3, Gravity.BOTTOM | Gravity.FILL_HORIZONTAL);
         return layers;
     }
 
@@ -53,8 +136,8 @@ final class MusicPlayerChrome {
      * and a faint lower bevel. Use smooth gradients for the underlying shape:
      * the small palette steps in the indexed PNG are not copied as UI bands.
      *
-     * This header is independent of the seek strip's shared media divider and
-     * the Now Playing transport background; neither is modified here.
+     * This header is independent of the seek strip's 2486.png treatment
+     * and the Now Playing transport background; neither is modified here.
      */
     static Drawable modeHeaderBackground(Context context) {
         GradientDrawable body = new GradientDrawable();
