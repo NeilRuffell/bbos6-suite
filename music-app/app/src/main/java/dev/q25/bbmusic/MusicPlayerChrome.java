@@ -47,16 +47,95 @@ final class MusicPlayerChrome {
         return layers;
     }
 
+    /**
+     * The BBOS6 2513.png header reference uses a bright horizontal top
+     * highlight, a short centre-brightened upper bevel, a dark vertical body,
+     * and a faint lower bevel. Use smooth gradients for the underlying shape:
+     * the small palette steps in the indexed PNG are not copied as UI bands.
+     *
+     * This header is independent of the seek strip's shared media divider and
+     * the Now Playing transport background; neither is modified here.
+     */
     static Drawable modeHeaderBackground(Context context) {
+        GradientDrawable body = new GradientDrawable();
+        body.setOrientation(GradientDrawable.Orientation.TOP_BOTTOM);
+        body.setColors(referenceSourceColors(new int[] {
+                0xff212021, 0xff212021, 0xff181818,
+                0xff181818, 0xff101010, 0xff101010
+        }), new float[] {0f, 0.20f, 0.48f, 0.67f, 0.90f, 1f});
+        body.setDither(true);
+
+        // Reference rows 1-7: a broad, shallow highlight across the upper
+        // centre, fading out rapidly before the middle of the header.
+        // A smoothly varying alpha replaces the PNG's palette quantization.
+        Drawable upperBevel = new Drawable() {
+            private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            private int drawableAlpha = 255;
+
+            @Override protected void onBoundsChange(Rect bounds) {
+                super.onBoundsChange(bounds);
+                if (bounds.isEmpty()) return;
+                paint.setShader(new LinearGradient(
+                        bounds.left, bounds.top, bounds.right, bounds.top,
+                        new int[] {
+                                0x00ffffff, 0xffffffff, 0xffffffff, 0x00ffffff
+                        },
+                        new float[] {0f, 0.43f, 0.57f, 1f},
+                        Shader.TileMode.CLAMP));
+            }
+
+            @Override public void draw(Canvas canvas) {
+                Rect bounds = getBounds();
+                if (bounds.isEmpty()) return;
+                int top = bounds.top + dp(context, 1);
+                int bottom = Math.min(bounds.bottom - dp(context, 1),
+                        top + dp(context, 7));
+                int height = bottom - top;
+                if (height <= 0) return;
+
+                for (int y = top; y < bottom; y++) {
+                    float progress = (y - top + 0.5f) / height;
+                    float strength = (float) Math.pow(1f - progress, 1.55f);
+                    paint.setAlpha(Math.round(42f * strength
+                            * drawableAlpha / 255f));
+                    canvas.drawRect(bounds.left, y, bounds.right, y + 1, paint);
+                }
+            }
+
+            @Override public void setAlpha(int alpha) {
+                drawableAlpha = alpha;
+                invalidateSelf();
+            }
+            @Override public void setColorFilter(ColorFilter filter) {
+                paint.setColorFilter(filter);
+                invalidateSelf();
+            }
+            @Override public int getOpacity() {
+                return PixelFormat.TRANSLUCENT;
+            }
+        };
+
+        // 2513.png row 0: silver horizontal gradient with a white centre.
+        GradientDrawable topHighlight = new GradientDrawable();
+        topHighlight.setOrientation(GradientDrawable.Orientation.LEFT_RIGHT);
+        topHighlight.setColors(referenceSourceColors(new int[] {
+                0xff9c9e9c, 0xffffffff, 0xffffffff, 0xffa5a2a5
+        }), new float[] {0f, 0.45f, 0.55f, 1f});
+
+        // Row 39: a much subtler lower bevel, not the former 2dp grey rule.
+        GradientDrawable bottomBevel = new GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                referenceSourceColors(new int[] {
+                        0xff212021, 0xff212421, 0xff212021
+                }));
+
         LayerDrawable layers = new LayerDrawable(new Drawable[] {
-                MediaChromeDivider.darkMediaBackground(),
-                MediaChromeDivider.silverLine(),
-                MediaChromeDivider.darkRule()
+                body, upperBevel, topHighlight, bottomBevel
         });
-        layers.setLayerHeight(1, dp(context, MediaChromeDivider.HEIGHT_DP));
-        layers.setLayerGravity(1, Gravity.TOP | Gravity.FILL_HORIZONTAL);
-        layers.setLayerHeight(2, dp(context, MediaChromeDivider.DARK_RULE_HEIGHT_DP));
-        layers.setLayerGravity(2, Gravity.BOTTOM | Gravity.FILL_HORIZONTAL);
+        layers.setLayerHeight(2, dp(context, 1));
+        layers.setLayerGravity(2, Gravity.TOP | Gravity.FILL_HORIZONTAL);
+        layers.setLayerHeight(3, dp(context, 1));
+        layers.setLayerGravity(3, Gravity.BOTTOM | Gravity.FILL_HORIZONTAL);
         return layers;
     }
 
@@ -162,24 +241,33 @@ final class MusicPlayerChrome {
             0xff212429, 0xff212429, 0xff212421, 0xff212021, 0xff212421
     };
 
-    // Measured against the Q25 capture: both transport and other player chrome
-    // are brightened by approximately 12% white relative to the authored
-    // opaque colours. The source of this whole-window lift is not established.
-    // Compensate *only this sampled background* for the currently observed Q25
-    // rendering; separators, selected button and other chrome are unchanged.
-    private static final float TRANSPORT_SCREEN_WHITE_LIFT = 0.12f;
+    // Measured against the Q25 capture: the transport and other player chrome
+    // are brightened by approximately 12% white relative to authored opaque
+    // colours. The cause is not established. Use one colour correction for both
+    // reference-based backgrounds: the transport and the mode header; neither
+    // the seek strip nor focused buttons are affected. Values below the lift's
+    // minimum output luminance cannot be reproduced and are clamped to black.
+    private static final float REFERENCE_SCREEN_WHITE_LIFT = 0.12f;
 
-    private static int transportSourceChannel(int reference) {
-        float lift = TRANSPORT_SCREEN_WHITE_LIFT;
+    private static int referenceSourceChannel(int reference) {
+        float lift = REFERENCE_SCREEN_WHITE_LIFT;
         return Math.max(0, Math.min(255,
                 Math.round((reference - 255f * lift) / (1f - lift))));
     }
 
-    private static int transportSourceColor(int reference) {
+    private static int referenceSourceColor(int reference) {
         return Color.rgb(
-                transportSourceChannel(Color.red(reference)),
-                transportSourceChannel(Color.green(reference)),
-                transportSourceChannel(Color.blue(reference)));
+                referenceSourceChannel(Color.red(reference)),
+                referenceSourceChannel(Color.green(reference)),
+                referenceSourceChannel(Color.blue(reference)));
+    }
+
+    private static int[] referenceSourceColors(int[] colors) {
+        int[] corrected = new int[colors.length];
+        for (int i = 0; i < colors.length; i++) {
+            corrected[i] = referenceSourceColor(colors[i]);
+        }
+        return corrected;
     }
 
     static Drawable transportBackground() {
@@ -194,7 +282,7 @@ final class MusicPlayerChrome {
                 paint.setAntiAlias(false);
                 paint.setDither(false);
                 for (int i = 0; i < sourceRows.length; i++) {
-                    sourceRows[i] = transportSourceColor(TRANSPORT_REFERENCE_ROWS[i]);
+                    sourceRows[i] = referenceSourceColor(TRANSPORT_REFERENCE_ROWS[i]);
                 }
             }
 
