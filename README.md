@@ -331,6 +331,45 @@ lifecycle and releases it when the Activity is destroyed.
 The current standalone implementation still does not depend on BB UI,
 Vector/LSPosed, a custom ROM, or another music app.
 
+### Track Properties (long press)
+
+Only a playable **track** row in the shared Music browser opens the reusable
+`Bbos6PropertiesPopup` overlay. Track rows are available under All Songs,
+Artists, Albums, Genres, Folders, and song-search results. A touchscreen hold
+or a held Q25 trackpad confirm uses the same existing eligible-row callback.
+Normal single presses still play/open tracks; no media control or Now Playing
+component acquires a long-press action. Album, Artist, Folder and Genre
+long presses remain registered but do not open Properties.
+
+`MusicTrackPropertiesReader` reads metadata asynchronously for the exact
+selected song's `content://` SAF document, checking that its source folder
+still has the user-selected persisted read grant both before and after the
+query. Only this one authorized document is queried, not MediaStore or
+unselected folders. The reader populates the shared, application-neutral
+property items; it never changes the song, selection, queue or files.
+
+Fields, when available:
+- **Path:** a logical storage location only when the External Storage
+  DocumentsProvider supplies a path-shaped document ID consistent with its
+  display name. Opaque SAF IDs and guessed `/storage/emulated/0` paths are
+  not presented as physical file paths.
+- **Size:** provider-reported byte count, formatted using Android's native
+  file-size formatter. Missing/invalid size is omitted.
+- **Type:** provider-reported `audio/*` MIME type, or "Audio File" for an
+  already-verified track when the provider has no usable audio MIME type.
+- **Created:** omitted: Android's standard SAF document projection has no
+  portable creation timestamp. Recorded/tagged dates are not repurposed.
+- **Last Modified:** optional provider-reported timestamp, formatted using
+  the system date/time settings. Missing or zero values are omitted.
+- **Title, Album, Artist:** existing indexed song metadata. Missing album
+  and synthetic "Unknown Artist" values are omitted.
+
+Missing fields are omitted instead of displaying fabricated placeholders.
+A failed provider query still permits known indexed track metadata.
+Slow asynchronous results are discarded after navigation, a new request,
+search changes or Activity stop. The popup is dismissed by Back and the
+underlying list and playback are not altered.
+
 ### Shared long-press input
 
 BB Music uses the platform's long-press gesture handling for **music library
