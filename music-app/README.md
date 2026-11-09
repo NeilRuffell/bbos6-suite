@@ -1,5 +1,10 @@
 # BB Music — standalone Android application
 
+The installed application's display name is **Music** (Android manifest
+label), and its Media3 browsable library root also advertises **Music**.
+The package ID remains `dev.q25.bbmusic`, so this does not create a separate
+installation or change the existing local signing/update workflow.
+
 BB Music is an ordinary Android APK (`dev.q25.bbmusic`). It does not require
 BB UI, Vector, LSPosed, root, another player, a custom ROM or SystemUI access.
 It has its own Gradle project under `music-app/`.
@@ -73,18 +78,41 @@ Removing a folder does not delete the files on the device.
 
 ### Now Playing metadata plates
 
-The Now Playing stage displays the plain song title above separate, compact
-BBOS6-style raised labels for artist and album. `MusicBeveledTextLabel` is the
-shared native Android view for these metadata plates: a vertical dark gradient,
-subtle rounded border, and native elevation shadow, without any PNG artwork or
-third-party dependency. Labels size to their text, are centred in the metadata
-column, and ellipsize long values to avoid overlapping the album artwork.
+The Now Playing stage displays the plain, horizontally centred song title
+(including wrapped titles) above separate, compact BBOS6-style raised labels
+for artist and album. `MusicBeveledTextLabel` is the
+shared native Android view for these metadata plates. Its unfocused background
+uses three native drawable layers: a vertically shaded low-contrast outer rim,
+an inset cool-charcoal face, and a narrow upper reflection. A tiny text shadow
+and a dark native elevation shadow provide restrained depth, without bitmap
+assets, custom drawing or third-party dependencies. The brighter upper edge
+and darker lower edge deliberately replace the former uniform blue-grey stroke.
+Labels size to their text, are centred in the metadata column, and ellipsize
+long values to avoid overlapping the album artwork.
 Missing artist or album metadata hides only its corresponding label.
 
 The album is read from `MediaItem.mediaMetadata.albumTitle` already supplied
 by `MusicPlaybackClient`; playback logic and the unboxed track title are
 unchanged. The metadata parent disables child clipping to preserve the native
 shadow.
+
+Artist and album labels are interactive on touch and the Q25 trackpad.
+On Now Playing, Up/Down visits Repeat/Shuffle, artist, album, seek and
+transport in vertical order, skipping any missing artist/album labels. The
+focused metadata label uses the vivid blue palette of the shared BBOS6
+Music selection gradient regardless of Android night mode;
+Left/Right remains reserved for Repeat/Shuffle, seek editing and transport.
+Pressing Enter/trackpad on a metadata label opens the current song's existing
+Artist or Album group page (including the existing album header).
+
+Metadata navigation resolves the active Media3 item's exact SAF URI against
+the currently indexed catalog, so identically named albums are not confused.
+It neither requeues nor resumes playback. The browse breadcrumb is reset to
+**Music → Artists/Albums → selected group**: Back returns to the Artists/Albums
+list, then Music, **never to Now Playing**. The menu's selected category
+and group rows are retained for normal Back behavior. If the catalog is still
+loading, or the active track is no longer indexed, the view remains on
+Now Playing with a short explanation rather than opening an incorrect group.
 
 ### Now Playing mode selection bounds
 

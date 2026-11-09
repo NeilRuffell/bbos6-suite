@@ -93,7 +93,7 @@ public final class MusicPlaybackService extends MediaLibraryService {
     private MediaItem libraryRoot() {
         return new MediaItem.Builder().setMediaId(LIBRARY_ROOT)
                 .setMediaMetadata(new MediaMetadata.Builder()
-                        .setTitle("BB Music")
+                        .setTitle("Music")
                         .setIsBrowsable(true)
                         .setIsPlayable(false)
                         .build())

@@ -31,24 +31,33 @@ import androidx.media3.session.MediaController;
  * seek strip and four-button transport. MusicPlayerChrome defines shared
  * height ratios and drawables; HalfRadialGradientDrawable draws the art stage.
  *
- * Trackpad hierarchy matches TwoColumnPanel: modes -> seek -> transport.
- * Trackpad confirmation toggles seek edit mode; left/right seek only while
- * editing. This is a View, not a SystemUI hook or independent player.
+ * Trackpad moves vertically through modes, artist, album, seek and
+ * transport, skipping absent metadata. Enter activates the focused link or
+ * control; left/right seeks only while seek editing is enabled. This remains
+ * a View, not a SystemUI hook or independent player.
  */
 final class MusicNowPlayingView extends LinearLayout {
     private static final int ZONE_MODE = 0;
-    private static final int ZONE_SEEK = 1;
-    private static final int ZONE_TRANSPORT = 2;
+    private static final int ZONE_ARTIST = 1;
+    private static final int ZONE_ALBUM = 2;
+    private static final int ZONE_SEEK = 3;
+    private static final int ZONE_TRANSPORT = 4;
+
+    interface MetadataNavigation {
+        void openArtist();
+        void openAlbum();
+    }
 
     private final MusicPlaybackClient client;
+    private final MetadataNavigation metadataNavigation;
     private final MusicArtworkLoader artworkLoader;
     private final ImageView modeShuffle;
     private final ImageView modeRepeat;
     private final TextView queuePosition;
     private final ImageView artworkImage;
     private final TextView trackTitle;
-    private final TextView trackArtist;
-    private final TextView trackAlbum;
+    private final MusicBeveledTextLabel trackArtist;
+    private final MusicBeveledTextLabel trackAlbum;
     private final TextView elapsed;
     private final TextView remaining;
     private final SeekBar seekBar;
@@ -72,9 +81,11 @@ final class MusicNowPlayingView extends LinearLayout {
         }
     };
 
-    MusicNowPlayingView(Context context, MusicPlaybackClient client) {
+    MusicNowPlayingView(Context context, MusicPlaybackClient client,
+            MetadataNavigation metadataNavigation) {
         super(context);
         this.client = client;
+        this.metadataNavigation = metadataNavigation;
         artworkLoader = new MusicArtworkLoader(context);
         setOrientation(VERTICAL);
         setBackgroundColor(Color.BLACK);
@@ -163,6 +174,8 @@ final class MusicNowPlayingView extends LinearLayout {
         artInfo.addView(trackInfo, new LayoutParams(0, LayoutParams.MATCH_PARENT, 1f));
 
         trackTitle = text("Now playing", 18, Color.WHITE);
+        // Centre single- and multi-line titles in the same metadata column.
+        trackTitle.setGravity(Gravity.CENTER_HORIZONTAL);
         trackTitle.setMaxLines(3);
         trackTitle.setEllipsize(TextUtils.TruncateAt.END);
         trackInfo.addView(trackTitle, new LayoutParams(
@@ -171,6 +184,8 @@ final class MusicNowPlayingView extends LinearLayout {
         // The original BBOS6 metadata text sits on independent, subtly raised
         // plates sized to its contents. The song title remains undecorated.
         trackArtist = new MusicBeveledTextLabel(context, 13);
+        trackArtist.setFocusable(false);
+        trackArtist.setOnClickListener(view -> activateMetadata(ZONE_ARTIST));
         LayoutParams artistParams = new LayoutParams(
                 LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
         artistParams.gravity = Gravity.CENTER_HORIZONTAL;
@@ -178,6 +193,8 @@ final class MusicNowPlayingView extends LinearLayout {
         trackInfo.addView(trackArtist, artistParams);
 
         trackAlbum = new MusicBeveledTextLabel(context, 12);
+        trackAlbum.setFocusable(false);
+        trackAlbum.setOnClickListener(view -> activateMetadata(ZONE_ALBUM));
         LayoutParams albumParams = new LayoutParams(
                 LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
         albumParams.gravity = Gravity.CENTER_HORIZONTAL;
@@ -407,7 +424,10 @@ final class MusicNowPlayingView extends LinearLayout {
     }
 
     private void renderFocus() {
+        if (!zoneAvailable(zone)) zone = ZONE_SEEK;
         boolean focused = hasFocus();
+        trackArtist.setMetadataFocused(focused && zone == ZONE_ARTIST);
+        trackAlbum.setMetadataFocused(focused && zone == ZONE_ALBUM);
         MediaController controller = client.controller();
         boolean shuffleAvailable = controller != null
                 && controller.isCommandAvailable(Player.COMMAND_SET_SHUFFLE_MODE);
@@ -463,15 +483,40 @@ final class MusicNowPlayingView extends LinearLayout {
         }
     }
 
+    private boolean zoneAvailable(int candidate) {
+        if (candidate == ZONE_ARTIST) {
+            return trackArtist.getVisibility() == View.VISIBLE;
+        }
+        if (candidate == ZONE_ALBUM) {
+            return trackAlbum.getVisibility() == View.VISIBLE;
+        }
+        return candidate >= ZONE_MODE && candidate <= ZONE_TRANSPORT;
+    }
+
+    private void activateMetadata(int targetZone) {
+        if (!active || !zoneAvailable(targetZone)) return;
+        zone = targetZone;
+        seekEditing = false;
+        requestFocus();
+        renderFocus();
+        if (targetZone == ZONE_ARTIST) metadataNavigation.openArtist();
+        else metadataNavigation.openAlbum();
+    }
+
     void directional(int code) {
-        if (code == KeyEvent.KEYCODE_DPAD_UP) {
+        if (code == KeyEvent.KEYCODE_DPAD_UP
+                || code == KeyEvent.KEYCODE_DPAD_DOWN) {
             if (seekEditing) return;
-            if (zone == ZONE_TRANSPORT) zone = ZONE_SEEK;
-            else if (zone == ZONE_SEEK) zone = ZONE_MODE;
-        } else if (code == KeyEvent.KEYCODE_DPAD_DOWN) {
-            if (seekEditing) return;
-            if (zone == ZONE_MODE) zone = ZONE_SEEK;
-            else if (zone == ZONE_SEEK) zone = ZONE_TRANSPORT;
+            int delta = code == KeyEvent.KEYCODE_DPAD_UP ? -1 : 1;
+            // The BBOS6 metadata links occupy two vertical positions
+            // between Repeat/Shuffle and Seek. Missing tags are skipped.
+            for (int next = zone + delta;
+                    next >= ZONE_MODE && next <= ZONE_TRANSPORT; next += delta) {
+                if (zoneAvailable(next)) {
+                    zone = next;
+                    break;
+                }
+            }
         } else if (code == KeyEvent.KEYCODE_DPAD_LEFT
                 || code == KeyEvent.KEYCODE_DPAD_RIGHT) {
             int step = code == KeyEvent.KEYCODE_DPAD_LEFT ? -1 : 1;
@@ -485,7 +530,7 @@ final class MusicNowPlayingView extends LinearLayout {
                 }
             } else if (zone == ZONE_MODE) {
                 selectedMode = Math.max(0, Math.min(1, selectedMode + step));
-            } else {
+            } else if (zone == ZONE_TRANSPORT) {
                 selectedButton = Math.max(0, Math.min(transportButtons.length - 1,
                         selectedButton + step));
             }
@@ -494,6 +539,10 @@ final class MusicNowPlayingView extends LinearLayout {
     }
 
     void activate() {
+        if (zone == ZONE_ARTIST || zone == ZONE_ALBUM) {
+            activateMetadata(zone);
+            return;
+        }
         if (zone == ZONE_MODE) {
             MediaController controller = client.controller();
             if (selectedMode == 0) {
