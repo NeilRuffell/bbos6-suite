@@ -374,7 +374,8 @@ underlying list and playback are not altered.
 
 BB Music uses the platform's long-press gesture handling for **music library
 entries only**. Touch and physical Q25 trackpad holds share the same Activity
-callback, with no media actions or context menus assigned yet.
+callback. Track holds open Properties; artist, album, genre and folder
+holds currently have no assigned action.
 
 - **Allowed rows:** playable songs/tracks; artist, album and genre group rows;
   and folder rows, configured roots and subdirectories (including entries
@@ -394,9 +395,9 @@ callback, with no media actions or context menus assigned yet.
   their normal short-click action on release even after a long hold.
   Eligible holds fire once and suppress the release click.
   Pending holds are canceled on other keys, touch, focus loss and Activity stop.
-- **Diagnostics:** eligible long presses log only the row kind/index through
-  `BBMusic` without logging song titles or filesystem paths. Hardware
-  long presses request Android native haptic feedback.
+- **Actions:** playable track rows open the read-only BBOS6 Properties dialog.
+  Eligible artist, album, genre and folder holds remain unassigned.
+  Hardware long presses request Android native haptic feedback.
 
 Run `gradle -p music-app :app:testDebugUnitTest` for the
 press-state gating regression tests, then verify touchscreen and Q25
