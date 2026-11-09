@@ -86,6 +86,23 @@ by `MusicPlaybackClient`; playback logic and the unboxed track title are
 unchanged. The metadata parent disables child clipping to preserve the native
 shadow.
 
+Artist and album labels are interactive on touch and the Q25 trackpad.
+On Now Playing, Up/Down visits Repeat/Shuffle, artist, album, seek and
+transport in vertical order, skipping any missing artist/album labels. The
+focused metadata label uses the existing BBOS6 Music selection gradient;
+Left/Right remains reserved for Repeat/Shuffle, seek editing and transport.
+Pressing Enter/trackpad on a metadata label opens the current song's existing
+Artist or Album group page (including the existing album header).
+
+Metadata navigation resolves the active Media3 item's exact SAF URI against
+the currently indexed catalog, so identically named albums are not confused.
+It neither requeues nor resumes playback. The browse breadcrumb is reset to
+**Music → Artists/Albums → selected group**: Back returns to the Artists/Albums
+list, then Music, **never to Now Playing**. The menu's selected category
+and group rows are retained for normal Back behavior. If the catalog is still
+loading, or the active track is no longer indexed, the view remains on
+Now Playing with a short explanation rather than opening an incorrect group.
+
 ### Now Playing mode selection bounds
 
 Repeat and Shuffle focus backgrounds use the shared
