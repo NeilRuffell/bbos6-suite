@@ -546,6 +546,18 @@ The Now Playing screen is a standalone presentation port of BB UI master
   Repeat is flush with the left edge and Shuffle with the right; neither
   button nor the header has padding. Trackpad left/right navigation follows
   their displayed order (Repeat then Shuffle). Touch controls are unchanged.
+  **Header background (2513.png reference):** The 40dp mode bar now draws
+  a smooth vertical charcoal gradient based on the main tones of the supplied
+  358×40 BBOS6 header sample, rather than copying the sample's indexed-PNG
+  palette steps. A short, broad centre-brightened bevel occupies the upper
+  ~7dp. Its own 1dp top border runs from silver at the sides to white at the
+  centre, and its 1dp bottom border is a very subtle, dark horizontal bevel.
+  The old 2dp dark bottom rule is removed for this bar only. Reference
+  colours use the same Q25 screenshot brightness compensation already used
+  by the transport background; only its calibration helper is reused, while
+  the transport's sampled rendering remains unchanged. The seek bar's shared
+  media divider, repeat/shuffle focus backgrounds and artwork stage are
+  unaffected.
 - Full-height half-radial artwork/metadata background and 50/50 art/text split.
 - 30dp seek strip, shared dark gradient and 2dp/silver divider system,
   BBOS6 white played rail and glossy 56dp seek capsule.
