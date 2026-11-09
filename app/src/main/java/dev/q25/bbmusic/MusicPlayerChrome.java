@@ -12,6 +12,7 @@ import android.graphics.Rect;
 import android.graphics.Shader;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.InsetDrawable;
 import android.graphics.drawable.LayerDrawable;
 import android.view.Gravity;
 import android.widget.ImageView;
@@ -239,6 +240,17 @@ final class MusicPlayerChrome {
         layers.setLayerHeight(3, dp(context, 1));
         layers.setLayerGravity(3, Gravity.BOTTOM | Gravity.FILL_HORIZONTAL);
         return layers;
+    }
+
+    /**
+     * Constrain the Repeat/Shuffle focus fill to the mode header's interior.
+     * The native 1dp top highlight and bottom bevel remain visible at all
+     * times. Inset only the drawable so the full button remains clickable.
+     */
+    static Drawable modeSelectionBackground(Context context) {
+        int border = dp(context, 1);
+        return new InsetDrawable(
+                MusicSelectionGradient.create(context), 0, border, 0, border);
     }
 
     /**
