@@ -28,6 +28,17 @@ final class MusicPlayerChrome {
     private static final int TRACK_TOP = 0xff101010;
     private static final int TRACK_BOTTOM = 0xff393839;
 
+    // Curve 9300 Now Playing reference (320x226 pixels):
+    // mode header 22px, seek panel 20px, transport row 30px.
+    // Keep the three fixed-height bars proportional to one shared transport
+    // baseline. The artwork/metadata stage expands into all remaining height.
+    // 48dp preserves a full-height touch target for transport controls.
+    static final int TRANSPORT_HEIGHT_DP = 48;
+    static final int MODE_HEADER_HEIGHT_DP =
+            Math.round(TRANSPORT_HEIGHT_DP * 22f / 30f); // 35dp
+    static final int SEEK_PANEL_HEIGHT_DP =
+            Math.round(TRANSPORT_HEIGHT_DP * 20f / 30f); // 32dp
+
     private MusicPlayerChrome() {}
 
     static int dp(Context context, float value) {

@@ -528,7 +528,20 @@ grant additional storage access and does not affect the Room catalog.
 The Now Playing screen is a standalone presentation port of BB UI master
 `TwoColumnPanel.java` and `UnifiedShadeHost.java`, preserving:
 
-- 40dp mode bar with icon-only Repeat on the left (replacing the "Media"
+**Curve 9300 responsive height proportions:** The supplied 320×226 BBOS6
+Now Playing reference measures approximately 22px for the top mode header,
+20px for the seek strip and 30px for the lower transport controls.
+`MusicPlayerChrome` defines one shared 48dp transport-bar baseline (maintains
+a 48dp-tall transport touch target) and derives the other bars from those
+reference proportions: mode header **35dp**, seek panel **32dp**, transport
+**48dp**. These are density-independent dimensions, not absolute screenshot
+pixels; the artwork/information area retains `layout_weight=1` and absorbs
+all remaining available vertical space, including changes in phone size and
+screen insets. The transport glyphs retain their 36dp intrinsic size, with
+6dp vertical insets so none are clipped in the shorter button row. No change
+to trackpad, touch or media playback logic.
+
+- Proportional 35dp mode bar with icon-only Repeat on the left (replacing the "Media"
   heading), a centered read-only queue position (e.g. `17 of 637`), and
   icon-only Shuffle on the right. The counter uses the current Media3
   media-item index and playlist length (not the total library count), updates
@@ -546,7 +559,7 @@ The Now Playing screen is a standalone presentation port of BB UI master
   Repeat is flush with the left edge and Shuffle with the right; neither
   button nor the header has padding. Trackpad left/right navigation follows
   their displayed order (Repeat then Shuffle). Touch controls are unchanged.
-  **Header background (2513.png reference):** The 40dp mode bar now draws
+  **Header background (2513.png reference):** The mode bar draws
   a smooth vertical charcoal gradient based on the main tones of the supplied
   358×40 BBOS6 header sample, rather than copying the sample's indexed-PNG
   palette steps. A short, broad centre-brightened bevel occupies the upper
@@ -558,7 +571,7 @@ The Now Playing screen is a standalone presentation port of BB UI master
   screenshot brightness compensation. Repeat/shuffle focus backgrounds
   and the artwork stage are unaffected.
 - Full-height half-radial artwork/metadata background and 50/50 art/text split.
-- 30dp seek strip styled after BBOS6 `2486.png` (a 480×30 indexed
+- Proportional 32dp seek strip styled after BBOS6 `2486.png` (a 480×30 indexed
   bottom-panel reference), with its **own** smooth charcoal background,
   muted dark horizontally graduated top border, centre-brightened lower
   bevel and 1dp silver-to-white-to-silver bottom border. The seek strip
@@ -570,7 +583,7 @@ The Now Playing screen is a standalone presentation port of BB UI master
   palette steps. Reference colours are used directly with no brightness
   compensation. The white played rail, seek thumb and touch/trackpad
   playback behaviour are unchanged.
-- 62dp edge-to-edge four-button Previous / Play-Pause / Stop / Next toolbar;
+- Proportional 48dp edge-to-edge four-button Previous / Play-Pause / Stop / Next toolbar;
   charcoal gradient, matching button symbols, double gradient separators
   and fixed dark-blue selected-button gradient.
   **Transport background reference matching (3246.png):**
