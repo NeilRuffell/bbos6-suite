@@ -56,6 +56,12 @@ final class MediaSeekPolicy {
                 ? durationMs : bounded + KEY_SEEK_STEP_MS;
     }
 
+    /** Remaining playback time, displayed as a negative countdown. */
+    static String formatRemainingTime(long durationMs, long positionMs) {
+        if (durationMs <= 0L) return "--:--";
+        return "-" + formatTime(durationMs - clamp(positionMs, durationMs));
+    }
+
     static String formatTime(long millis) {
         long seconds = Math.max(0, millis) / 1000;
         long minutes = seconds / 60;
