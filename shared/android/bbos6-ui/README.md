@@ -85,9 +85,11 @@ dependencies {
 }
 ```
 
-No UI or transport controls in Music are automatically modified by this
-module. Explicitly connect the popup after defining which application rows
-and data fields should display it.
+The Music app connects this helper only for long presses on playable
+track rows in its library browser. `MusicTrackPropertiesReader` supplies
+SAF and indexed metadata; the shared library never queries files or handles
+music navigation. Other applications can supply any property rows through
+the same builder without copying UI code.
 
 ## Local verification
 
