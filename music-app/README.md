@@ -76,10 +76,14 @@ Removing a folder does not delete the files on the device.
 The Now Playing stage displays the plain, horizontally centred song title
 (including wrapped titles) above separate, compact BBOS6-style raised labels
 for artist and album. `MusicBeveledTextLabel` is the
-shared native Android view for these metadata plates: a vertical dark gradient,
-subtle rounded border, and native elevation shadow, without any PNG artwork or
-third-party dependency. Labels size to their text, are centred in the metadata
-column, and ellipsize long values to avoid overlapping the album artwork.
+shared native Android view for these metadata plates. Its unfocused background
+uses three native drawable layers: a vertically shaded low-contrast outer rim,
+an inset cool-charcoal face, and a narrow upper reflection. A tiny text shadow
+and a dark native elevation shadow provide restrained depth, without bitmap
+assets, custom drawing or third-party dependencies. The brighter upper edge
+and darker lower edge deliberately replace the former uniform blue-grey stroke.
+Labels size to their text, are centred in the metadata column, and ellipsize
+long values to avoid overlapping the album artwork.
 Missing artist or album metadata hides only its corresponding label.
 
 The album is read from `MediaItem.mediaMetadata.albumTitle` already supplied
