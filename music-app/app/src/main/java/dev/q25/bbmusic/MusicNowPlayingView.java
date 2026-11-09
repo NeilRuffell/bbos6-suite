@@ -48,7 +48,7 @@ final class MusicNowPlayingView extends LinearLayout {
     private final TextView trackTitle;
     private final TextView trackArtist;
     private final TextView elapsed;
-    private final TextView total;
+    private final TextView remaining;
     private final SeekBar seekBar;
     private final LinearLayout transportRow;
     private final ImageView[] transportButtons = new ImageView[4];
@@ -206,8 +206,11 @@ final class MusicNowPlayingView extends LinearLayout {
             @Override public void onProgressChanged(SeekBar bar,
                     int progress, boolean fromUser) {
                 if (fromUser && seekDragging) {
-                    elapsed.setText(MediaSeekPolicy.formatTime(
-                            MediaSeekPolicy.fromProgress(progress, durationMs)));
+                    long previewPosition = MediaSeekPolicy.fromProgress(
+                            progress, durationMs);
+                    elapsed.setText(MediaSeekPolicy.formatTime(previewPosition));
+                    remaining.setText(MediaSeekPolicy.formatRemainingTime(
+                            durationMs, previewPosition));
                 }
             }
 
@@ -219,9 +222,9 @@ final class MusicNowPlayingView extends LinearLayout {
         });
         seekRow.addView(seekBar, new LayoutParams(0, LayoutParams.MATCH_PARENT, 1f));
 
-        total = text("--:--", 14, 0xff99aab8);
-        total.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
-        seekRow.addView(total, new LayoutParams(dp(52), LayoutParams.MATCH_PARENT));
+        remaining = text("--:--", 14, 0xff99aab8);
+        remaining.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
+        seekRow.addView(remaining, new LayoutParams(dp(52), LayoutParams.MATCH_PARENT));
 
         transportRow = new LinearLayout(context);
         transportRow.setGravity(Gravity.CENTER_VERTICAL);
@@ -333,7 +336,7 @@ final class MusicNowPlayingView extends LinearLayout {
         if (controller == null) {
             durationMs = 0L;
             elapsed.setText("0:00");
-            total.setText("--:--");
+            remaining.setText("--:--");
             seekBar.setProgress(0);
             seekBar.setEnabled(false);
             return;
@@ -342,8 +345,8 @@ final class MusicNowPlayingView extends LinearLayout {
         durationMs = duration == C.TIME_UNSET || duration < 0L ? 0L : duration;
         long position = Math.max(0L, controller.getCurrentPosition());
         elapsed.setText(MediaSeekPolicy.formatTime(position));
-        total.setText(durationMs > 0L
-                ? MediaSeekPolicy.formatTime(durationMs) : "--:--");
+        remaining.setText(MediaSeekPolicy.formatRemainingTime(
+                durationMs, position));
         seekBar.setProgress(MediaSeekPolicy.toProgress(position, durationMs));
         boolean canSeek = durationMs > 0L && controller.isCurrentMediaItemSeekable();
         seekBar.setEnabled(canSeek);

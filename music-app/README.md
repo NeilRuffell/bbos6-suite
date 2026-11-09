@@ -583,6 +583,12 @@ to trackpad, touch or media playback logic.
   palette steps. Reference colours are used directly with no brightness
   compensation. The white played rail, seek thumb and touch/trackpad
   playback behaviour are unchanged.
+  **Seek time labels:** The left label shows elapsed track time, while the
+  right label shows time remaining prefixed with a minus sign, e.g.
+  `0:09` and `-6:28` for a 6:37 track. Remaining time is computed as
+  duration minus the current position and clamped to zero at the end.
+  Both labels update during playback and while dragging the seek thumb;
+  unknown durations continue to display `--:--` on the right.
 - Proportional 48dp edge-to-edge four-button Previous / Play-Pause / Stop / Next toolbar;
   charcoal gradient, matching button symbols, double gradient separators
   and fixed dark-blue selected-button gradient.
