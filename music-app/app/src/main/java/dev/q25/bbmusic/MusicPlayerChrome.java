@@ -43,19 +43,19 @@ final class MusicPlayerChrome {
     static Drawable seekBackground(Context context) {
         GradientDrawable body = new GradientDrawable();
         body.setOrientation(GradientDrawable.Orientation.TOP_BOTTOM);
-        body.setColors(referenceSourceColors(new int[] {
+        body.setColors(new int[] {
                 0xff212421, 0xff212021, 0xff181c18, 0xff181818,
                 0xff181818
-        }), new float[] {0f, 0.28f, 0.53f, 0.68f, 1f});
+        }, new float[] {0f, 0.28f, 0.53f, 0.68f, 1f});
         body.setDither(true);
 
         // 2486.png row 0: muted dark highlight, strongest near the middle
         // and right half of the panel (unlike the silver bottom border).
         GradientDrawable topRule = new GradientDrawable();
         topRule.setOrientation(GradientDrawable.Orientation.LEFT_RIGHT);
-        topRule.setColors(referenceSourceColors(new int[] {
+        topRule.setColors(new int[] {
                 0xff393839, 0xff4a494a, 0xff5a5d5a, 0xff5a6163
-        }), new float[] {0f, 0.23f, 0.51f, 1f});
+        }, new float[] {0f, 0.23f, 0.51f, 1f});
 
         // The 2486.png lower bevel brightens over its last four body rows,
         // especially at the horizontal centre. Reproduce its smooth 2D
@@ -115,10 +115,10 @@ final class MusicPlayerChrome {
         // This bottom rule belongs to the seekbar panel, not the buttons.
         GradientDrawable silverBottomRule = new GradientDrawable();
         silverBottomRule.setOrientation(GradientDrawable.Orientation.LEFT_RIGHT);
-        silverBottomRule.setColors(referenceSourceColors(new int[] {
+        silverBottomRule.setColors(new int[] {
                 0xff949294, 0xfff7f7f7, 0xffffffff,
                 0xfff7f7f7, 0xff9c9a9c
-        }), new float[] {0f, 0.36f, 0.45f, 0.64f, 1f});
+        }, new float[] {0f, 0.36f, 0.45f, 0.64f, 1f});
 
         LayerDrawable layers = new LayerDrawable(new Drawable[] {
                 body, lowerBevel, topRule, silverBottomRule
@@ -142,10 +142,10 @@ final class MusicPlayerChrome {
     static Drawable modeHeaderBackground(Context context) {
         GradientDrawable body = new GradientDrawable();
         body.setOrientation(GradientDrawable.Orientation.TOP_BOTTOM);
-        body.setColors(referenceSourceColors(new int[] {
+        body.setColors(new int[] {
                 0xff212021, 0xff212021, 0xff181818,
                 0xff181818, 0xff101010, 0xff101010
-        }), new float[] {0f, 0.20f, 0.48f, 0.67f, 0.90f, 1f});
+        }, new float[] {0f, 0.20f, 0.48f, 0.67f, 0.90f, 1f});
         body.setDither(true);
 
         // Reference rows 1-7: a broad, shallow highlight across the upper
@@ -201,16 +201,16 @@ final class MusicPlayerChrome {
         // 2513.png row 0: silver horizontal gradient with a white centre.
         GradientDrawable topHighlight = new GradientDrawable();
         topHighlight.setOrientation(GradientDrawable.Orientation.LEFT_RIGHT);
-        topHighlight.setColors(referenceSourceColors(new int[] {
+        topHighlight.setColors(new int[] {
                 0xff9c9e9c, 0xffffffff, 0xffffffff, 0xffa5a2a5
-        }), new float[] {0f, 0.45f, 0.55f, 1f});
+        }, new float[] {0f, 0.45f, 0.55f, 1f});
 
         // Row 39: a much subtler lower bevel, not the former 2dp grey rule.
         GradientDrawable bottomBevel = new GradientDrawable(
                 GradientDrawable.Orientation.LEFT_RIGHT,
-                referenceSourceColors(new int[] {
+                new int[] {
                         0xff212021, 0xff212421, 0xff212021
-                }));
+                });
 
         LayerDrawable layers = new LayerDrawable(new Drawable[] {
                 body, upperBevel, topHighlight, bottomBevel
@@ -330,39 +330,10 @@ final class MusicPlayerChrome {
             0.42f, 0.51f, 0.67f, 0.82f, 1f
     };
 
-    // Measured against the Q25 capture: the transport and other player chrome
-    // are brightened by approximately 12% white relative to authored opaque
-    // colours. The cause is not established. Use one colour correction for both
-    // reference-based backgrounds: the transport and the mode header; neither
-    // the seek strip nor focused buttons are affected. Values below the lift's
-    // minimum output luminance cannot be reproduced and are clamped to black.
-    private static final float REFERENCE_SCREEN_WHITE_LIFT = 0.12f;
-
-    private static int referenceSourceChannel(int reference) {
-        float lift = REFERENCE_SCREEN_WHITE_LIFT;
-        return Math.max(0, Math.min(255,
-                Math.round((reference - 255f * lift) / (1f - lift))));
-    }
-
-    private static int referenceSourceColor(int reference) {
-        return Color.rgb(
-                referenceSourceChannel(Color.red(reference)),
-                referenceSourceChannel(Color.green(reference)),
-                referenceSourceChannel(Color.blue(reference)));
-    }
-
-    private static int[] referenceSourceColors(int[] colors) {
-        int[] corrected = new int[colors.length];
-        for (int i = 0; i < colors.length; i++) {
-            corrected[i] = referenceSourceColor(colors[i]);
-        }
-        return corrected;
-    }
-
     static GradientDrawable transportBackground() {
         GradientDrawable drawable = new GradientDrawable();
         drawable.setOrientation(GradientDrawable.Orientation.TOP_BOTTOM);
-        drawable.setColors(referenceSourceColors(TRANSPORT_SMOOTH_COLORS),
+        drawable.setColors(TRANSPORT_SMOOTH_COLORS,
                 TRANSPORT_SMOOTH_STOPS);
         drawable.setDither(true);
         return drawable;

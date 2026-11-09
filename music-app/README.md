@@ -552,11 +552,11 @@ The Now Playing screen is a standalone presentation port of BB UI master
   palette steps. A short, broad centre-brightened bevel occupies the upper
   ~7dp. Its own 1dp top border runs from silver at the sides to white at the
   centre, and its 1dp bottom border is a very subtle, dark horizontal bevel.
-  The old 2dp dark bottom rule is removed for this bar only. Reference
-  colours use the same Q25 screenshot brightness compensation as the
-  transport background. Header bevel, borders and dimensions are unchanged
-  by the seekbar background update; repeat/shuffle focus backgrounds and
-  the artwork stage are unaffected.
+  The old 2dp dark bottom rule is removed for this bar only. Header
+  bevel, borders and dimensions are unchanged by the seekbar background
+  update; original reference colour stops are used directly without
+  screenshot brightness compensation. Repeat/shuffle focus backgrounds
+  and the artwork stage are unaffected.
 - Full-height half-radial artwork/metadata background and 50/50 art/text split.
 - 30dp seek strip styled after BBOS6 `2486.png` (a 480×30 indexed
   bottom-panel reference), with its **own** smooth charcoal background,
@@ -567,9 +567,9 @@ The Now Playing screen is a standalone presentation port of BB UI master
   from the same `MusicPlayerChrome.seekBackground()` helper, not from the
   artwork stage or the transport controls. The dark background fades from
   `#212421` near the top into `#181818` below, with no literal PNG
-  palette steps. The existing Q25 screenshot brightness correction is
-  reused consistently for reference stop colours. The white played rail,
-  seek thumb and touch/trackpad playback behaviour are unchanged.
+  palette steps. Reference colours are used directly with no brightness
+  compensation. The white played rail, seek thumb and touch/trackpad
+  playback behaviour are unchanged.
 - 62dp edge-to-edge four-button Previous / Play-Pause / Stop / Next toolbar;
   charcoal gradient, matching button symbols, double gradient separators
   and fixed dark-blue selected-button gradient.
@@ -579,10 +579,10 @@ The Now Playing screen is a standalone presentation port of BB UI master
   fade and darker lower plateau of the 480×60 BBOS6 Sound Recorder
   reference. It deliberately does not reproduce the indexed PNG's small
   palette/quantization steps. The silver divider is drawn separately by
-  the seek strip. The existing approximately 12% Q25 screenshot white-lift
-  compensation is retained and shared with the 2513.png mode header;
-  its underlying cause is not established. Selection colours, transport
-  separators, dimensions and playback controls are unchanged.
+  the seek strip. Reference stop colours are used directly, without the
+  obsolete 12% white-lift compensation (which was introduced for a Q25
+  screen overlay that has since been disabled). Selection colours,
+  transport separators, dimensions and playback controls are unchanged.
 - **Stop** pauses the audio immediately, seeks the current track to `0:00`,
   and calls Media3 `stop()`, returning the player to idle without changing
   the selected track, playlist, or Now Playing screen. **Play** after Stop
