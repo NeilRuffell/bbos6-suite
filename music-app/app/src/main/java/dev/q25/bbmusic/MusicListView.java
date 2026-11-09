@@ -40,6 +40,7 @@ final class MusicListView extends ListView {
         RowData rowAt(int position);
         void activate(int position);
         void longPress(int position);
+        boolean supportsLongPress(int position);
     }
 
     /** Presentation values; deliberately independent of music categories. */
@@ -196,7 +197,8 @@ final class MusicListView extends ListView {
         // the Q25 confirm-key handler. Consuming it prevents a tap on release.
         setOnItemLongClickListener((parent, row, position, id) -> {
             if (position < 0 || position >= data.size()
-                    || !data.rowAt(position).enabled) return false;
+                    || !data.rowAt(position).enabled
+                    || !data.supportsLongPress(position)) return false;
             data.longPress(position);
             return true;
         });
@@ -408,18 +410,9 @@ final class MusicListView extends ListView {
         if (row.showRemoveButton) {
             views.removeAction.setContentDescription("Remove " + row.title);
             views.removeAction.setOnClickListener(view -> data.activate(position));
-            // This child consumes touch separately from the ListView row.
-            // A hold must not fall through to the removal click on release.
-            views.removeAction.setOnLongClickListener(view -> {
-                if (position < 0 || position >= data.size()
-                        || !data.rowAt(position).enabled) return false;
-                data.longPress(position);
-                return true;
-            });
         } else {
             // A recycled folder row must never remove a later music item.
             views.removeAction.setOnClickListener(null);
-            views.removeAction.setOnLongClickListener(null);
         }
         String spoken = row.trackNumber == null ? row.title
                 : ("--".equals(row.trackNumber) ? "Track number unavailable, "
