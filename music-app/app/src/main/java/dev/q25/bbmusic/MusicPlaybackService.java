@@ -1,5 +1,6 @@
 package dev.q25.bbmusic;
 
+import android.app.PendingIntent;
 import android.content.Intent;
 import android.os.Handler;
 import android.os.Looper;
@@ -192,7 +193,13 @@ public final class MusicPlaybackService extends MediaLibraryService {
                 .setHandleAudioBecomingNoisy(true)
                 .build();
         player.addListener(retentionListener);
-        session = new MediaLibrarySession.Builder(this, player, callback).build();
+        Intent openMusic = new Intent(this, MusicActivity.class)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent openMusicAction = PendingIntent.getActivity(this, 0, openMusic,
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+        session = new MediaLibrarySession.Builder(this, player, callback)
+                .setSessionActivity(openMusicAction)
+                .build();
         Log.i(TAG, "Media3 playback library session created");
     }
 
