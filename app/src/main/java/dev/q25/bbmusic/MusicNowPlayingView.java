@@ -174,6 +174,8 @@ final class MusicNowPlayingView extends LinearLayout {
         artInfo.addView(trackInfo, new LayoutParams(0, LayoutParams.MATCH_PARENT, 1f));
 
         trackTitle = text("Now playing", 18, Color.WHITE);
+        // Centre single- and multi-line titles in the same metadata column.
+        trackTitle.setGravity(Gravity.CENTER_HORIZONTAL);
         trackTitle.setMaxLines(3);
         trackTitle.setEllipsize(TextUtils.TruncateAt.END);
         trackInfo.addView(trackTitle, new LayoutParams(
