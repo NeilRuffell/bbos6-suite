@@ -1421,7 +1421,8 @@ Q25 feedback identified two too-thick glows in the first Compose Now
 Playing panel port: beneath the mode header's top line and above the seek
 panel's bottom line. Their source is the shared `Bbos6NowPlayingSurface`,
 **not** Music seekbar geometry or touch/focus logic. The initial port
-flattened the original reflection to a constant-alpha 7dp/5dp strip. The
+replaced the mode reflection with a full-width linear 7dp fade and
+flattened the seek reflection into a constant-intensity 5dp strip. The
 shared follow-up change restores the original Java `MusicPlayerChrome`
 2D fades: row-wise `(1-progress)^1.55` (mode, maximum 42 alpha) and
 `rise^3.2` (seek, maximum 52 alpha), both tapering off toward the
@@ -1429,7 +1430,7 @@ horizontal edges. Keep the intentional 1dp separators and all native
 SeekBar, transport, DPAD, controller and media methods unmodified.
 
 The application submodule is pinned to the shared fix
-`92ec8f48f9e03b30f0b828d6da375b92a36b1b5b`.
+`4d5878065438d034dbfb85b495e041e11ed08ab4`.
 Review both panels side-by-side with the previously accepted native
 release, then verify playback and selection still work. Builds and Q25
 visual parity of this revised SHA remain unverified.
