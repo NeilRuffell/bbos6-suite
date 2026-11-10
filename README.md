@@ -1231,7 +1231,9 @@ background workers; the native ListView and Media3 controller are reused.
   shared `Bbos6PopupButtonList` helper without screen-specific button
   styling. The New Playlist and Rename playlist name fields now use the
   same shared popup with the native-backed `Bbos6TextField` and horizontal
-  **Cancel** / **Save** buttons. The popup field is **30dp high**, exactly
+  **Cancel** / **Save** buttons. Both buttons are now sized by their own
+  label length, and the complete button group is horizontally centered
+  by the shared popup. The popup field is **30dp high**, exactly
   matching its buttons; the search field retains its original dimensions.
   Save reuses the existing Room playlist
   validation and create/rename logic; Cancel makes no changes. Saved

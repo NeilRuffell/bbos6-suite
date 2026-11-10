@@ -123,6 +123,22 @@ list entries remain absent.
 Changing this shared helper requires the standard shared-first PR and
 consumer-submodule workflow.
 
+## Popup button sizing philosophy
+
+Use `Bbos6PopupButtonView` from the shared UI for BBOS6 popup action
+faces and intrinsic widths. Its button label, minimum touch width,
+padding, silver/blue gradients and shared 30dp height are maintained only
+in `bbos6-shared`. For `Bbos6PopupButtonList.horizontalButtons()`,
+each button's width is measured from its caption and the complete row is
+centered. Horizontal overflow is scrollable without becoming a second
+focus owner. Vertical buttons retain their established fixed width.
+Music must not compute popup button widths, add compensating margins,
+or duplicate popup drawables in app-specific code.
+
+Test the Create/Rename Playlist Cancel/Save row for variable label
+widths, centered placement, text-to-button focus, left/right navigation,
+and touch before merging. This rule also applies to future apps.
+
 ## BBOS6 confirmation dialogs
 
 Use `Bbos6PopupButtonList` from the canonical shared Android module for
