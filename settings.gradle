@@ -9,4 +9,4 @@ include ':app'
 // Shared native BBOS6 widgets: independent of Music and reusable by
 // other standalone Android applications in this repository.
 include ':bbos6-ui'
-project(':bbos6-ui').projectDir = file('../shared/android/bbos6-ui')
+project(':bbos6-ui').projectDir = file('assets/bbos6/android/bbos6-ui')
