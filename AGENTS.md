@@ -34,10 +34,10 @@ reusable Android BBOS6 UI helpers.
 The existing asset path remains `assets/bbos6/`, so existing read-only
 asset references in BB UI docs and source continue to resolve.
 
-**Privacy caveat:** BB UI is public and `bbos6-shared` is currently
-private. Public users without explicit permission cannot recursively clone
-the submodule. A public, self-contained build requires approving a visibility
-or distribution solution first; do not silently expose private assets.
+**Ownership:** This is a personal development project. The shared repository
+is intentionally private and its visibility is **not** a blocker to normal
+owner-authenticated builds. Do not alter repository visibility or add
+collaborator/public-distribution requirements without an explicit request.
 
 ## BB UI architecture and build
 
