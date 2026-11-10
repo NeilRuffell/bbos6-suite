@@ -65,6 +65,23 @@ menu entries are not displayed, though underlying code remains available.
 Changing this shared helper requires the standard shared-first PR and
 consumer-submodule workflow.
 
+## BBOS6 confirmation dialogs
+
+Use `Bbos6PopupButtonList` from the canonical shared Android module for
+app-owned button-only confirmations. Music's centralized
+`showButtonConfirmation(title, message, confirmLabel, callback)` retains
+app-specific text/actions and initially selects **Cancel**. Use it for
+file deletion, playlist deletion, removing configured folders, and full
+library rescan. Do not reproduce popup styling or the shared selected
+gradient within this app.
+
+Keep Android-owned SAF permission grant dialogs and document pickers
+native; the popup is not a replacement for platform authorization.
+Also preserve native dialogs requiring text entry or list input until
+a matching shared input helper exists. Never alter deletion authorization,
+file security checks, or the selected music-folder allowlist merely to
+change a dialog's appearance.
+
 ## Playlist maintenance
 
 Playlists are implemented only in this repository, through
