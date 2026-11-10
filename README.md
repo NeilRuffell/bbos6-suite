@@ -132,6 +132,77 @@ This optional mode reuses the existing popup and leaves its colors,
 button sizing and vertical layout unchanged. A new BBOS6 input-field asset
 has not been introduced or identified.
 
+### Popup button highlight and native text focus
+
+The shared `Bbos6PopupButtonList` remembers the selected button even while
+a native text field is active. In text-entry popups the selected button
+receives its blue gradient **only when the popup's button-focus owner has
+focus**. When focus moves back into the text field all buttons return
+to silver; moving Down into the button row restores the previous selected
+button's blue face. The focus callback refreshes the existing shared
+button drawables and does not modify keyboard input, Android view focus,
+button selection, or application behavior. Button-only popups retain
+their previous initial selection presentation.
+
+### Shared BBOS6 focus policy
+
+`Bbos6FocusPolicy.forManagedContainers(root)` is the canonical policy for
+composite BBOS6 widgets that already render their own focus/selection
+indicators. It traverses the existing `ViewGroup` hierarchy once and uses
+Android's `setDefaultFocusHighlightEnabled(false)` on API 26+ to prevent
+the framework from drawing a second, pale highlight over an entire
+focused panel. This is an Android focus **behavior setting**, not an
+alpha/color replacement, overlaid drawable, or workaround dimension.
+
+It deliberately preserves focusability, input events, DPAD/trackpad
+navigation, current BBOS6 blue selection visuals, and native leaf
+controls such as `EditText`. Apply only to *custom-managed composite
+containers*, after their children have been added. Avoid applying it
+globally to arbitrary Android controls that need the native focus
+indicator. Child views created later require a fresh application of the
+policy when necessary.
+
+`Bbos6ContextMenu`, `Bbos6PopupButtonList` (including its text-entry
+mode) and `Bbos6PropertiesPopup` now apply it to their finished panel
+trees. Consuming applications should apply it to their own composite
+focus owners, such as the Music Now Playing root, rather than introduce
+screen-specific translucent overlays or duplicate focus flags.
+
+### BBOS6 focus and selection principles
+
+Our reusable widgets distinguish **focus** (which control currently accepts
+trackpad/keyboard input) from **selection** (the last chosen item/index).
+Only the currently focused interaction area displays an active blue
+selection. The saved index may remain unchanged while another control,
+such as a text field, is active. This prevents the confusing appearance of
+two simultaneously focused controls.
+
+The visual renderer must observe *actual* focus changes as well as
+selection changes. A text-entry popup follows this lifecycle:
+
+1. The native `EditText` is focused: buttons are silver, but their last
+   selected index is retained.
+2. Trackpad Down moves focus to the button container: the remembered
+   button turns blue.
+3. Trackpad Up or a touch on the text box returns focus to `EditText`:
+   the blue button becomes silver, with no change to saved selection.
+4. The next Down restores the same selected button. Activating Save/Cancel
+   still uses existing caller-owned business logic.
+
+Framework focus glow on a *custom-managed composite container* must not
+stack over its own BBOS6 focus rendering. `Bbos6FocusPolicy` suppresses
+only Android's automatic container decoration, not focus itself, native
+text input or accessibility semantics. **Never** fix this by drawing a
+transparent layer, darkening a screenshot, changing opacity, disabling all
+focus, or adding a screen-specific workaround.
+
+For new shared components, first identify the navigation focus owner,
+the remembered selection, and the one place where the visible selection
+is derived from both. Validate touch, Q25 trackpad and physical keyboard
+transitions between interaction areas in both directions. Application
+repositories should reuse the shared helper and keep data/action logic
+separate.
+
 ### Compact Bold 9900-inspired sizing
 
 Both `Bbos6PopupButtonList` and `Bbos6ContextMenu` use compact,

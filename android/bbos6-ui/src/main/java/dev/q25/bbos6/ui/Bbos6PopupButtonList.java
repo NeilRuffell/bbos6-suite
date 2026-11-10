@@ -275,6 +275,9 @@ public final class Bbos6PopupButtonList {
             panel.setClipToOutline(true);
             panel.setElevation(dp(activity, 5));
             panel.setFocusableInTouchMode(true);
+            // The button selection belongs to this focus owner. Moving to a
+            // native input must remove its blue highlight, not its selection.
+            panel.setOnFocusChangeListener((view, focused) -> refreshButtons());
 
             BoundedScrollView scroller = new BoundedScrollView(activity, maxHeight);
             scroller.setVerticalScrollBarEnabled(false);
@@ -330,6 +333,9 @@ public final class Bbos6PopupButtonList {
                 }
             }
             refreshButtons();
+            // Containers own navigation; selected buttons retain our BBOS6
+            // gradient without Android drawing a whole-panel focus overlay.
+            Bbos6FocusPolicy.forManagedContainers(panel);
             setContentView(panel);
 
             Window window = getWindow();
@@ -545,7 +551,8 @@ public final class Bbos6PopupButtonList {
         private void refreshButtons() {
             for (int i = 0; i < buttons.size(); i++) {
                 TextView button = buttons.get(i);
-                boolean selected = i == selection && actions.get(i).enabled;
+                boolean selected = i == selection && actions.get(i).enabled
+                        && panel.hasFocus();
                 button.setBackground(buttonBackground(activity, selected));
                 button.setTextColor(selected ? Color.WHITE : 0xff242629);
                 // A flat native drawable avoids double shadows and black rims.
