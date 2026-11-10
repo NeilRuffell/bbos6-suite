@@ -69,6 +69,9 @@ The reusable, app-neutral library lives in
 - Other shared BBOS6 UI changes belong in this library, rather than a
   page-specific visual fork.
 - Preserve touch and DPAD/trackpad navigation semantics.
+- Use `Bbos6EmptyStateView` for optional heading/text/artwork in empty
+  content areas; keep it outside the selectable list adapter. The helper
+  must not invent imagery, choose empty-data conditions, or affect focus.
 - Keep app-specific actions, data queries, and permissions in the caller.
 - Build this as a Gradle Android library project inside the consuming app.
 

@@ -12,8 +12,28 @@ This is the **canonical shared dependency** of
 | `AGENTS.md` | Required AI / contributor workflow |
 | `tools/validate_icon_index.py` | Basic index consistency check |
 
-The shared library contains the BBOS6 context menu and read-only Properties
-popup. App-specific actions and data loading are never implemented in it.
+The shared library contains the BBOS6 context menu, read-only Properties
+popup, and the app-neutral `Bbos6EmptyStateView`. App-specific actions,
+messages, selection/visibility conditions and data loading never live here.
+
+### Empty-state presentation
+
+`Bbos6EmptyStateView` is a non-interactive `LinearLayout` for an empty
+content region. The caller controls when it is visible and supplies a heading,
+optional supporting text, and optionally a drawable via `setArtwork(Drawable)`
+or `setArtworkResource(int)`. The default is **no artwork**; no placeholder
+assets are generated or inferred. A null or zero artwork clears the image.
+
+Place it outside a `ListView` adapter, preferably inside the list's host
+container or in a distinct content panel. The empty state does **not** add a
+list item, become focusable/selectable, handle DPAD/trackpad events or
+change the host's scrolling and selection logic. Layout bounds and the
+conditions for displaying it are application-owned.
+
+Music's empty Playlists screen opts in to original `354.png` artwork, explicitly
+selected by the project owner. The asset remains unmodified under `icons/`;
+its verified mapping is recorded in the canonical `icon-index.csv`. Other
+empty-state consumers do not receive that artwork automatically.
 
 ## Consumer integration
 
