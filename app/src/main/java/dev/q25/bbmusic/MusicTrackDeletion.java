@@ -97,6 +97,9 @@ final class MusicTrackDeletion {
                     }
                 }
                 if (!deleted.isEmpty()) {
+                    // This also runs if the Activity was destroyed while the
+                    // confirmed delete operation was completing.
+                    MusicPlaybackRetention.forgetDeleted(context, deleted);
                     ArrayList<String> uris = new ArrayList<>(deleted);
                     for (int i = 0; i < uris.size(); i += 400) {
                         List<String> batch = uris.subList(i,
