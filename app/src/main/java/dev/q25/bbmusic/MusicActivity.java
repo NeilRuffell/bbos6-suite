@@ -109,6 +109,7 @@ public final class MusicActivity extends Activity {
     private MusicTrackDeletion trackDeletion;
     private DeleteRequest pendingDelete;
     private boolean deletingTracks;
+    private int deleteConfirmationSerial;
     private Dialog propertiesDialog;
     private Dialog contextMenuDialog;
     private int propertiesRequestSerial;
@@ -717,15 +718,33 @@ public final class MusicActivity extends Activity {
         }
         DeleteRequest request = new DeleteRequest(currentPage,
                 new ArrayList<>(selected.values()), description);
-        int count = request.songs.size();
-        String noun = count == 1 ? "song" : "songs";
+        final int confirmation = ++deleteConfirmationSerial;
+        if (row.kind == ROW_SONG) {
+            // The indexed title may differ from the filename. Read the
+            // provider's actual COLUMN_DISPLAY_NAME on the worker thread.
+            trackDeletion.loadDisplayName(request.songs.get(0), filename -> {
+                if (confirmation != deleteConfirmationSerial
+                        || isFinishing() || isDestroyed() || nowPlayingVisible
+                        || currentPage != request.page
+                        || !visibleRows.contains(row)) return;
+                showDeleteConfirmation(request,
+                        "Are you sure you want to delete "
+                                + (filename == null ? "this track" : filename)
+                                + " permanently from storage?");
+            });
+        } else {
+            int count = request.songs.size();
+            showDeleteConfirmation(request,
+                    "Are you sure you want to delete all " + count
+                            + (count == 1 ? " song" : " songs")
+                            + " from " + description
+                            + " permanently from storage?");
+        }
+    }
+
+    private void showDeleteConfirmation(DeleteRequest request, String message) {
         new AlertDialog.Builder(this)
-                .setTitle("Delete " + count + " " + noun + "?")
-                .setMessage("Permanently delete " + count + " " + noun
-                        + " from " + description + "?\n\n"
-                        + "The audio files will be deleted from storage, "
-                        + "not just removed from the Music library. "
-                        + "This cannot be undone.")
+                .setMessage(message)
                 .setNegativeButton("Cancel", null)
                 .setPositiveButton("Delete",
                         (dialog, which) -> authorizeAndDelete(request))
@@ -1946,6 +1965,7 @@ public final class MusicActivity extends Activity {
     protected void onStop() {
         trackpadPress.cancel();
         propertiesRequestSerial++;
+        deleteConfirmationSerial++;
         if (contextMenuDialog != null) {
             contextMenuDialog.dismiss();
             contextMenuDialog = null;
