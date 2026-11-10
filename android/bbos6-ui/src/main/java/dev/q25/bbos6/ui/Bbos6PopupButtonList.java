@@ -456,7 +456,7 @@ public final class Bbos6PopupButtonList {
                 boolean selected = i == selection && actions.get(i).enabled;
                 button.setBackground(buttonBackground(activity, selected));
                 button.setTextColor(selected ? Color.WHITE : 0xff242629);
-                button.setElevation(dp(activity, selected ? 2 : 1));
+                // A flat native drawable avoids double shadows and black rims.
             }
         }
 
@@ -534,25 +534,23 @@ public final class Bbos6PopupButtonList {
         }
     }
 
+    /**
+     * One native gradient face per button. The BB9900 screenshot shows a
+     * slender outer edge and a largely uniform lower face: there is no
+     * separate black underlay, inset shadow, or elevated button surface.
+     */
     private static Drawable buttonBackground(Context context, boolean selected) {
-        GradientDrawable shadow = new GradientDrawable();
-        shadow.setColor(0xff0f1114);
-        shadow.setCornerRadius(dp(context, BUTTON_CORNER_DP));
-
-        GradientDrawable face;
         if (selected) {
-            // Identical colors and border to the existing shared context menu.
-            face = Bbos6SelectionBackground.blue(context, BUTTON_CORNER_DP);
-        } else {
-            face = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                    new int[]{0xffe5e7e9, 0xffc6c8ca, 0xffb4b6ba});
-            face.setCornerRadius(dp(context, BUTTON_CORNER_DP));
-            face.setStroke(Math.max(1, dp(context, 1)), 0xff8d9197);
+            return Bbos6SelectionBackground.popupButtonBlue(
+                    context, BUTTON_CORNER_DP);
         }
-        LayerDrawable layered = new LayerDrawable(new Drawable[]{shadow, face});
-        layered.setLayerInset(1, dp(context, 1), dp(context, 1),
-                dp(context, 1), dp(context, 3));
-        return layered;
+        GradientDrawable face = new GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{0xffd8d8d9, 0xffcccdcf, 0xffafb1b4,
+                        0xffafb1b4, 0xffafb1b4});
+        face.setCornerRadius(dp(context, BUTTON_CORNER_DP));
+        face.setStroke(1, 0xff959aa2);
+        return face;
     }
 
     private static Drawable panelBackground(Context context) {
