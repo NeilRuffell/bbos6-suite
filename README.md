@@ -1202,6 +1202,10 @@ or opacity.
 `MusicNowPlayingView` applies it once after building its view hierarchy;
 `Bbos6ContextMenu`, `Bbos6PopupButtonList` (including text-to-buttons
 navigation), and `Bbos6PropertiesPopup` apply it in the shared library.
+The shared button popup also displays a blue button **only while its
+button-focus container is focused**. Moving into the playlist name's native
+text field turns all buttons silver without losing the remembered selection;
+moving back to the horizontal buttons restores the selected face.
 Test touch and trackpad for each affected control on the Q25 before merging.
 
 ## Playlists (Room + Media3 + M3U8)
