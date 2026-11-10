@@ -23,7 +23,6 @@ import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.window.OnBackInvokedCallback;
 import android.window.OnBackInvokedDispatcher;
-import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -32,6 +31,7 @@ import android.widget.Toast;
 import dev.q25.bbos6.ui.Bbos6ContextMenu;
 import dev.q25.bbos6.ui.Bbos6ContextMenuItem;
 import dev.q25.bbos6.ui.Bbos6PopupButtonList;
+import dev.q25.bbos6.ui.Bbos6TextField;
 import dev.q25.bbos6.ui.Bbos6EmptyStateView;
 import dev.q25.bbos6.ui.Bbos6PropertiesPopup;
 
@@ -104,7 +104,7 @@ public final class MusicActivity extends Activity {
     private Bbos6EmptyStateView emptyState;
     private LinearLayout libraryShell;
     private MusicAlbumHeaderView albumHeader;
-    private EditText searchInput;
+    private Bbos6TextField searchInput;
     private MusicSearchBarView searchBar;
     private TextView noSearchResults;
     private Page rootPage;
@@ -407,7 +407,7 @@ public final class MusicActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 dp(MusicAlbumHeaderView.heightDp())));
 
-        searchInput = new EditText(this);
+        searchInput = new Bbos6TextField(this);
         searchInput.setSingleLine(true);
         searchInput.setTextSize(16);
         searchInput.setInputType(InputType.TYPE_CLASS_TEXT
@@ -425,8 +425,8 @@ public final class MusicActivity extends Activity {
                 if (searchOpen) updateSearchResults();
             }
         });
-        // BBOS6 visual chrome around the same native search input. The
-        // EditText, its TextWatcher and all keyboard logic remain intact.
+        // The shared text field owns its BBOS6 face; this panel owns only
+        // the charcoal search chrome. Native editing/search logic is unchanged.
         searchBar = new MusicSearchBarView(this, searchInput);
         searchBar.setVisibility(View.GONE);
         libraryShell.addView(searchBar, new LinearLayout.LayoutParams(

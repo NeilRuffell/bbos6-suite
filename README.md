@@ -548,15 +548,19 @@ The first printable character reveals a **54dp BBOS6 search bar** above
 the same existing `MusicListView`. Further typing filters results immediately.
 Shift and ALT characters work through Android key mapping.
 
-`MusicSearchBarView.java` provides screenshot-matched search chrome while
-reusing the existing native `EditText` and input handler:
+`MusicSearchBarView.java` now owns only the outer search panel; the canonical
+shared `Bbos6TextField` owns the **same original beveled white input face**
+in both Music search and the playlist New/Rename popup. Each extends Android's
+native `EditText` behavior, retaining the existing input handler and cursor,
+selection, keyboard, clipboard, and IME. This reuses one renderer rather than
+duplicating a drawable in Music and the shared popup:
 
 - **1dp top separator:** `#5A5D63` at the outer top edge.
 - **Panel gradient:** vertical, `#4B4E53` (top) to `#292C31` (bottom).
-- **Input field:** inset approximately 6dp horizontally and 6dp above,
+- **Shared input field:** inset approximately 6dp horizontally and 6dp above,
   white with a 5dp rounded dark outer rim and a gray-to-white inset
   highlight/shadow that reaches pure white within the first ~5dp.
-  Approximately 43dp tall.
+  Approximately 43dp tall; its face is drawn only by `Bbos6TextField`.
 - **Typed text:** dark charcoal inside the white field, approximately
   12dp internal horizontal inset.
 - No hint or `Search` description appears; the Q25 physical keyboard
@@ -1226,8 +1230,10 @@ background workers; the native ListView and Media3 controller are reused.
   **Import Playlist** (existing native SAF document picker). It uses the
   shared `Bbos6PopupButtonList` helper without screen-specific button
   styling. The New Playlist and Rename playlist name fields now use the
-  same shared popup with native single-line `EditText` and horizontal
-  **Cancel** / **Save** buttons. Save reuses the existing Room playlist
+  same shared popup with the native-backed `Bbos6TextField` and horizontal
+  **Cancel** / **Save** buttons. The popup field is **30dp high**, exactly
+  matching its buttons; the search field retains its original dimensions.
+  Save reuses the existing Room playlist
   validation and create/rename logic; Cancel makes no changes. Saved
   playlists follow with entry counts. Tap a playlist to open it;
   long-press one to **Rename playlist** or **Delete playlist**.
