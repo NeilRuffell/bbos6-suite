@@ -53,3 +53,23 @@ navigation. Do not deploy or merge based on this increment alone.
 
 Neither helper has been wired into Music or any other consuming application.
 Pixel comparison and physical focus/touch behavior are not yet Q25-verified.
+
+## Context menu and action popup (draft implementation)
+
+- `Bbos6ContextMenuGrid` and `Bbos6ContextMenuDialog`: Compose
+  grouped grid, untinted caller-owned icons, selection gradients, disabled
+  actions, original DPAD skipping/edge rules, Enter/trackpad activation on
+  key release, and Back/Escape dismissal. The pure Kotlin movement rules
+  have JUnit tests.
+- `Bbos6PopupButtonPanel` and `Bbos6PopupButtonDialog`: title, message,
+  opt-in text entry, native Compose editable-field behavior, buttons that
+  measure from captions in a centered horizontal group, and keyboard
+  selection/accelerators. App callbacks remain caller-supplied, not encoded
+  in the shared library. The focus and shortcut policies have JUnit tests.
+- A shared internal window resolver supports the original context-menu
+  no-dim window and the 36% dim of the button popup.
+
+These new Compose helpers are not connected to any Music screen and have
+not yet been Q25 parity-tested. The legacy native Java helpers remain the
+runtime implementation until their equivalents are verified. No app logic
+or stored data was modified.
