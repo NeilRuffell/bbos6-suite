@@ -7,20 +7,21 @@ installation or change the existing local signing/update workflow.
 
 BB Music is an ordinary Android APK (`dev.q25.bbmusic`). It does not require
 BB UI, Vector, LSPosed, root, another player, a custom ROM or SystemUI access.
-It has its own Gradle project under `music-app/`.
+Its Gradle project lives at the root of this repository. The canonical BBOS6 assets and reusable Android UI widgets are pinned through the `assets/bbos6` Git submodule.
 
 ## Standard local Release workflow (same as TV-DV)
 
 Build and test the **release** APK on the Q25 before publishing:
 ```bash
-gradle -p music-app :app:assembleRelease
-adb -s 202512003630 install -r music-app/app/build/outputs/apk/release/app-release.apk
+git submodule update --init --recursive
+gradle :app:assembleRelease
+adb -s 202512003630 install -r app/build/outputs/apk/release/app-release.apk
 ```
 After Q25 approval, publish **the same APK** using GitHub CLI (no rebuild):
 ```bash
 gh release create "bb-music-$(date -u +%Y%m%d-%H%M%S)" \
-  "music-app/app/build/outputs/apk/release/app-release.apk#BBMusic.apk" \
-  --repo NeilRuffell/bb-ui --target "$(git rev-parse HEAD)" \
+  "app/build/outputs/apk/release/app-release.apk#BBMusic.apk" \
+  --repo NeilRuffell/bb-music --target "$(git rev-parse HEAD)" \
   --title "BB Music" --notes "Tested release APK for direct installation."
 ```
 Gradle handles APK signing using the same local Android debug identity across
@@ -256,10 +257,13 @@ after file changes or a full rescan.
 
 **Launcher icon:** The manifest references `@mipmap/ic_launcher`, a modern Android adaptive icon that scales the original BBOS6 `350.png` foreground (`@drawable/bbos6_menu_all_songs`) to the launcher viewport. The source is 65 × 65 pixels with only 39 × 46 pixels of visible artwork, which appeared undersized when assigned directly to `android:icon`. The adaptive resource fixes launcher sizing without replacing the original PNG or affecting the **All Songs** menu icon.
 
-**Canonical icon reference:** [`assets/bbos6/icon-index.csv`](../assets/bbos6/icon-index.csv).
-For every newly identified original BBOS6 icon, update that index in the
-same change. The repository-wide rule is documented in [`AGENTS.md`](../AGENTS.md).
-Do not rename original numbered PNGs or guess icon identities.
+**Canonical icon reference:** [`assets/bbos6/icon-index.csv`](assets/bbos6/icon-index.csv)
+in the pinned [`bbos6-shared`](https://github.com/NeilRuffell/bbos6-shared)
+submodule. Read [`AGENTS.md`](AGENTS.md) and the shared
+[`AGENTS.md`](assets/bbos6/AGENTS.md) before editing BBOS6 assets.
+For every newly verified original icon, update the index **in the shared
+repository**, push/review the shared commit, and advance this repository's
+submodule pin. Never create a second index or guess identifications.
 
 The first six home-menu rows now render the **original PNGs** from the
 repository-wide `assets/bbos6/icons/` collection. They were matched
@@ -280,7 +284,7 @@ OS 6 Music home menu supplied for this project:
 
 Android requires referenced PNGs to be present in application resource
 directories, so the exact original binary blobs are reused under
-`music-app/app/src/main/res/drawable-nodpi/`. No artwork is redrawn or
+`app/src/main/res/drawable-nodpi/`. No artwork is redrawn or
 modified. `MusicActivity.menuIconForRow` owns the menu-to-resource mapping;
 `MusicListView` uses its existing left image slot to draw the selected
 resource, so it does not introduce a second adapter or custom scrolling.
@@ -848,8 +852,7 @@ notification, including background playback. The Activity disconnects its
 controller on Stop, but does not stop the service. Standard Android media
 buttons and system controls can operate the MediaSession.
 
-**Status:** Playback retention and system resumption changes are committed
-on a feature branch; building and Q25 validation remain outstanding.
+**Implementation:** Playback retention and system resumption are included in the standalone Music source. Validate each release APK on Q25.
 The shade's original code is unchanged; this is a copied presentation,
 not a runtime dependency. Android's native playback resumption callback
 is implemented, and no separate playback mini-bar is added in the library.
@@ -858,39 +861,29 @@ is implemented, and no separate playback mini-bar is added in the library.
 Microsoft Graph authentication, cloud indexing and downloads are future
 features and are not required for local playback.
 
-## Share a non-debug APK with friends
+## Publish an approved release APK
 
-GitHub Actions automatically builds the standalone BB Music **release**
-APK when the release workflow or `music-app/app/build.gradle` changes on
-`master`. It uploads `BBMusic-<versionName>.apk` to
-[GitHub Releases](https://github.com/NeilRuffell/bb-ui/releases).
-There is **no Google Play dependency, manual signing-key setup, or GitHub
-secret setup**. The release is non-debuggable, zipaligned and signature-verified.
-All APKs must be signed for Android to install them, so the GitHub runner
-generates a temporary signing key automatically and discards it afterward.
+Build locally using the **release** task above, preserving
+`~/.android/debug.keystore` and the installed signing identity.
 
-**Tradeoff:** Each release has a different certificate. Android will not
-install a later APK over an earlier release (or over a debug build). To switch
-versions, uninstall BB Music first; this **deletes saved app data**, including
-the private music index and saved folder permissions. Re-select your music
-folders afterward. This simple distribution method is best for occasional
-personal sharing, not seamless in-place upgrades.
-
-For the next release, increase both `versionCode` and `versionName` in
-`music-app/app/build.gradle` and merge the change to `master`.
-A public GitHub Release for that version is then created automatically.
+After that exact APK passes Q25 testing and receives explicit approval,
+increment `versionCode` and `versionName` for each newly published release,
+then upload **the same file** to
+[`bb-music` releases](https://github.com/NeilRuffell/bb-music/releases)
+using the `gh release create` command above. Never automatically rebuild
+or sign a different APK, create ephemeral keys, uninstall, or clear app data.
 
 ## Build and test on Q25
 
 Requires the standalone Android SDK 35, JDK 17 and globally installed Gradle.
 
 ```sh
-cd ~/Projects/bb-ui
-git switch feat/standalone-bb-music
-git pull --ff-only
-cd music-app
-gradle :app:assembleDebug
-adb -s 202512003630 install -r app/build/outputs/apk/debug/app-debug.apk
+cd ~/Projects/bb-music
+git switch master
+git pull --ff-only origin master
+git submodule update --init --recursive
+gradle :app:assembleRelease
+adb -s 202512003630 install -r app/build/outputs/apk/release/app-release.apk
 ```
 
 1. Open BB Music > All Songs **before choosing any folders**. It must not
@@ -1117,14 +1110,13 @@ playback-resumption card.
 Build without uninstalling or clearing the existing app data:
 
 ```sh
-cd ~/Projects/bb-ui
+cd ~/Projects/bb-music
 git fetch origin
-git switch feat/music-playback-retention-system-resumption
+git switch master
 git pull --ff-only
-gradle -p music-app :app:assembleRelease
-adb -s 202512003630 install -r music-app/app/build/outputs/apk/release/app-release.apk
+git submodule update --init --recursive
+gradle :app:assembleRelease
+adb -s 202512003630 install -r app/build/outputs/apk/release/app-release.apk
 ```
 
-Do not merge to master or publish a GitHub Release until this exact APK
-has passed on-device validation and explicit approval. Retain the
-existing signing identity for updates.
+Do not publish an APK until that exact build has passed on-device validation and explicit approval. Retain the existing signing identity for updates.
