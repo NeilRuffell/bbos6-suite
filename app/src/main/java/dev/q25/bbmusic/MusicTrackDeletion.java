@@ -114,6 +114,11 @@ final class MusicTrackDeletion {
                 if (database != null) database.close();
             }
 
+            if (!deleted.isEmpty()) {
+                // Prune the Media3 service even if the Activity was closed,
+                // leaving the service playing in the background.
+                MusicPlaybackService.pruneDeletedDocuments(context, deleted);
+            }
             Result result = new Result(deleted, failed);
             main.post(() -> {
                 if (!closed) listener.onFinished(result);
