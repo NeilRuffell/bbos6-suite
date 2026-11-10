@@ -39,6 +39,8 @@ final class MusicListView extends ListView {
         int size();
         RowData rowAt(int position);
         void activate(int position);
+        void longPress(int position);
+        boolean supportsLongPress(int position);
     }
 
     /** Presentation values; deliberately independent of music categories. */
@@ -191,6 +193,15 @@ final class MusicListView extends ListView {
         setAdapter(adapter);
 
         setOnItemClickListener((parent, row, position, id) -> data.activate(position));
+        // Platform long-click detection shares the system touch timeout with
+        // the Q25 confirm-key handler. Consuming it prevents a tap on release.
+        setOnItemLongClickListener((parent, row, position, id) -> {
+            if (position < 0 || position >= data.size()
+                    || !data.rowAt(position).enabled
+                    || !data.supportsLongPress(position)) return false;
+            data.longPress(position);
+            return true;
+        });
         setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override public void onItemSelected(AdapterView<?> parent,
                     View row, int position, long id) {

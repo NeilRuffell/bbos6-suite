@@ -5,6 +5,8 @@ import android.os.Looper;
 import android.view.KeyEvent;
 import android.view.ViewConfiguration;
 
+import java.util.function.BooleanSupplier;
+
 /**
  * Independent port of the hardware confirm-key handler used by the BB UI
  * Quick Settings ListView: one short press on release, or one long press.
@@ -14,13 +16,20 @@ final class TrackpadPressHandler {
     private final TrackpadPressState state = new TrackpadPressState();
     private final Runnable click;
     private final Runnable longClick;
+    private final BooleanSupplier longPressEnabled;
     private final Runnable timeout;
 
-    TrackpadPressHandler(Runnable click, Runnable longClick) {
+    TrackpadPressHandler(Runnable click, Runnable longClick,
+            BooleanSupplier longPressEnabled) {
         this.click = click;
         this.longClick = longClick;
+        this.longPressEnabled = longPressEnabled;
         timeout = () -> {
-            if (state.fireLongPress()) this.longClick.run();
+            // Other Music controls remain ordinary click-only targets, even
+            // when the confirm button is held beyond the long-press timeout.
+            if (state.fireLongPress(this.longPressEnabled.getAsBoolean())) {
+                this.longClick.run();
+            }
         };
     }
 

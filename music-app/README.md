@@ -331,6 +331,78 @@ lifecycle and releases it when the Activity is destroyed.
 The current standalone implementation still does not depend on BB UI,
 Vector/LSPosed, a custom ROM, or another music app.
 
+### Track Properties (long press)
+
+Only a playable **track** row in the shared Music browser opens the reusable
+`Bbos6PropertiesPopup` overlay. Track rows are available under All Songs,
+Artists, Albums, Genres, Folders, and song-search results. A touchscreen hold
+or a held Q25 trackpad confirm uses the same existing eligible-row callback.
+Normal single presses still play/open tracks; no media control or Now Playing
+component acquires a long-press action. Album, Artist, Folder and Genre
+long presses remain registered but do not open Properties.
+
+`MusicTrackPropertiesReader` reads metadata asynchronously for the exact
+selected song's `content://` SAF document, checking that its source folder
+still has the user-selected persisted read grant both before and after the
+query. Only this one authorized document is queried, not MediaStore or
+unselected folders. The reader populates the shared, application-neutral
+property items; it never changes the song, selection, queue or files.
+
+Fields, when available:
+- **Path:** a logical storage location only when the External Storage
+  DocumentsProvider supplies a path-shaped document ID consistent with its
+  display name. Opaque SAF IDs and guessed `/storage/emulated/0` paths are
+  not presented as physical file paths.
+- **Size:** provider-reported byte count, formatted using Android's native
+  file-size formatter. Missing/invalid size is omitted.
+- **Type:** provider-reported `audio/*` MIME type, or "Audio File" for an
+  already-verified track when the provider has no usable audio MIME type.
+- **Created:** omitted: Android's standard SAF document projection has no
+  portable creation timestamp. Recorded/tagged dates are not repurposed.
+- **Last Modified:** optional provider-reported timestamp, formatted using
+  the system date/time settings. Missing or zero values are omitted.
+- **Title, Album, Artist:** existing indexed song metadata. Missing album
+  and synthetic "Unknown Artist" values are omitted.
+
+Missing fields are omitted instead of displaying fabricated placeholders.
+A failed provider query still permits known indexed track metadata.
+Slow asynchronous results are discarded after navigation, a new request,
+search changes or Activity stop. The popup is dismissed by Back and the
+underlying list and playback are not altered.
+
+### Shared long-press input
+
+BB Music uses the platform's long-press gesture handling for **music library
+entries only**. Touch and physical Q25 trackpad holds share the same Activity
+callback. Track holds open Properties; artist, album, genre and folder
+holds currently have no assigned action.
+
+- **Allowed rows:** playable songs/tracks; artist, album and genre group rows;
+  and folder rows, configured roots and subdirectories (including entries
+  opened via the Folders browser). These are checked centrally through
+  `MusicActivity.supportsRowLongPress()`.
+- **Excluded:** every home-menu shortcut, Now Playing (including its transport,
+  seek, artist/album metadata controls and Repeat/Shuffle), Settings options,
+  the folder Remove control, disabled entries, unavailable/unindexed files,
+  and other non-library controls.
+- **Touch:** the reusable `MusicListView` owns a native
+  `OnItemLongClickListener`, forwarding only eligible rows through the
+  existing `DataSource.longPress(position)` callback. Regular click behavior
+  is unchanged; the folder Remove child is not a long-press target.
+- **Trackpad:** the existing `TrackpadPressHandler` uses Android's
+  `ViewConfiguration.getLongPressTimeout()` and checks the selected
+  item's eligibility before dispatch. Ineligible controls still perform
+  their normal short-click action on release even after a long hold.
+  Eligible holds fire once and suppress the release click.
+  Pending holds are canceled on other keys, touch, focus loss and Activity stop.
+- **Actions:** playable track rows open the read-only BBOS6 Properties dialog.
+  Eligible artist, album, genre and folder holds remain unassigned.
+  Hardware long presses request Android native haptic feedback.
+
+Run `gradle -p music-app :app:testDebugUnitTest` for the
+press-state gating regression tests, then verify touchscreen and Q25
+trackpad behavior using a locally built APK before merging.
+
 ### Album detail header (BBOS6 Music)
 
 Opening an entry on the **Albums** page displays an 88dp-tall black
