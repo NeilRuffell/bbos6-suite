@@ -285,6 +285,8 @@ public final class Bbos6ContextMenu {
             }
             updateSelection();
 
+            // Prevent native focus painting over the custom tile selection.
+            Bbos6FocusPolicy.forManagedContainers(panel);
             setContentView(panel);
             Window window = getWindow();
             if (window != null) {
