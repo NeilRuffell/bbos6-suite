@@ -1131,7 +1131,7 @@ from v2 to v3**. `music_playlists` contains playlist names and IDs;
 `content://` SAF references and a fallback song title. Repeated songs are
 allowed and retain distinct entry IDs. The scanned music catalog remains
 the only source of playable tracks. No audio files are moved or copied and
-no new broad storage permission is required. Both databases are accessed on
+no new broad storage permission is required. Catalog and playlist tables are accessed on
 background workers; the native ListView and Media3 controller are reused.
 
 ### Interaction
