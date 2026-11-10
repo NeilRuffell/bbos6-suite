@@ -168,6 +168,41 @@ trees. Consuming applications should apply it to their own composite
 focus owners, such as the Music Now Playing root, rather than introduce
 screen-specific translucent overlays or duplicate focus flags.
 
+### BBOS6 focus and selection principles
+
+Our reusable widgets distinguish **focus** (which control currently accepts
+trackpad/keyboard input) from **selection** (the last chosen item/index).
+Only the currently focused interaction area displays an active blue
+selection. The saved index may remain unchanged while another control,
+such as a text field, is active. This prevents the confusing appearance of
+two simultaneously focused controls.
+
+The visual renderer must observe *actual* focus changes as well as
+selection changes. A text-entry popup follows this lifecycle:
+
+1. The native `EditText` is focused: buttons are silver, but their last
+   selected index is retained.
+2. Trackpad Down moves focus to the button container: the remembered
+   button turns blue.
+3. Trackpad Up or a touch on the text box returns focus to `EditText`:
+   the blue button becomes silver, with no change to saved selection.
+4. The next Down restores the same selected button. Activating Save/Cancel
+   still uses existing caller-owned business logic.
+
+Framework focus glow on a *custom-managed composite container* must not
+stack over its own BBOS6 focus rendering. `Bbos6FocusPolicy` suppresses
+only Android's automatic container decoration, not focus itself, native
+text input or accessibility semantics. **Never** fix this by drawing a
+transparent layer, darkening a screenshot, changing opacity, disabling all
+focus, or adding a screen-specific workaround.
+
+For new shared components, first identify the navigation focus owner,
+the remembered selection, and the one place where the visible selection
+is derived from both. Validate touch, Q25 trackpad and physical keyboard
+transitions between interaction areas in both directions. Application
+repositories should reuse the shared helper and keep data/action logic
+separate.
+
 ### Compact Bold 9900-inspired sizing
 
 Both `Bbos6PopupButtonList` and `Bbos6ContextMenu` use compact,
