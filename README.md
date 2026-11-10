@@ -383,11 +383,29 @@ and delete icons (`android.R.drawable.ic_menu_info_details` and
 Adding future actions or groups requires editing the Music caller's
 menu definition, not the shared renderer.
 
-### Native track and group deletion
+### Shared button-only confirmation dialogs
+
+Use the canonical `bbos6-shared` `Bbos6PopupButtonList` for simple app-owned
+confirmation/choice dialogs, rather than native Android AlertDialog buttons.
+`MusicActivity.showButtonConfirmation(...)` supplies the existing action-specific
+title, full explanatory message, labels and callback; the shared helper owns
+visuals and hardware/touch input. Cancel is the safe initial selection.
+
+The shared helper now handles **per-track and artist/album/genre file deletion**,
+**playlist deletion**, **removing a selected music folder**, and
+**Full rescan** confirmation. It changes no file-operation, playback,
+playlist-database, or SAF permission behavior. The **Android document-tree
+write-authorization picker stays native** (it cannot be replaced by a custom
+popup); text-entry dialogs and list-selection dialogs still use Android
+controls because they need inputs rather than only a button stack.
+
+### SAF track and group deletion
 
 Delete permanently removes the **actual audio documents** from selected
-music folders. The native confirmation uses **Delete** and **Cancel**
-buttons. For a track, it asks **"Are you sure you want to delete
+music folders. App-owned confirmations use the shared
+`Bbos6PopupButtonList`, with rounded silver/blue buttons, the original warning
+text and **Cancel initially highlighted**. For a track, it asks
+**"Are you sure you want to delete
 <filename> permanently from storage?"** using the document provider's
 `COLUMN_DISPLAY_NAME` (not the track-title metadata). If the provider does
 not supply a filename, it says "this track" rather than inventing one.
@@ -424,7 +442,11 @@ the group and the number of songs affected. Cancel changes nothing.
 - Deleting or removing a selected **folder configuration** in Settings is
   a different operation: it changes authorization and never deletes files.
 
-**Testing:** On the Q25, first verify a track with a disposable audio file,
+**Testing:** On the Q25, confirm Cancel/Back/Escape do not delete files,
+trackpad Up/Down changes only the highlighted popup button, Enter/trackpad
+confirms exactly once, and the existing warning text is visible without
+clipping. Preserve system SAF picker behavior when write permission is required.
+Then test a track with a disposable audio file,
 then test Artist/Album/Genre groups, cancellation, multi-folder write grants,
 partial failures, active playback and restart retention. Run the existing
 release APK build and install workflow; never uninstall or clear app data
