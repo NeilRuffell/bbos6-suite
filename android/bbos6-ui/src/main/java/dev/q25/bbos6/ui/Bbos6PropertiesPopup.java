@@ -144,6 +144,9 @@ public final class Bbos6PropertiesPopup {
         panel.addView(scroll, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
+        // The read-only scroll container is a composite, not a focus target
+        // that should receive Android's default full-panel highlight.
+        Bbos6FocusPolicy.forManagedContainers(panel);
         Dialog dialog = new Dialog(activity);
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
         dialog.setContentView(panel);
