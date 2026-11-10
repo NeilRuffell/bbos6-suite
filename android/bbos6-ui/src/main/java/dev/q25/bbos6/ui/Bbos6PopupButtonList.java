@@ -44,11 +44,11 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * Standalone BBOS6-inspired modal with a caption and vertical button stack.
+ * BBOS6-inspired modal with a caption, optional native text field and buttons.
  *
- * Based on a supplied BBOS6 reference: dark rounded rim, optional title icon,
- * beveled silver buttons, a blue selected button, rounded edges and a low
- * shadow. Only the selected blue face is shared with Bbos6ContextMenu.
+ * Based on supplied BBOS6 references: dark rounded rim, optional title icon,
+ * rounded silver buttons and a blue selected button. Popup button faces
+ * come from the shared renderer without artificial black shadows.
  * The caller supplies all labels, icons, IDs and actions. Nothing in this
  * helper opens an app screen or owns music, storage or other business logic.
  */
@@ -346,8 +346,10 @@ public final class Bbos6PopupButtonList {
                 }
                 if (input != null) {
                     input.requestFocus();
-                    shown.setSoftInputMode(
-                            WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+                    if (shown != null) {
+                        shown.setSoftInputMode(
+                                WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+                    }
                 } else {
                     panel.requestFocus();
                 }
