@@ -169,7 +169,7 @@ final class MusicPlaybackRetention {
                 clear(context);
                 return;
             }
-            int priorSurvivors = 0;
+            boolean[] kept = new boolean[before.length()];
             boolean currentRemoved = false;
             boolean changed = false;
             for (int i = 0; i < before.length(); i++) {
@@ -179,7 +179,7 @@ final class MusicPlaybackRetention {
                     if (i == oldIndex) currentRemoved = true;
                 } else {
                     remaining.put(item);
-                    if (i < oldIndex) priorSurvivors++;
+                    kept[i] = true;
                 }
             }
             if (!changed) return;
@@ -187,9 +187,7 @@ final class MusicPlaybackRetention {
                 clear(context);
                 return;
             }
-            int newIndex = currentRemoved
-                    ? Math.min(priorSurvivors, remaining.length() - 1)
-                    : priorSurvivors;
+            int newIndex = MusicDeletedQueueIndex.afterFiltering(oldIndex, kept);
             if (!preferences.edit()
                     .putString(QUEUE, remaining.toString())
                     .putInt(INDEX, newIndex)
