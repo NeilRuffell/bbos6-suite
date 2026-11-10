@@ -57,6 +57,11 @@ identified; do not create replacements.
 For Music, `MusicActivity.Page.setEmptyState` configures the display and
 `updateEmptyState()` positions it below existing playlist action rows.
 The underlying `MusicListView` retains scrolling/trackpad selection.
+The empty Playlists page uses verified original `354.png` from
+`bbos6-shared/icons/`, packaged unchanged as `bbos6_playlist_empty.png`,
+with its mapping recorded in the canonical shared `icon-index.csv`.
+Its **Add Playlist** list row is deliberately inert; previous Create/Import
+menu entries are not displayed, though underlying code remains available.
 Changing this shared helper requires the standard shared-first PR and
 consumer-submodule workflow.
 
