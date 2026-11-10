@@ -58,7 +58,10 @@ with a `#5A5D63` top rule) is independent outer chrome, not part of the
 text field. Music retains its `MusicSearchBarView` as this outer panel, and
 uses `Bbos6TextField` inside it. The existing shared
 `Bbos6PopupButtonList` also uses the same field for its text-entry mode
-without showing the search panel.
+without showing the search panel. The popup owns a **30dp input height**
+equal to `BUTTON_HEIGHT_DP` (its buttons are also 30dp), overriding the
+field's standard 43dp minimum only for that popup input instance.
+The Music search field keeps its existing height.
 
 This extracts existing verified styling instead of creating a second
 visual approximation. It does not remove Android text-editing APIs: it
