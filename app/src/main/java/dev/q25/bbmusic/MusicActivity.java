@@ -271,7 +271,7 @@ public final class MusicActivity extends Activity {
     }
 
     private static final class Page {
-        final String name;
+        String name;
         final List<MenuRow> rows;
         // Only a page opened directly from an album group has this header.
         final MenuRow albumGroup;
@@ -494,8 +494,7 @@ public final class MusicActivity extends Activity {
                 row.title, subtitle,
                 row.kind != ROW_MESSAGE && row.kind != ROW_SETTINGS_HEADER
                         && row.kind != ROW_BROWSER_FILE
-                        && row.kind != ROW_BROWSER_UNAVAILABLE
-                        && row.kind != ROW_PLAYLIST_MISSING,
+                        && row.kind != ROW_BROWSER_UNAVAILABLE,
                 hasArtwork, albumFallback,
                 menuIconForRow(row), trackNumber, duration,
                 albumKey == null ? null : "album:" + albumKey,
@@ -653,6 +652,7 @@ public final class MusicActivity extends Activity {
             case ROW_GROUP:
                 return row.groupCategory >= 1 && row.groupCategory <= 3;
             case ROW_PLAYLIST:
+            case ROW_PLAYLIST_MISSING:
                 return true;
             case ROW_FOLDER:
             case ROW_BROWSER_ROOT:
@@ -681,7 +681,8 @@ public final class MusicActivity extends Activity {
         // share the same BBOS6 menu renderer and confirmation pipeline.
         if (row.kind == ROW_SONG && row.song == null) return;
         if (row.kind != ROW_SONG && row.kind != ROW_GROUP
-                && row.kind != ROW_PLAYLIST) return;
+                && row.kind != ROW_PLAYLIST
+                && row.kind != ROW_PLAYLIST_MISSING) return;
         showMusicContextMenu(row);
     }
 
@@ -703,6 +704,16 @@ public final class MusicActivity extends Activity {
                     Bbos6ContextMenuItem.resource("playlist-delete",
                             "Delete playlist", android.R.drawable.ic_menu_delete));
             menu.initiallySelected("playlist-rename");
+        } else if (row.kind == ROW_PLAYLIST_MISSING) {
+            menu.addGroup(
+                    Bbos6ContextMenuItem.resource("move-up",
+                            "Move up", android.R.drawable.arrow_up_float),
+                    Bbos6ContextMenuItem.resource("move-down",
+                            "Move down", android.R.drawable.arrow_down_float),
+                    Bbos6ContextMenuItem.resource("remove-from-playlist",
+                            "Remove from playlist",
+                            android.R.drawable.ic_menu_close_clear_cancel));
+            menu.initiallySelected("remove-from-playlist");
         } else if (row.kind == ROW_SONG) {
             menu.addGroup(
                     Bbos6ContextMenuItem.resource("properties",
@@ -1102,6 +1113,8 @@ public final class MusicActivity extends Activity {
             openPlaylist(row);
         } else if (row.kind == ROW_PLAYLIST_ACTION) {
             activatePlaylistAction(row);
+        } else if (row.kind == ROW_PLAYLIST_MISSING) {
+            playlistNotice("Track unavailable in selected music folders");
         } else if (row.kind == ROW_SONG) {
             if (currentPage.playlistPickerId >= 0L) {
                 addSongsToPlaylist(currentPage.playlistPickerId,
@@ -1290,6 +1303,9 @@ public final class MusicActivity extends Activity {
                             if (failure != null || !Boolean.TRUE.equals(changed)) {
                                 playlistFailure(failure);
                             } else {
+                                if (currentPage.playlistId == id) {
+                                    currentPage.name = name.trim();
+                                }
                                 playlistNotice("Playlist renamed");
                                 playlistChanged();
                             }
