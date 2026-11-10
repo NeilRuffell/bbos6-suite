@@ -122,12 +122,10 @@ adb -s 202512003630 shell am crash com.android.systemui
 The device serial above belongs to the original Q25 development setup;
 substitute the serial shown by `adb devices` on other devices.
 
-**Dependency access:** `bb-ui` is public, while its `bbos6-shared` submodule
-is private. Recursive cloning requires GitHub access to both repositories.
-Public users without shared-repository permission cannot initialize the
-submodule. Do not assume public cloneability until visibility/access is
-resolved by the repository owner. For an existing checkout, use
-`git submodule update --init --recursive` when authorized.
+**Owner setup:** The `bbos6-shared` submodule is intentionally private.
+Use the owner's authenticated GitHub account for
+`git submodule update --init --recursive`. No public distribution of
+the shared library is required for current development.
 
 To return to the earlier standalone BB shade (without changing unrelated
 features):
