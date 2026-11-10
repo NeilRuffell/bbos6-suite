@@ -310,21 +310,19 @@ final class MusicPlaybackClient {
         if (deletedIds == null || deletedIds.isEmpty()) return;
         if (pendingItems != null) {
             ArrayList<MediaItem> remaining = new ArrayList<>();
-            int newIndex = 0;
+            boolean[] kept = new boolean[pendingItems.size()];
             for (int i = 0; i < pendingItems.size(); i++) {
                 MediaItem item = pendingItems.get(i);
-                if (deletedIds.contains(item.mediaId)) {
-                } else {
-                    if (i < pendingIndex) newIndex++;
-                    remaining.add(item);
-                }
+                kept[i] = !deletedIds.contains(item.mediaId);
+                if (kept[i]) remaining.add(item);
             }
             if (remaining.size() != pendingItems.size()) {
                 if (remaining.isEmpty()) {
                     pendingItems = null;
                 } else {
+                    pendingIndex = MusicDeletedQueueIndex.afterFiltering(
+                            pendingIndex, kept);
                     pendingItems = remaining;
-                    pendingIndex = Math.min(newIndex, remaining.size() - 1);
                 }
             }
         }
