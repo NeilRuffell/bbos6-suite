@@ -516,12 +516,7 @@ public final class Bbos6ContextMenu {
     }
 
     private static Drawable blueSelection(Activity context) {
-        GradientDrawable face = new GradientDrawable(
-                GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{0xff138fe4, 0xff0974cb, 0xff0750a8});
-        face.setCornerRadius(dp(context, 7));
-        face.setStroke(Math.max(1, dp(context, 1)), 0xff2368a0);
-        return face;
+        return Bbos6SelectionBackground.blue(context);
     }
 
     private static Drawable panelBackground(Activity context) {
