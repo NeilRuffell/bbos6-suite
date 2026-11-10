@@ -1,4 +1,4 @@
-# Reusable BBOS6 Properties popup (Android)
+# Reusable BBOS6 native Android popup helpers
 
 A standalone, pure-Java/native-Android UI library. No Media3, storage,
 music metadata, BB UI Vector/LSPosed or third-party dependency.
@@ -7,11 +7,21 @@ It is currently consumed by the independent `music-app/` Gradle build; other
 Android applications may include the module from their own `settings.gradle`
 and add an `implementation project(':bbos6-ui')` dependency.
 
-## Component
+## Components
 
-- `dev.q25.bbos6.ui.Bbos6PropertiesPopup` — a native `Dialog` and builder.
-- `dev.q25.bbos6.ui.Bbos6PropertiesItem` — immutable data for one text,
-  inline-property, right-aligned-property or vertical-spacing row.
+- `dev.q25.bbos6.ui.Bbos6PropertiesPopup` — a native read-only `Dialog`
+  with independent property rows and value alignment.
+- `dev.q25.bbos6.ui.Bbos6PropertiesItem` — immutable metadata display rows.
+- `dev.q25.bbos6.ui.Bbos6ContextMenu` — native interactive BBOS6-style
+  grouped icon grid with rounded blue selection, touch and trackpad navigation.
+- `dev.q25.bbos6.ui.Bbos6ContextMenuItem` — immutable caller-defined action
+  ID, label, icon source and enabled state.
+
+**Context/action menu:** see [CONTEXT_MENU.md](CONTEXT_MENU.md) for screenshot
+measurements, visual constants, example usage, keyboard controls and tests.
+
+**Properties/info popup:** the remaining details on this page apply to the
+existing read-only Properties helper.
 
 ### Presentation contract
 
