@@ -1304,3 +1304,27 @@ sequential/shuffle playback, process restart persistence, unavailable files
 after removing a folder and reauthorizing it, plus M3U8 roundtrip using
 primary-storage audio. Test cancellation and unsupported SAF document providers.
 Only merge/publish after actual Q25 results and explicit approval.
+
+## Kotlin + Jetpack Compose migration (feature branch, not merged)
+
+The UI migration retains `dev.q25.bbmusic`, the app's existing upgrade
+signing identity, Room database, SAF folder grants, playlists, Media3 service,
+playback rules, adapter navigation and Q25 keyboard/trackpad interactions.
+
+The first active integration replaces the *presentation only*
+`MusicSettingsHeaderView` implementation with a Kotlin `ComposeView`.
+It renders the canonical `Bbos6SectionHeader` from the shared submodule.
+The old `MusicListView` adapter continues to create the same class and call
+`bind(title)`; its non-selectable group-row type and focus rules are intact.
+
+Temporary mixing of Kotlin Compose presentation with the unchanged legacy
+Java application runtime is confined to this unmerged migration branch.
+It is **not** the final all-Compose Music architecture. Do not remove the
+existing application/renderer until each replacement is verified on Q25.
+Build and test the release APK in place without uninstalling or clearing data,
+and never merge until explicitly approved.
+
+The existing `MusicActivity` now inherits AndroidX `ComponentActivity` on
+this feature branch, solely to provide Compose-required lifecycle and saved
+state owners to the existing View tree. Its playback, storage, navigation,
+keyboard handling, and lifecycle method bodies are otherwise unchanged.

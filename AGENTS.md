@@ -209,3 +209,21 @@ Read [`README.md`](README.md) for detailed Music architecture and test cases.
 The old `NeilRuffell/bb-ui/music-app/` path is legacy history.
 All new Music code, tests, documentation and releases belong **here**.
 `NeilRuffell/bb-ui` owns only its own Android system UI work.
+
+## Compose UI migration work-in-progress
+
+The long-term native UI standard is Kotlin + Jetpack Compose, with reusable
+BBOS6 presentation implemented **only** in `bbos6-shared`. During the staged
+migration, existing Java business logic and View screens remain operational
+until exact behavior parity is established. No playback, SAF, catalog,
+playlist, Room, session or navigation logic may be modified to facilitate a
+visual port. The first Compose-backed consumer is the existing
+`MusicSettingsHeaderView` adapter presentation, which must remain a
+non-selectable 36dp row and preserve `bind(title)`. See the migration section
+of README. App branch Gitlinks pin a specific shared feature commit for
+testing, and neither repository may be merged without explicit approval.
+
+ComposeView hosts in a legacy Activity require AndroidX view-tree lifecycle
+and saved-state owners. The Music feature branch uses `ComponentActivity`
+for that framework integration only; do not modify existing Activity method
+bodies or application logic as part of this step.

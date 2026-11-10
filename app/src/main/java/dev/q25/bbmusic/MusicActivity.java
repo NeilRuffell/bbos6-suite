@@ -35,6 +35,7 @@ import dev.q25.bbos6.ui.Bbos6TextField;
 import dev.q25.bbos6.ui.Bbos6EmptyStateView;
 import dev.q25.bbos6.ui.Bbos6PropertiesPopup;
 
+import androidx.activity.ComponentActivity;
 import androidx.media3.common.MediaItem;
 import androidx.media3.session.MediaController;
 
@@ -63,7 +64,7 @@ import java.util.function.Consumer;
  * Symfonium is never required or started.
  * The UI uses the same recycled ListView row on every browse page.
  */
-public final class MusicActivity extends Activity {
+public final class MusicActivity extends ComponentActivity {
     private static final String TAG = "BBMusic";
     private static final int ADD_FOLDER_REQUEST = 6102;
     private static final int AUTHORIZE_DELETE_FOLDER_REQUEST = 6103;

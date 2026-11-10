@@ -1,4 +1,8 @@
-plugins { id 'com.android.application' }
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android' version '2.4.21'
+    id 'org.jetbrains.kotlin.plugin.compose' version '2.4.21'
+}
 
 android {
     namespace 'dev.q25.bbmusic'
@@ -22,12 +26,27 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+    buildFeatures {
+        compose true
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+    }
 }
 
 // An ordinary Android application: no BB UI module dependency, no
 // Xposed/Vector, SystemUI APIs, root, privileged permissions, or audio engine.
 
 dependencies {
+    // Shared BBOS6 Compose UI: application presentation, not playback logic.
+    implementation platform('androidx.compose:compose-bom:2025.04.01')
+    implementation 'androidx.compose.ui:ui'
+    implementation 'androidx.compose.foundation:foundation'
+    // Supplies LifecycleOwner and SavedStateRegistryOwner to Compose-backed rows.
+    implementation 'androidx.activity:activity:1.10.1'
     // Native, reusable BBOS6 property popup; no music-specific code.
     implementation project(':bbos6-ui')
 
