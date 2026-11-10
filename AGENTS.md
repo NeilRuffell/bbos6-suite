@@ -44,6 +44,21 @@ and user-authorized SAF tree boundaries.
 
 Never require user-entered commands for in-app functionality.
 
+## BBOS6 managed focus
+
+For composite BBOS6 screens owning their own trackpad highlight, call
+`Bbos6FocusPolicy.forManagedContainers(root)` after assembling child views.
+This uses Android's built-in API 26+ default-focus-highlight policy on
+containers, without changing focusability, input handling, or custom BBOS6
+selection drawing. Do not imitate this with translucent color layers or
+global disabling of focus decoration on interactive leaf controls.
+
+`MusicNowPlayingView` uses the shared policy on its trackpad focus owner.
+The shared context menu, properties popup, and button-list popup apply
+the same policy internally. Leave native `EditText` editing/focus intact.
+When modifying shared policy, change `bbos6-shared` first, pin the
+consumer submodule to its approved commit, and verify Q25 trackpad/touch.
+
 ## Reusable empty-state UI
 
 Use `Bbos6EmptyStateView` from the shared `bbos6-ui` module for title,
