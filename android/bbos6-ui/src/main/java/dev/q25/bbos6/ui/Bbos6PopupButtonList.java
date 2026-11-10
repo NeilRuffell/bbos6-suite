@@ -330,6 +330,9 @@ public final class Bbos6PopupButtonList {
                 }
             }
             refreshButtons();
+            // Containers own navigation; selected buttons retain our BBOS6
+            // gradient without Android drawing a whole-panel focus overlay.
+            Bbos6FocusPolicy.forManagedContainers(panel);
             setContentView(panel);
 
             Window window = getWindow();
