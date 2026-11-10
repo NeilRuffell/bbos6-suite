@@ -89,3 +89,18 @@ or stored data was modified.
 View consumers; the new Compose API no longer requires them. Music code and
 persistent application data are unchanged. Runtime parity awaits Compose
 screen integration and on-device testing.
+
+## First active Music presentation migration (feature branches only)
+
+The shared `Bbos6SectionHeader` reproduces the existing Music Settings
+36dp, non-selectable header without introducing a new app-specific renderer.
+In the consumer feature branch, only the existing
+`MusicSettingsHeaderView` presentation shell is replaced by a Kotlin
+`ComposeView` wrapper. Its `bind(title)` contract, height and non-focusable
+list-row behavior remain intact; Music list adapters, navigation, playback,
+metadata and stored data are not changed. This is a transitional compatibility
+step, not the final all-Compose Music screen architecture.
+
+A local Gradle build and on-device Settings list/DPAD/touch comparison are
+required before accepting the Music branch. Do not merge either PR before
+explicit approval.

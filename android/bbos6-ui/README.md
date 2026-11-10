@@ -121,3 +121,11 @@ release-APK/approval workflow; never replace the installed signing identity.
 See [COMPOSE_MIGRATION.md](COMPOSE_MIGRATION.md) for the Kotlin + Jetpack Compose
 presentation migration. The existing Java View APIs remain the runtime path
 until full parity and Q25 verification; no Music logic has been changed.
+
+### Compose list section headings
+
+`Bbos6SectionHeader(title)` is a 36dp non-focusable, non-interactive
+section heading with the existing BlackBerry-style grey vertical gradient,
+1dp rim, bold 14sp title, and 16dp side insets. The shared renderer contains
+no list-selection state or Music-specific settings logic. Applications retain
+their own list/adapter rows and must mark headers non-selectable.
