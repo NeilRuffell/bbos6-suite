@@ -1390,3 +1390,27 @@ This batch requires Q25 regression testing of all Music library pages,
 row icon/cover sizing, fast scrolling/recycling, keyboard/trackpad selected
 gradient, long-press context menu, folder Remove touch, type-to-search,
 and Now Playing artist/album tap/DPAD and focus.
+
+
+## Now Playing four-panel and dynamic text Compose batch
+
+The mode header, half-radial artwork backdrop, seek strip and transport
+background are now drawn by the shared `Bbos6NowPlayingSurface` using a
+non-focusable, non-clickable shared Compose host placed **behind** the
+existing native interactive controls. All four panels retain their former
+heights, layout containers and children. Native controls, SeekBar rail,
+thumb, time calculations, transportation icons, selections and separators
+remain unchanged.
+
+Four independent Now Playing text fields (queue count, song title, elapsed
+and remaining times) now use Kotlin `MusicPlayerTextView`, which delegates
+to the shared `Bbos6NowPlayingText`. The previous Java-facing `setText`
+update contract and all formatting computations remain unchanged.
+
+No Java player `render`, `renderFocus`, `renderProgress`, artwork-loader,
+trackpad/DPAD, ticker, or action methods were changed. The old drawable
+helpers are retained for later parity comparison, not deleted.
+
+Test the Now Playing panel gradients, text alignment, song-title wrapping,
+long times, seek-thumb travel and time accuracy, transport button touch and
+DPAD, Repeat/Shuffle icons, media-action behavior and focus colors on Q25.

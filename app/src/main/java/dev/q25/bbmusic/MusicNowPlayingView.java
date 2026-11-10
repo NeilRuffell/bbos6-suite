@@ -8,7 +8,6 @@ import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
-import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
@@ -25,6 +24,9 @@ import androidx.media3.common.Player;
 import androidx.media3.session.MediaController;
 
 import dev.q25.bbos6.ui.Bbos6FocusPolicy;
+import dev.q25.bbos6.ui.compose.Bbos6NowPlayingPanel;
+import dev.q25.bbos6.ui.compose.Bbos6NowPlayingSurfaceView;
+import dev.q25.bbos6.ui.compose.Bbos6NowPlayingTextAlignment;
 
 /**
  * Standalone presentation port of the BB UI shade's expanded Now Playing:
@@ -56,13 +58,13 @@ final class MusicNowPlayingView extends LinearLayout {
     private final MusicArtworkLoader artworkLoader;
     private final ImageView modeShuffle;
     private final ImageView modeRepeat;
-    private final TextView queuePosition;
+    private final MusicPlayerTextView queuePosition;
     private final ImageView artworkImage;
-    private final TextView trackTitle;
+    private final MusicPlayerTextView trackTitle;
     private final MusicBeveledTextLabel trackArtist;
     private final MusicBeveledTextLabel trackAlbum;
-    private final TextView elapsed;
-    private final TextView remaining;
+    private final MusicPlayerTextView elapsed;
+    private final MusicPlayerTextView remaining;
     private final SeekBar seekBar;
     private final LinearLayout transportRow;
     private final ImageView[] transportButtons = new ImageView[4];
@@ -95,12 +97,19 @@ final class MusicNowPlayingView extends LinearLayout {
         setFocusable(true);
         setFocusableInTouchMode(true);
 
+        // Four chrome panels render through the app-neutral shared Compose
+        // surfaces; Android Views on top keep original input and focus rules.
+        FrameLayout modePanel = new FrameLayout(context);
+        modePanel.addView(new Bbos6NowPlayingSurfaceView(
+                context, Bbos6NowPlayingPanel.MODE), new FrameLayout.LayoutParams(
+                LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
         LinearLayout modeHeader = new LinearLayout(context);
         modeHeader.setOrientation(HORIZONTAL);
         modeHeader.setGravity(Gravity.CENTER_VERTICAL);
         modeHeader.setPadding(0, 0, 0, 0);
-        modeHeader.setBackground(MusicPlayerChrome.modeHeaderBackground(context));
-        addView(modeHeader, new LayoutParams(LayoutParams.MATCH_PARENT,
+        modePanel.addView(modeHeader, new FrameLayout.LayoutParams(
+                LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+        addView(modePanel, new LayoutParams(LayoutParams.MATCH_PARENT,
                 dp(MusicPlayerChrome.MODE_HEADER_HEIGHT_DP)));
 
         // Repeat occupies the left-hand header slot formerly used by "Media".
@@ -120,9 +129,9 @@ final class MusicNowPlayingView extends LinearLayout {
 
         // Keep the count mathematically centered between equal-width buttons.
         // It is informational only and does not enter the trackpad focus order.
-        queuePosition = text("0 of 0", 14, Color.WHITE);
-        queuePosition.setGravity(Gravity.CENTER);
-        queuePosition.setSingleLine(true);
+        queuePosition = new MusicPlayerTextView(context, "0 of 0", 14f,
+                Color.WHITE, Bbos6NowPlayingTextAlignment.CENTER,
+                1, 0, true, true);
         modeHeader.addView(queuePosition, new LayoutParams(
                 0, LayoutParams.MATCH_PARENT, 1f));
 
@@ -144,7 +153,10 @@ final class MusicNowPlayingView extends LinearLayout {
         // mode header, seek strip and transport heights share the reference
         // proportions in MusicPlayerChrome.
         FrameLayout artStage = new FrameLayout(context);
-        artStage.setBackground(new HalfRadialGradientDrawable());
+        artStage.addView(new Bbos6NowPlayingSurfaceView(
+                context, Bbos6NowPlayingPanel.ARTWORK),
+                new FrameLayout.LayoutParams(
+                        LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
         addView(artStage, new LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f));
 
         LinearLayout artInfo = new LinearLayout(context);
@@ -176,11 +188,10 @@ final class MusicNowPlayingView extends LinearLayout {
         trackInfo.setClipToPadding(false);
         artInfo.addView(trackInfo, new LayoutParams(0, LayoutParams.MATCH_PARENT, 1f));
 
-        trackTitle = text("Now playing", 18, Color.WHITE);
         // Centre single- and multi-line titles in the same metadata column.
-        trackTitle.setGravity(Gravity.CENTER_HORIZONTAL);
-        trackTitle.setMaxLines(3);
-        trackTitle.setEllipsize(TextUtils.TruncateAt.END);
+        trackTitle = new MusicPlayerTextView(context, "Now playing", 18f,
+                Color.WHITE, Bbos6NowPlayingTextAlignment.CENTER,
+                3, 0, true, false);
         trackInfo.addView(trackTitle, new LayoutParams(
                 LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
 
@@ -210,15 +221,20 @@ final class MusicNowPlayingView extends LinearLayout {
         // Curve 9300 reference: time labels sit near the display edges.
         // The SeekBar owns its dead zones, not the entire seek row.
         seekRow.setPadding(dp(4), 0, dp(4), 0);
-        seekRow.setBackground(MusicPlayerChrome.seekBackground(context));
-        addView(seekRow, new LayoutParams(LayoutParams.MATCH_PARENT,
+        FrameLayout seekPanel = new FrameLayout(context);
+        seekPanel.addView(new Bbos6NowPlayingSurfaceView(
+                context, Bbos6NowPlayingPanel.SEEK),
+                new FrameLayout.LayoutParams(
+                        LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+        seekPanel.addView(seekRow, new FrameLayout.LayoutParams(
+                LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+        addView(seekPanel, new LayoutParams(LayoutParams.MATCH_PARENT,
                 dp(MusicPlayerChrome.SEEK_PANEL_HEIGHT_DP)));
 
-        elapsed = text("0:00", 14, 0xff99aab8);
-        elapsed.setGravity(Gravity.CENTER_VERTICAL);
         // Reserve just enough for the label; use WRAP_CONTENT for hour-long
         // tracks instead of a hard slot that can clip text.
-        elapsed.setMinWidth(dp(34));
+        elapsed = new MusicPlayerTextView(context, "0:00", 14f, 0xff99aab8,
+                Bbos6NowPlayingTextAlignment.START, 1, 34, false, true);
         seekRow.addView(elapsed, new LayoutParams(
                 LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT));
 
@@ -283,17 +299,22 @@ final class MusicNowPlayingView extends LinearLayout {
         seekParams.rightMargin = dp(2);
         seekRow.addView(seekBar, seekParams);
 
-        remaining = text("--:--", 14, 0xff99aab8);
-        remaining.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
-        remaining.setMinWidth(dp(42));
+        remaining = new MusicPlayerTextView(context, "--:--", 14f, 0xff99aab8,
+                Bbos6NowPlayingTextAlignment.END, 1, 42, false, true);
         seekRow.addView(remaining, new LayoutParams(
                 LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT));
 
         transportRow = new LinearLayout(context);
         transportRow.setGravity(Gravity.CENTER_VERTICAL);
         transportRow.setOrientation(HORIZONTAL);
-        transportRow.setBackground(MusicPlayerChrome.transportBackground());
-        addView(transportRow, new LayoutParams(LayoutParams.MATCH_PARENT,
+        FrameLayout transportPanel = new FrameLayout(context);
+        transportPanel.addView(new Bbos6NowPlayingSurfaceView(
+                context, Bbos6NowPlayingPanel.TRANSPORT),
+                new FrameLayout.LayoutParams(
+                        LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+        transportPanel.addView(transportRow, new FrameLayout.LayoutParams(
+                LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+        addView(transportPanel, new LayoutParams(LayoutParams.MATCH_PARENT,
                 dp(MusicPlayerChrome.TRANSPORT_HEIGHT_DP)));
 
         String[] descriptions = {"Previous", "Play or pause", "Stop", "Next"};
@@ -324,14 +345,6 @@ final class MusicNowPlayingView extends LinearLayout {
         Bbos6FocusPolicy.forManagedContainers(this);
         render();
         ticker.postDelayed(tick, 1000);
-    }
-
-    private TextView text(String value, float size, int color) {
-        TextView result = new TextView(getContext());
-        result.setText(value);
-        result.setTextSize(size);
-        result.setTextColor(color);
-        return result;
     }
 
     private int dp(float value) {

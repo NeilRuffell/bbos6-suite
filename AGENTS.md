@@ -255,3 +255,13 @@ controller. Keep native `Bbos6TextField` for search during transition;
 only the surrounding chrome is Compose. Now Playing must keep its existing
 zone/trackpad/touch listeners and call the same Java methods on
 `MusicBeveledTextLabel`. Follow the shared-first, pinned-gitlink PR workflow.
+
+### Compose Now Playing panel and text surfaces
+
+Shared `Bbos6NowPlayingSurface` owns only the original chrome panel
+appearances, via the non-focusable `Bbos6NowPlayingSurfaceView` behind native
+controls. The shared `Bbos6NowPlayingText` owns only text presentation and
+receives Music-calculated strings through `MusicPlayerTextView.setText`.
+Never move Music playback/ticker, media controls, seek policy, title/queue
+formatting, artwork permission checks or DPAD zone state into UI helpers.
+The old native chrome drawables remain available for pixel parity comparison.
