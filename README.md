@@ -35,12 +35,12 @@ selected by the project owner. The asset remains unmodified under `icons/`;
 its verified mapping is recorded in the canonical `icon-index.csv`. Other
 empty-state consumers do not receive that artwork automatically.
 
-### Popup button list (not yet integrated)
+### Popup button list
 
 `Bbos6PopupButtonList` is a standalone modal dialog helper inspired by the
 provided BBOS6 confirmation screenshot. It is implemented **only in this shared
-library**; neither `bb-music` nor `bb-ui` invokes it or advances its submodule
-reference on this feature branch.
+library**. Integration into individual applications requires a pinned
+submodule commit and separate application PR.
 
 The default presentation uses a charcoal rounded panel and thin rim, with
 vertically stacked, beveled silver buttons. The currently highlighted button
@@ -49,6 +49,14 @@ uses the **same blue gradient and border as the existing
 `Bbos6SelectionBackground.blue(context)`. The extraction preserves the
 existing context menu's pixel colors, radius and stroke. Each button also
 has rounded corners, a subdued inset shadow and native elevation.
+
+The optional `.message(String)` adds wrapped, non-interactive explanatory
+text between the title and button list. This preserves warnings on delete,
+remove, or rescan confirmations without using native Android `AlertDialog`
+buttons. App-owned button-only confirmations should use this helper;
+`Cancel` should be the initially selected action for irreversible operations.
+Keep Android-owned SAF permission/picker screens native, and retain native
+input views where users need to type.
 
 The helper owns only presentation and input: touch activation; Up/Down to
 change the focused button; Q25 trackpad/Enter to activate; Back/Escape to
@@ -64,6 +72,7 @@ Example API (documentation only; **do not call from an app yet**):
 ```java
 Bbos6PopupButtonList.builder()
         .title("Changes made!")
+        .message("Save the changes?")
         // .titleIconResource(R.drawable.a_caller_supplied_icon)
         .addButton("save", "Save")
         .addButton("discard", "Discard")
