@@ -45,9 +45,10 @@ submodule commit and separate application PR.
 The default presentation uses a charcoal rounded panel and thin rim, with
 vertically stacked, beveled silver buttons. The currently highlighted button
 uses the **same blue gradient and border as the existing
-`Bbos6ContextMenu`**: both now call the package-private
-`Bbos6SelectionBackground.blue(context)`. The extraction preserves the
-existing context menu's pixel colors, radius and stroke. Each button also
+`Bbos6ContextMenu`**. The context menu retains its original 7dp radius;
+the button popup calls `Bbos6SelectionBackground.blue(context, 4)` to
+match its 4dp silver button corners without copying or altering the
+shared colors and stroke. Each button also
 has rounded corners, a subdued inset shadow and native elevation.
 
 The optional `.message(String)` adds wrapped, non-interactive explanatory
