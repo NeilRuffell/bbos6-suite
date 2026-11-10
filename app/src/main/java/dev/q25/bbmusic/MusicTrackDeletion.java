@@ -56,6 +56,47 @@ final class MusicTrackDeletion {
         resolver = this.context.getContentResolver();
     }
 
+    interface DisplayNameListener {
+        void onLoaded(String displayName);
+    }
+
+    /**
+     * Read the actual filename from the selected SAF document provider.
+     * Song.title is metadata and must not be substituted for a filename.
+     */
+    void loadDisplayName(LocalMusicSource.Song song, DisplayNameListener listener) {
+        if (closed) return;
+        executor.execute(() -> {
+            String displayName = null;
+            if (song != null && song.uri != null && song.sourceTree != null
+                    && MusicFolders.selectedTrees(context).contains(song.sourceTree)) {
+                String[] projection = {
+                        DocumentsContract.Document.COLUMN_DISPLAY_NAME
+                };
+                try (Cursor cursor = resolver.query(song.uri, projection,
+                        null, null, null)) {
+                    if (cursor != null && cursor.moveToFirst()) {
+                        int column = cursor.getColumnIndex(
+                                DocumentsContract.Document.COLUMN_DISPLAY_NAME);
+                        if (column >= 0 && !cursor.isNull(column)) {
+                            String value = cursor.getString(column);
+                            if (value != null && !value.trim().isEmpty()) {
+                                displayName = value;
+                            }
+                        }
+                    }
+                } catch (RuntimeException exception) {
+                    Log.w(TAG, "Document filename unavailable: "
+                            + exception.getClass().getSimpleName());
+                }
+            }
+            final String result = displayName;
+            main.post(() -> {
+                if (!closed) listener.onLoaded(result);
+            });
+        });
+    }
+
     /** The caller has already shown a destructive-action confirmation. */
     void delete(List<LocalMusicSource.Song> requested, Listener listener) {
         if (closed || requested.isEmpty()) return;
