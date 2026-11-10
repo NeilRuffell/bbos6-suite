@@ -1483,6 +1483,11 @@ public final class MusicActivity extends Activity {
         }
         String filename = playlistDocumentName(document);
         if (filename == null) filename = "Imported playlist.m3u8";
+        String lower = filename.toLowerCase(Locale.ROOT);
+        if (!lower.endsWith(".m3u8") && !lower.endsWith(".m3u")) {
+            playlistFailure("Select an M3U or M3U8 playlist file");
+            return;
+        }
         final String name = filename.replaceFirst("(?i)\\.m3u8?$", "").trim();
         List<LocalMusicSource.Song> snapshot = new ArrayList<>(localSongs);
         playlistTransfer.read(document, snapshot, (imported, error) -> {
@@ -1504,6 +1509,11 @@ public final class MusicActivity extends Activity {
     }
 
     private void pickPlaylistExport(long id) {
+        if (localSongs == null) {
+            playlistFailure("Music library is unavailable");
+            return;
+        }
+        List<LocalMusicSource.Song> snapshot = new ArrayList<>(localSongs);
         playlists.list((items, error) -> {
             if (error != null || items == null) {
                 playlistFailure(error);
@@ -1513,19 +1523,31 @@ public final class MusicActivity extends Activity {
                 if (item.id != id) continue;
                 String filename = item.name.replaceAll("[/\\\\:*?\"<>|]", "_")
                         + ".m3u8";
-                Intent picker = new Intent(Intent.ACTION_CREATE_DOCUMENT)
-                        .addCategory(Intent.CATEGORY_OPENABLE)
-                        .setType("audio/x-mpegurl");
-                picker.putExtra(Intent.EXTRA_TITLE, filename);
-                picker.putExtra(Intent.EXTRA_LOCAL_ONLY, true);
-                try {
-                    exportingPlaylistId = id;
-                    startActivityForResult(picker, EXPORT_PLAYLIST_REQUEST);
-                } catch (RuntimeException exception) {
-                    exportingPlaylistId = -1L;
-                    Log.w(TAG, "Playlist export picker unavailable", exception);
-                    playlistFailure("Playlist export picker unavailable");
-                }
+                playlists.entries(id, (entries, failure) -> {
+                    if (failure != null || entries == null) {
+                        playlistFailure(failure);
+                        return;
+                    }
+                    playlistTransfer.checkExport(entries, snapshot, (valid, reason) -> {
+                        if (reason != null || !Boolean.TRUE.equals(valid)) {
+                            playlistFailure(reason);
+                            return;
+                        }
+                        Intent picker = new Intent(Intent.ACTION_CREATE_DOCUMENT)
+                                .addCategory(Intent.CATEGORY_OPENABLE)
+                                .setType("audio/x-mpegurl");
+                        picker.putExtra(Intent.EXTRA_TITLE, filename);
+                        picker.putExtra(Intent.EXTRA_LOCAL_ONLY, true);
+                        try {
+                            exportingPlaylistId = id;
+                            startActivityForResult(picker, EXPORT_PLAYLIST_REQUEST);
+                        } catch (RuntimeException exception) {
+                            exportingPlaylistId = -1L;
+                            Log.w(TAG, "Playlist export picker unavailable", exception);
+                            playlistFailure("Playlist export picker unavailable");
+                        }
+                    });
+                });
                 return;
             }
             playlistFailure("Playlist no longer exists");
