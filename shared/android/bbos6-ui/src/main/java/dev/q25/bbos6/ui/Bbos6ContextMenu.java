@@ -201,6 +201,19 @@ public final class Bbos6ContextMenu {
             int cellWidth = Math.max(1, innerWidth / columns);
             int rowHeight = Math.max(dp(activity, 94),
                     Math.min(dp(activity, 166), Math.round(cellWidth * 1.02f)));
+            // Fit the reference's three square-ish rows on Q25 square screens
+            // when possible. Tall menus still scroll instead of truncating.
+            int totalRows = 0;
+            for (List<Bbos6ContextMenuItem> group : groups) {
+                totalRows += (group.size() + columns - 1) / columns;
+            }
+            int separators = Math.max(0, groups.size() - 1) * dp(activity, 2);
+            int roomForRows = maxHeight - separators
+                    - 2 * dp(activity, CONTENT_INSET_DP);
+            int fittingRowHeight = roomForRows / Math.max(1, totalRows);
+            if (fittingRowHeight >= dp(activity, 94)) {
+                rowHeight = Math.min(rowHeight, fittingRowHeight);
+            }
 
             FrameLayout panel = new FrameLayout(activity);
             panel.setBackground(panelBackground(activity));
@@ -299,6 +312,9 @@ public final class Bbos6ContextMenu {
             int insetY = dp(activity, TILE_TOP_INSET_DP);
 
             FrameLayout tile = new FrameLayout(activity);
+            // StateListDrawable on the tile responds to the parent hit target
+            // so touch-down shows the same blue face as trackpad selection.
+            tile.setDuplicateParentStateEnabled(true);
             FrameLayout.LayoutParams tileParams = new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT);
@@ -408,7 +424,7 @@ public final class Bbos6ContextMenu {
             scroll.post(() -> {
                 if (!isShowing()) return;
                 Rect rectangle = new Rect(0, 0, cell.getWidth(), cell.getHeight());
-                scroll.requestChildRectangleOnScreen(cell, rectangle, true);
+                cell.requestRectangleOnScreen(rectangle, true);
             });
         }
 
