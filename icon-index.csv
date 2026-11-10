@@ -7,6 +7,7 @@ filename,name,keywords,android_resource
 348.png,Genres,music genres categories,bbos6_menu_genres
 350.png,All Songs,music songs tracks library launcher app icon,bbos6_menu_all_songs
 351.png,Albums,music albums collection,bbos6_menu_albums
+354.png,Empty Playlists Artwork,music playlists empty state no playlists compact disc,bbos6_playlist_empty
 485.png,Repeat Unavailable,music now playing repeat disabled unavailable,bbos6_repeat_unavailable
 486.png,Repeat On,music now playing repeat all on enabled,bbos6_repeat_all
 487.png,Repeat One On,music now playing repeat one track single on enabled,bbos6_repeat_one
