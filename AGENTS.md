@@ -72,12 +72,11 @@ The reusable, app-neutral library lives in
 - Keep app-specific actions, data queries, and permissions in the caller.
 - Build this as a Gradle Android library project inside the consuming app.
 
-## Privacy and dependency access
+## Private owner-maintained dependency
 
-The shared repository is currently **private**. Every machine or collaborator
-building a consumer must have GitHub access to it; a consumer repository's
-public visibility does **not** grant submodule access. Do not claim that a
-public consumer can be cloned with `--recurse-submodules` by everyone until
-shared-repo visibility or access policies explicitly permit it.
+This shared repository is deliberately **private**. The current workflow is
+for the owner's authenticated development environment; do not require public
+submodule availability or collaborator onboarding. Keep the shared repository
+private unless the owner explicitly changes its visibility.
 
 See [README.md](README.md) for paths and usage.
