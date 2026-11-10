@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Android sizes the original BBOS6 artwork to the launcher viewport.
-         The 65px menu asset is intentionally not modified or duplicated. -->
-    <background android:drawable="@android:color/transparent" />
-    <foreground android:drawable="@drawable/bbos6_menu_all_songs" />
-</adaptive-icon>

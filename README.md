@@ -1,9 +1,14 @@
 # BB UI
 
-> **Separate application:** `music-app/` is a fully independent Android
-> **BB Music** APK (`dev.q25.bbmusic`), built from its own Gradle project.
-> It does not depend on this Vector/LSPosed module, root or SystemUI.
-> See [BB Music setup and architecture](music-app/README.md).
+> **Separate application:** [BB Music](https://github.com/NeilRuffell/bb-music)
+> now has its own GitHub repository, independent Gradle project, documentation,
+> releases and APK (`dev.q25.bbmusic`). It does not depend on this
+> Vector/LSPosed module, root or SystemUI.
+>
+> **Canonical shared assets and reusable widgets:**
+> [bbos6-shared](https://github.com/NeilRuffell/bbos6-shared) is included at
+> `assets/bbos6/` as a pinned Git submodule. Its original PNGs, icon index,
+> Android popup helpers and AI rules have one authoritative source.
 
 BlackBerry OS 6/7-inspired interface and hardware-keyboard navigation for
 Android on the Zinwa Q25. The current test build is a single **Vector/LSPosed
@@ -59,12 +64,13 @@ independent rollback settings.
 - [Recents replacement plan](docs/RECENTS_REPLACEMENT.md) —
   the clean native Quickstep baseline, exclusive BBOS6 icon-grid target,
   Vector/ROM integration boundary, and first device test.
-- [BBOS6 icon reference index](assets/bbos6/icon-index.csv) —
-  searchable names and keywords for identified original numbered icons.
-  **Every newly verified icon identification or mapping must update this
-  index in the same change**, across BB UI and BB Music; preserve the
-  original numbered filenames. See [AGENTS.md](AGENTS.md) for the
-  repository-wide maintenance rule.
+- [Canonical BBOS6 icon reference](assets/bbos6/icon-index.csv) —
+  verified original numbered icon mappings, owned only by
+  [bbos6-shared](https://github.com/NeilRuffell/bbos6-shared).
+  **Update the shared repository's index first** for every new verified
+  asset identification or resource mapping, then advance this repository's
+  submodule SHA. Read [AGENTS.md](AGENTS.md) and the
+  [shared agent rules](assets/bbos6/AGENTS.md).
 - [Native shade migration](docs/NATIVE_SHADE_MIGRATION.md) —
   implementation, Q25 evidence, limitations and ROM migration steps.
 - [Shade and trackpad navigation](SHADE_NAVIGATION.md).
@@ -104,7 +110,7 @@ Requirements: Android SDK 35, JDK 17, globally installed Gradle, ADB and the
 Q25's BB UI module enabled in Vector with SystemUI scope.
 
 ```sh
-git clone https://github.com/NeilRuffell/bb-ui.git
+git clone --recurse-submodules https://github.com/NeilRuffell/bb-ui.git
 cd bb-ui
 gradle :app:assembleDebug :app:testDebugUnitTest
 adb -s 202512003630 install -r app/build/outputs/apk/debug/app-debug.apk
@@ -115,6 +121,11 @@ adb -s 202512003630 shell am crash com.android.systemui
 
 The device serial above belongs to the original Q25 development setup;
 substitute the serial shown by `adb devices` on other devices.
+
+**Owner setup:** The `bbos6-shared` submodule is intentionally private.
+Use the owner's authenticated GitHub account for
+`git submodule update --init --recursive`. No public distribution of
+the shared library is required for current development.
 
 To return to the earlier standalone BB shade (without changing unrelated
 features):

@@ -1,67 +1,50 @@
-# Repository-wide contributor guidance
+# BB UI contributor and AI instructions
 
-## Original BlackBerry OS 6 icon identification
+This repository owns the BlackBerry-inspired Android system UI / Vector
+application. The standalone native Music app has moved to
+[`NeilRuffell/bb-music`](https://github.com/NeilRuffell/bb-music).
+Music-specific application code, tests, README and APK releases belong there,
+**not** under this repository's old `music-app/` directory.
 
-The canonical, searchable reference for original numbered BBOS6 icon assets is
-[`assets/bbos6/icon-index.csv`](assets/bbos6/icon-index.csv). This rule applies
-to **all** BB UI components and the independent `music-app/`, not only the Music
-menu.
+## Canonical BBOS6 asset and UI ownership
 
-**Whenever an original numbered BBOS6 icon is positively identified, used,
-or assigned a verified new meaning, update the index in the same change.**
-Do not leave the mapping solely in chat, source-code comments, screenshots,
-or application-specific documentation.
+The `assets/bbos6/` directory is a **Git submodule** of the
+[`bbos6-shared`](https://github.com/NeilRuffell/bbos6-shared) repository.
 
-- Search the index by descriptive name or keyword **before** looking through
-  the numbered PNG collection or assigning a resource.
-- Keep the original `assets/bbos6/icons/<number>.png` filenames and bytes
-  unchanged. Android-packaged copies may use readable resource names.
-- Each original filename has one index row. Update existing rows instead of
-  creating duplicates; keep the rows sorted by their numeric filenames.
-- Fields: `filename` (original numbered PNG), `name` (verified meaning),
-  `keywords` (searchable aliases and contexts), `android_resource`
-  (readable Android drawable resource name, if used; otherwise blank).
-- Add only verified identifications. Do not guess meanings or assign labels to
-  unidentified icons. Confirm an icon against actual BBOS6 references or a
-  documented, verified mapping before recording it.
-- When a mapping changes or a new one is established, update related
-  implementation documentation as necessary, but keep the index canonical.
+Read [`assets/bbos6/AGENTS.md`](assets/bbos6/AGENTS.md) before changing
+original numbered BBOS6 icons, their meanings/resource mappings, or the
+reusable Android BBOS6 UI helpers.
 
-Examples:
-`grep -i 'album' assets/bbos6/icon-index.csv`
-`grep -i '350.png' assets/bbos6/icon-index.csv`
+**Do not maintain a second copy** of `icon-index.csv`, the original
+`icons/` collection, or `android/bbos6-ui/` in this repository.
 
+- Canonical icon index: `assets/bbos6/icon-index.csv`.
+- Canonical original numbered PNGs: `assets/bbos6/icons/<number>.png`.
+- Canonical reusable native Java UI helpers:
+  `assets/bbos6/android/bbos6-ui/`.
+- Search the index **before** selecting an icon.
+- Every **verified** BBOS6 icon identification or new mapping must update
+  that shared-repository index in the same shared change. Never guess.
+- Apply a change to the `bbos6-shared` repo first; review/merge its PR,
+  and then advance the `assets/bbos6` gitlink through a BB UI PR.
+- A submodule update does not happen automatically when the shared repo
+  changes. Do not commit an untracked local submodule change without
+  committing it to its own repository first.
 
-## BB Music APK build, installation and release workflow
+The existing asset path remains `assets/bbos6/`, so existing read-only
+asset references in BB UI docs and source continue to resolve.
 
-**Mandatory for changes to `music-app/`: preserve the tested-APK workflow.**
-Detailed commands and paths are maintained in [`music-app/README.md`](music-app/README.md).
+**Ownership:** This is a personal development project. The shared repository
+is intentionally private and its visibility is **not** a blocker to normal
+owner-authenticated builds. Do not alter repository visibility or add
+collaborator/public-distribution requirements without an explicit request.
 
-1. Build locally with `gradle -p music-app :app:assembleRelease`.
-2. Install the **same release APK** on the Q25 with
-   `adb -s 202512003630 install -r music-app/app/build/outputs/apk/release/app-release.apk`.
-3. Test on the Q25 and obtain explicit approval.
-4. Only then upload that **exact, unchanged APK file** to a GitHub Release
-   (`gh release create`). Never rebuild, re-sign, or publish automatically
-   between the device test and the release.
+## BB UI architecture and build
 
-- `music-app/app/build.gradle` configures the Release variant to use the
-  existing local Gradle debug signing identity (the same approach used in
-  TV-DV), so Gradle produces an installable `app-release.apk` without any
-  manual `keytool`, `zipalign`, `apksigner`, or signing scripts.
-- **Do not** generate ephemeral signing keys or use a GitHub Actions job to
-  build and sign a different APK for publishing. Do not introduce a new
-  signing/deployment workflow without an explicit user request.
-- Preserve `~/.android/debug.keystore` (and its certificate) on the build
-  machine; losing or replacing it makes subsequent same-package updates
-  incompatible with versions signed using the old identity.
-- **Increment `versionCode` for every newly published APK** and update
-  `versionName` appropriately; confirm that the new versionCode exceeds
-  the installed/published version. Do not depend on a timestamp-named GitHub
-  release tag to change Android's embedded versionCode.
-- Older GitHub-released APKs that were signed with discarded temporary
-  certificates cannot be updated in place using the local key. This is a
-  one-time compatibility limit of those older installations, not a reason
-  to repeatedly uninstall or reset app data.
-- On any subsequent matching-signature update, prefer `adb install -r`;
-  never uninstall or clear application data as a normal deployment step.
+Follow [`README.md`](README.md) and
+[`docs/DESIGN_PHILOSOPHY.md`](docs/DESIGN_PHILOSOPHY.md).
+Prefer Android SystemUI/notification/Quick Settings machinery over competing
+parallel services. Preserve existing trackpad and hardware-key behavior.
+
+Never move features between the Vector BB UI APK and the standalone Music APK.
+Use separate feature branches and PRs; do not merge without explicit approval.
