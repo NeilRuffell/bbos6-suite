@@ -321,7 +321,12 @@ public final class Bbos6ContextMenu {
             tileParams.setMargins(insetX, insetY, insetX, insetY);
             hitTarget.addView(tile, tileParams);
 
-            int iconAreaHeight = Math.round((heightPx - 2 * insetY) * 0.64f);
+            int tileHeight = heightPx - 2 * insetY;
+            int labelHeight = Math.max(dp(activity, 36),
+                    Math.round(tileHeight * 0.38f));
+            // Reserve sufficient space for two-line labels before sizing the
+            // icon; a compact Q25 screen must not clip the action artwork.
+            int iconAreaHeight = Math.max(1, tileHeight - labelHeight);
             FrameLayout iconArea = new FrameLayout(activity);
             tile.addView(iconArea, new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, iconAreaHeight,
@@ -335,7 +340,9 @@ public final class Bbos6ContextMenu {
             } else {
                 icon.setVisibility(View.INVISIBLE);
             }
-            int iconSize = Math.min(dp(activity, 66), Math.round(cellWidthPx * 0.48f));
+            int iconSize = Math.max(1, Math.min(
+                    Math.min(dp(activity, 66), Math.round(cellWidthPx * 0.48f)),
+                    Math.max(1, iconAreaHeight - dp(activity, 3))));
             iconArea.addView(icon, new FrameLayout.LayoutParams(
                     iconSize, iconSize, Gravity.CENTER));
 
@@ -348,7 +355,6 @@ public final class Bbos6ContextMenu {
             label.setIncludeFontPadding(false);
             label.setEllipsize(android.text.TextUtils.TruncateAt.END);
             label.setPadding(dp(activity, 2), 0, dp(activity, 2), 0);
-            int labelHeight = Math.round((heightPx - 2 * insetY) * 0.38f);
             tile.addView(label, new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, labelHeight,
                     Gravity.BOTTOM));
