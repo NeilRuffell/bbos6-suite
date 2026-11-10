@@ -1123,6 +1123,24 @@ adb -s 202512003630 install -r app/build/outputs/apk/release/app-release.apk
 Do not publish an APK until that exact build has passed on-device validation and explicit approval. Retain the existing signing identity for updates.
 
 
+## Empty-state presentation
+
+The reusable `Bbos6EmptyStateView` is owned by `bbos6-shared` and consumed
+through `assets/bbos6`. It is a non-focusable, non-clickable sibling of the
+existing `MusicListView` inside the library viewport, **not an adapter row**.
+Pages opt in through `Page.setEmptyState(title, description, actionRowCount)`.
+The caller reserves space above the centred content for its existing action
+rows, without modifying DPAD/trackpad navigation or the ListView row layout.
+No icon is supplied unless an existing verified asset is explicitly chosen.
+
+When Playlists contains zero saved playlists, only its actionable **Create
+playlist** and **Import M3U8** rows are in the list. The independent empty-state
+area displays **No playlists.** and explanatory text below those actions; it
+cannot be selected or scrolled to as an item. Empty playlist detail pages use
+the same helper instead of an **Empty playlist** menu item. Search hides the
+empty-state panel so search results remain independent. Populated playlists
+do not display the panel.
+
 ## Playlists (Room + Media3 + M3U8)
 
 Playlists use the existing app-private Room database, migrated **non-destructively
