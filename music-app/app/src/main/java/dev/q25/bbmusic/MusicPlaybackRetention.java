@@ -150,6 +150,60 @@ final class MusicPlaybackRetention {
         }
     }
 
+    /**
+     * Remove permanently deleted tracks from the saved playback queue.
+     * Preserve the surviving current track and its position. If the current
+     * track was deleted, choose the next survivor (or previous at the end)
+     * from position zero. No deleted URI can be resumed after a restart.
+     */
+    static void forgetDeleted(Context context, java.util.Set<String> deletedIds) {
+        if (deletedIds == null || deletedIds.isEmpty()) return;
+        SharedPreferences preferences = prefs(context);
+        String encoded = preferences.getString(QUEUE, null);
+        if (encoded == null || encoded.isEmpty()) return;
+        try {
+            JSONArray before = new JSONArray(encoded);
+            JSONArray remaining = new JSONArray();
+            int oldIndex = preferences.getInt(INDEX, 0);
+            if (oldIndex < 0 || oldIndex >= before.length()) {
+                clear(context);
+                return;
+            }
+            int priorSurvivors = 0;
+            boolean currentRemoved = false;
+            boolean changed = false;
+            for (int i = 0; i < before.length(); i++) {
+                JSONObject item = before.getJSONObject(i);
+                if (deletedIds.contains(item.getString(URI))) {
+                    changed = true;
+                    if (i == oldIndex) currentRemoved = true;
+                } else {
+                    remaining.put(item);
+                    if (i < oldIndex) priorSurvivors++;
+                }
+            }
+            if (!changed) return;
+            if (remaining.length() == 0) {
+                clear(context);
+                return;
+            }
+            int newIndex = currentRemoved
+                    ? Math.min(priorSurvivors, remaining.length() - 1)
+                    : priorSurvivors;
+            if (!preferences.edit()
+                    .putString(QUEUE, remaining.toString())
+                    .putInt(INDEX, newIndex)
+                    .putLong(POSITION, currentRemoved ? 0L
+                            : preferences.getLong(POSITION, 0L))
+                    .commit()) {
+                Log.w(TAG, "Unable to persist deletion-adjusted playback queue");
+            }
+        } catch (JSONException | RuntimeException exception) {
+            Log.w(TAG, "Invalid retained queue after deletion", exception);
+            clear(context);
+        }
+    }
+
     static Saved restore(Context context) {
         SharedPreferences preferences = prefs(context);
         String encoded = preferences.getString(QUEUE, null);
