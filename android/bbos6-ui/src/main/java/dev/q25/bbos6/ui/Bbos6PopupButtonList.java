@@ -589,7 +589,8 @@ public final class Bbos6PopupButtonList {
                 if (code != KeyEvent.KEYCODE_ESCAPE) {
                     return super.dispatchKeyEvent(event);
                 }
-            } else if (input != null && code == KeyEvent.KEYCODE_DPAD_UP) {
+            } else if (input != null && code == KeyEvent.KEYCODE_DPAD_UP
+                    && (horizontalButtons || selection == firstEnabled())) {
                 if (event.getAction() == KeyEvent.ACTION_DOWN) {
                     input.requestFocus();
                 }
