@@ -2,7 +2,8 @@
     <!-- Media3's background audio session; no general storage permission. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
-    <!-- Music is read only from user-selected SAF document trees. -->
+    <!-- Music reads only selected SAF trees; confirmed deletes use their
+         separately granted narrow SAF write permission. -->
     <!-- Narrow package visibility; no QUERY_ALL_PACKAGES or privileged access. -->
     <queries>
         <package android:name="app.symfonik.music.player" />
