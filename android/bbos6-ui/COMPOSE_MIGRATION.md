@@ -39,3 +39,17 @@ original per-control gradients are retained as explicit Compose values.
 
 **Not yet verified:** Gradle/Android build, pixel parity and on-device Q25
 navigation. Do not deploy or merge based on this increment alone.
+
+## Subsequent shared presentation work
+
+- `Bbos6TextField` now has a Compose implementation using
+  `BasicTextField(TextFieldValue)`, retaining editable selection state and
+  user-supplied IME and keyboard behavior. It draws the same rim/inset color
+  stops as the existing 43dp native field, with an optional 30dp popup minimum.
+- `Bbos6PropertiesPanel` now renders the existing read-only
+  `Bbos6PropertiesItem` model directly, preserving row order, spacers,
+  trailing values and the popup's colors/insets. Its host still owns dialog
+  bounds, no-dim behavior, Back handling and outside-touch policy.
+
+Neither helper has been wired into Music or any other consuming application.
+Pixel comparison and physical focus/touch behavior are not yet Q25-verified.
