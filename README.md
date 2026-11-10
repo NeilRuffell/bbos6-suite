@@ -1328,3 +1328,18 @@ The existing `MusicActivity` now inherits AndroidX `ComponentActivity` on
 this feature branch, solely to provide Compose-required lifecycle and saved
 state owners to the existing View tree. Its playback, storage, navigation,
 keyboard handling, and lifecycle method bodies are otherwise unchanged.
+
+### Album header Compose presentation
+
+`MusicAlbumHeaderView` now renders through the canonical shared
+`Bbos6MediaDetailHeader` Composable. It preserves the same 89dp height,
+88dp cover, four metadata lines, placeholder artwork and 1dp separator.
+`MusicActivity.bindAlbumHeader()` and the `MusicListView` artwork loader
+are not modified: the existing cache, SAF-selected sources, stale callback
+generation checks, album title/artist/genre formatting, and navigation remain
+unchanged. The row is still outside the selectable list adapter.
+
+The Music feature branch pins shared commit
+`b7310c4f8682f2394e33c9b23fa65d9373815730`. Verify album detail
+artwork (present/missing), Back, scrolling/trackpad selection and rotation
+before approving or merging.

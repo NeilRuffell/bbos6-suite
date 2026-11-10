@@ -227,3 +227,12 @@ ComposeView hosts in a legacy Activity require AndroidX view-tree lifecycle
 and saved-state owners. The Music feature branch uses `ComponentActivity`
 for that framework integration only; do not modify existing Activity method
 bodies or application logic as part of this step.
+
+### Compose album header transition
+
+`MusicAlbumHeaderView` is a Kotlin `AbstractComposeView` backed exclusively
+by the app-neutral shared `Bbos6MediaDetailHeader`. Preserve its existing
+Java-callable constructor, `bind(...)`, `clear()`, and static `heightDp()`
+contract. Keep `MusicActivity.bindAlbumHeader()`, the `MusicListView` art
+cache, selected SAF source scope, stale callback generation guard, and
+non-selectable header position unchanged.
