@@ -86,6 +86,34 @@ No new numbered original BBOS6 assets are introduced or mapped in this change.
 The screenshot informs approximate styling; exact historical theme values
 are not asserted. Do not duplicate this button renderer in consuming apps.
 
+### Compact Bold 9900-inspired sizing
+
+Both `Bbos6PopupButtonList` and `Bbos6ContextMenu` use compact,
+component-owned dimensions chosen from the supplied 640 × 480 Bold 9900
+simulator screenshot (a visual reference, **not verified SDK metrics**).
+Android handles `dp`/`sp` conversion normally; there is no device-density
+override, screen-percentage zoom, post-layout translation, compensating
+offset, or cell-size-derived vertical scaling.
+
+- Button popup: a nominal **320dp** panel, **176 × 30dp** buttons, **14dp**
+  spacing, **17sp** button labels, **18sp** heading, and **4dp** button radius.
+  The existing shared blue selection gradient is reused with the same
+  corner radius as the silver face. A native viewport bound prevents a
+  popup exceeding the available display on narrower devices.
+- Long-press context grid: stable **94dp** rows, **42dp** icons and **14sp**
+  labels, with **112dp** single-column, **212dp** two-column, and **312dp**
+  multicolumn panel widths. The existing touch, trackpad/DPAD and
+  accelerator behavior is unchanged. Android's vertical layout measures
+  icons and wrapped labels instead of calculating proportions from a
+  dynamically stretched cell or shrinking rows to fit.
+- For menus too tall to display, the existing bounded `ScrollView` scrolls
+  content. The full usable viewport bounds the scroll height; no ad hoc
+  corrections are applied to the items or selection.
+
+The button popup and context grid intentionally have different intrinsic
+sizes because they are different BlackBerry controls. Confirm proportions
+and touch behavior on the actual Q25 before merging.
+
 ## Consumer integration
 
 Check out a consumer with the shared dependency:
