@@ -35,20 +35,34 @@ selected by the project owner. The asset remains unmodified under `icons/`;
 its verified mapping is recorded in the canonical `icon-index.csv`. Other
 empty-state consumers do not receive that artwork automatically.
 
-### Popup button list (not yet integrated)
+### Popup button list
 
 `Bbos6PopupButtonList` is a standalone modal dialog helper inspired by the
 provided BBOS6 confirmation screenshot. It is implemented **only in this shared
-library**; neither `bb-music` nor `bb-ui` invokes it or advances its submodule
-reference on this feature branch.
+library**. Integration into individual applications requires a pinned
+submodule commit and separate application PR.
 
 The default presentation uses a charcoal rounded panel and thin rim, with
-vertically stacked, beveled silver buttons. The currently highlighted button
-uses the **same blue gradient and border as the existing
-`Bbos6ContextMenu`**: both now call the package-private
-`Bbos6SelectionBackground.blue(context)`. The extraction preserves the
-existing context menu's pixel colors, radius and stroke. Each button also
-has rounded corners, a subdued inset shadow and native elevation.
+vertically stacked rounded buttons. Based on direct pixel samples from the
+provided 640 × 480 BlackBerry simulator screenshot, the selected button
+transitions from a bright upper blue to a stable **#1766DB** lower face.
+The unselected button transitions from light silver to a stable
+**#AFB1B4** lower face. Both are single native `GradientDrawable`
+backgrounds with a thin one-pixel stroke and a 4dp radius, **without**
+a black underlay or View elevation.
+
+The shared `Bbos6SelectionBackground.popupButtonBlue(...)` owns the
+popup-specific blue palette, avoiding a copy in Music. The separately
+verified `Bbos6ContextMenu` grid selection colors and strokes remain
+unchanged; they are not interchangeable with the screenshot's button face.
+
+The optional `.message(String)` adds wrapped, non-interactive explanatory
+text between the title and button list. This preserves warnings on delete,
+remove, or rescan confirmations without using native Android `AlertDialog`
+buttons. App-owned button-only confirmations should use this helper;
+`Cancel` should be the initially selected action for irreversible operations.
+Keep Android-owned SAF permission/picker screens native, and retain native
+input views where users need to type.
 
 The helper owns only presentation and input: touch activation; Up/Down to
 change the focused button; Q25 trackpad/Enter to activate; Back/Escape to
@@ -64,6 +78,7 @@ Example API (documentation only; **do not call from an app yet**):
 ```java
 Bbos6PopupButtonList.builder()
         .title("Changes made!")
+        .message("Save the changes?")
         // .titleIconResource(R.drawable.a_caller_supplied_icon)
         .addButton("save", "Save")
         .addButton("discard", "Discard")
@@ -76,6 +91,38 @@ Bbos6PopupButtonList.builder()
 No new numbered original BBOS6 assets are introduced or mapped in this change.
 The screenshot informs approximate styling; exact historical theme values
 are not asserted. Do not duplicate this button renderer in consuming apps.
+
+### Compact Bold 9900-inspired sizing
+
+Both `Bbos6PopupButtonList` and `Bbos6ContextMenu` use compact,
+component-owned dimensions chosen from the supplied 640 × 480 Bold 9900
+simulator screenshot (a visual reference, **not verified SDK metrics**).
+Android handles `dp`/`sp` conversion normally; there is no device-density
+override, screen-percentage zoom, post-layout translation, compensating
+offset, or cell-size-derived vertical scaling.
+
+- Button popup: a nominal **320dp** panel, **176 × 30dp** buttons, **14dp**
+  spacing, **17sp** button labels, **18sp** heading, and **4dp** button radius.
+  The existing shared blue selection gradient is reused with the same
+  corner radius as the silver face. A native viewport bound prevents a
+  popup exceeding the available display on narrower devices.
+- Long-press context grid: stable **94dp** rows, **42dp** icons and **14sp**
+  labels, with **112dp** single-column, **212dp** two-column, and **312dp**
+  multicolumn panel widths. The existing touch, trackpad/DPAD and
+  accelerator behavior is unchanged. Android's vertical layout measures
+  icons and wrapped labels instead of calculating proportions from a
+  dynamically stretched cell or shrinking rows to fit.
+- For menus too tall to display, the existing bounded `ScrollView` scrolls
+  content. The full usable viewport bounds the scroll height; no ad hoc
+  corrections are applied to the items or selection.
+
+The button popup and context grid intentionally have different intrinsic
+sizes because they are different BlackBerry controls. Direct reference-to-Q25
+comparison showed the button footprints were already similar; the inaccurate
+appearance came from an extra opaque-black drawable layer, View elevation
+and an excessively dark full-height gradient. The new simple face has no
+visual compensations, offset tricks, or app-specific copies. Confirm
+colors and touch behavior on the actual Q25 before merging.
 
 ## Consumer integration
 
