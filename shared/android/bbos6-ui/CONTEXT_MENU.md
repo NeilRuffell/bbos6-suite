@@ -16,7 +16,7 @@ and popup sizing behavior are not known from the screenshot.
 | Panel | Slate-blue vertical shading, top approximately `#445D79`, bottom `#3A4D61` |
 | Border | Thin, light-gray upper rim fading to darker side/bottom rim |
 | Corners | 8dp rounded outer perimeter, using native clip-to-outline |
-| Grid | 3 equal columns by default; rows flow in supplied group order |
+| Grid | Up to 3 equal columns by default; automatically narrows to one for a single action and expands as groups grow |
 | Groups | Thin 2dp gray/dark separator between groups, inset horizontally |
 | Selection | Blue vertical gradient (`#138FE4` to `#0750A8`) with 7dp rounded corners and subtle rim |
 | Icons | Caller-provided drawables, untinted, centered above labels |
@@ -32,7 +32,9 @@ and popup sizing behavior are not known from the screenshot.
 
 The layout reduces row height where practical to keep all three screenshot
 rows visible on a square Q25 screen. It does not squeeze tiles below 94dp;
-larger sets of actions instead scroll within the panel.
+larger sets of actions instead scroll within the panel. For a menu with
+only one action, the panel occupies one centered icon column, rather than
+showing two empty columns; the configured column count is an upper bound.
 
 **No icons, labels, menu commands, media controls or app-specific actions are
 hardcoded** into the helper. The screenshot's nine commands are examples of
