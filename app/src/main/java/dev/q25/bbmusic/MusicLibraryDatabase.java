@@ -12,7 +12,6 @@ import androidx.room.Index;
 import androidx.room.Insert;
 import androidx.room.OnConflictStrategy;
 import androidx.room.PrimaryKey;
-import androidx.room.Transaction;
 import androidx.room.Query;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
@@ -24,7 +23,7 @@ import java.util.List;
 /**
  * Private, app-owned music catalog. The original files remain in the user's
  * Storage Access Framework folders; only their metadata and authorized URIs
- * are cached here. All queries and writes run on LocalMusicSource's worker.
+ * are cached here. Catalog and playlist queries use dedicated background workers.
  */
 @Database(entities = {MusicLibraryDatabase.TrackRow.class,
         MusicLibraryDatabase.ScanRow.class,
