@@ -107,6 +107,9 @@ final class MusicTrackDeletion {
                         database.runInTransaction(() -> dao.deleteTracks(batch));
                     }
                 }
+                // A second invalidation protects against an Activity opened
+                // mid-batch completing its own scan before deletion finishes.
+                database.runInTransaction(dao::deleteScanState);
             } catch (RuntimeException exception) {
                 Log.e(TAG, "Track deletion database operation failed", exception);
                 failed += distinct.size() - deleted.size() - failed;
