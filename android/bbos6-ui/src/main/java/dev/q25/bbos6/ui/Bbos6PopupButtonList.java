@@ -52,12 +52,15 @@ import java.util.Set;
  */
 public final class Bbos6PopupButtonList {
     private static final int PANEL_COLOR = 0xff212429;
-    private static final int PANEL_CORNER_DP = 12;
-    private static final int BUTTON_WIDTH_DP = 184;
-    private static final int BUTTON_HEIGHT_DP = 50;
-    private static final int BUTTON_GAP_DP = 24;
-    private static final int BUTTON_CORNER_DP = 7;
-    private static final int ICON_SIZE_DP = 50;
+    // Compact, fixed proportions based on the 640x480 Bold 9900 reference.
+    // Android dp/sp handle device density; no extra pixel-scale corrections.
+    private static final int PANEL_WIDTH_DP = 320;
+    private static final int PANEL_CORNER_DP = 7;
+    private static final int BUTTON_WIDTH_DP = 176;
+    private static final int BUTTON_HEIGHT_DP = 30;
+    private static final int BUTTON_GAP_DP = 14;
+    private static final int BUTTON_CORNER_DP = 4;
+    private static final int ICON_SIZE_DP = 30;
 
     private Bbos6PopupButtonList() {}
 
@@ -213,9 +216,9 @@ public final class Bbos6PopupButtonList {
         private void buildContent(String title, String message,
                 int iconResource, Drawable iconDrawable) {
             int[] viewport = availableViewport(activity);
-            int width = Math.max(1, Math.min(dp(activity, 440),
-                    Math.round(viewport[0] * 0.92f)));
-            int maxHeight = Math.max(1, Math.round(viewport[1] * 0.94f));
+            // The viewport clamp only prevents overflow on narrower screens.
+            int width = Math.min(dp(activity, PANEL_WIDTH_DP), viewport[0]);
+            int maxHeight = viewport[1];
 
             FrameLayout panel = new FrameLayout(activity);
             panel.setBackground(panelBackground(activity));
@@ -239,9 +242,9 @@ public final class Bbos6PopupButtonList {
             content.setGravity(Gravity.CENTER_HORIZONTAL);
             content.setOrientation(LinearLayout.VERTICAL);
             boolean hasHeader = title != null || iconResource != 0 || iconDrawable != null;
-            content.setPadding(dp(activity, 18),
-                    dp(activity, hasHeader || message != null ? 36 : 28),
-                    dp(activity, 18), dp(activity, 40));
+            content.setPadding(dp(activity, 12),
+                    dp(activity, hasHeader || message != null ? 20 : 16),
+                    dp(activity, 12), dp(activity, 22));
 
             if (hasHeader) {
                 addHeader(content, title, iconResource, iconDrawable);
@@ -249,8 +252,7 @@ public final class Bbos6PopupButtonList {
             if (message != null) {
                 addMessage(content, message);
             }
-            int buttonWidth = Math.max(1, Math.min(dp(activity, BUTTON_WIDTH_DP),
-                    width - dp(activity, 36)));
+            int buttonWidth = dp(activity, BUTTON_WIDTH_DP);
             for (int i = 0; i < actions.size(); i++) {
                 addButton(content, i, buttonWidth);
             }
@@ -302,7 +304,7 @@ public final class Bbos6PopupButtonList {
                 FrameLayout frame = new FrameLayout(activity);
                 GradientDrawable border = new GradientDrawable();
                 border.setColor(PANEL_COLOR);
-                border.setCornerRadius(dp(activity, 7));
+                border.setCornerRadius(dp(activity, 4));
                 border.setStroke(Math.max(1, dp(activity, 1)), 0xffb9bdc1);
                 frame.setBackground(border);
 
@@ -321,12 +323,12 @@ public final class Bbos6PopupButtonList {
                 FrameLayout.LayoutParams iconParams = new FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT);
-                iconParams.setMargins(dp(activity, 5), dp(activity, 5),
-                        dp(activity, 5), dp(activity, 5));
+                iconParams.setMargins(dp(activity, 3), dp(activity, 3),
+                        dp(activity, 3), dp(activity, 3));
                 frame.addView(icon, iconParams);
                 LinearLayout.LayoutParams frameParams = new LinearLayout.LayoutParams(
                         dp(activity, ICON_SIZE_DP), dp(activity, ICON_SIZE_DP));
-                if (title != null) frameParams.rightMargin = dp(activity, 18);
+                if (title != null) frameParams.rightMargin = dp(activity, 10);
                 header.addView(frame, frameParams);
             }
 
@@ -334,7 +336,7 @@ public final class Bbos6PopupButtonList {
                 TextView heading = new TextView(activity);
                 heading.setText(title);
                 heading.setTextColor(Color.WHITE);
-                heading.setTextSize(TypedValue.COMPLEX_UNIT_SP, 25);
+                heading.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
                 heading.setGravity(Gravity.CENTER_VERTICAL);
                 heading.setMaxLines(2);
                 heading.setEllipsize(TextUtils.TruncateAt.END);
@@ -347,7 +349,7 @@ public final class Bbos6PopupButtonList {
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT);
-            params.bottomMargin = dp(activity, 38);
+            params.bottomMargin = dp(activity, 20);
             content.addView(header, params);
         }
 
@@ -356,7 +358,7 @@ public final class Bbos6PopupButtonList {
             TextView detail = new TextView(activity);
             detail.setText(text);
             detail.setTextColor(0xfff1f1f1);
-            detail.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+            detail.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
             detail.setGravity(Gravity.CENTER);
             detail.setFocusable(false);
             detail.setClickable(false);
@@ -365,19 +367,19 @@ public final class Bbos6PopupButtonList {
                     ViewGroup.LayoutParams.WRAP_CONTENT);
             params.leftMargin = dp(activity, 5);
             params.rightMargin = dp(activity, 5);
-            params.bottomMargin = dp(activity, 26);
+            params.bottomMargin = dp(activity, 14);
             content.addView(detail, params);
         }
 
         private void addButton(LinearLayout content, int index, int buttonWidth) {
             Action action = actions.get(index);
             TextView button = new TextView(activity);
-            button.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
+            button.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
             button.setGravity(Gravity.CENTER);
             button.setSingleLine(true);
             button.setEllipsize(TextUtils.TruncateAt.END);
             button.setIncludeFontPadding(false);
-            button.setPadding(dp(activity, 8), 0, dp(activity, 8), 0);
+            button.setPadding(dp(activity, 6), 0, dp(activity, 6), 0);
             button.setFocusable(false);
             button.setEnabled(action.enabled);
             button.setClickable(action.enabled);
@@ -454,7 +456,7 @@ public final class Bbos6PopupButtonList {
                 boolean selected = i == selection && actions.get(i).enabled;
                 button.setBackground(buttonBackground(activity, selected));
                 button.setTextColor(selected ? Color.WHITE : 0xff242629);
-                button.setElevation(dp(activity, selected ? 3 : 2));
+                button.setElevation(dp(activity, selected ? 2 : 1));
             }
         }
 
