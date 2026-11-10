@@ -44,6 +44,27 @@ and user-authorized SAF tree boundaries.
 
 Never require user-entered commands for in-app functionality.
 
+## Reusable empty-state UI
+
+Use `Bbos6EmptyStateView` from the shared `bbos6-ui` module for title,
+supporting message and optional caller-provided original artwork when a
+page has no content. Never insert placeholder messages as selectable or
+disabled adapter rows merely to show an empty state. The shared helper owns
+only presentation; each application determines emptiness and placement
+outside the ListView adapter. Artwork is absent unless supplied and
+identified; do not create replacements.
+
+For Music, `MusicActivity.Page.setEmptyState` configures the display and
+`updateEmptyState()` positions it below existing playlist action rows.
+The underlying `MusicListView` retains scrolling/trackpad selection.
+The empty Playlists page uses verified original `354.png` from
+`bbos6-shared/icons/`, packaged unchanged as `bbos6_playlist_empty.png`,
+with its mapping recorded in the canonical shared `icon-index.csv`.
+Its **Add Playlist** list row is deliberately inert; previous Create/Import
+menu entries are not displayed, though underlying code remains available.
+Changing this shared helper requires the standard shared-first PR and
+consumer-submodule workflow.
+
 ## Playlist maintenance
 
 Playlists are implemented only in this repository, through
