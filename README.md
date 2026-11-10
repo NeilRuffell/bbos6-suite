@@ -403,7 +403,9 @@ Review button/label sizes and three-column context menus directly on the
 Q25 before approving the shared or Music PRs.
 
 The same shared popup also handles the **Add Playlist** two-option
-choice. A single Music helper, `showButtonPopup(...)`, manages dialog
+choice, and its optional native text-entry mode is used for both playlist
+creation and renaming. Save/Cancel are horizontal with Cancel initially
+highlighted. A single Music helper, `showButtonPopup(...)`, manages dialog
 lifetime for confirmations and the playlist choice without duplicating
 any widget drawing or navigation. The button actions are still
 application-owned and do not change Room, SAF or Media3 logic.
@@ -1201,11 +1203,15 @@ background workers; the native ListView and Media3 controller are reused.
 ### Interaction
 
 - **Playlists** at Home: **Add Playlist** opens a compact, two-button
-  BBOS6 popup with **New Playlist** (existing name-entry flow) and
+  BBOS6 popup with **New Playlist** (name-entry flow) and
   **Import Playlist** (existing native SAF document picker). It uses the
   shared `Bbos6PopupButtonList` helper without screen-specific button
-  styling. Saved playlists follow with entry counts. Tap a playlist to
-  open it; long-press one to **Rename playlist** or **Delete playlist**.
+  styling. The New Playlist and Rename playlist name fields now use the
+  same shared popup with native single-line `EditText` and horizontal
+  **Cancel** / **Save** buttons. Save reuses the existing Room playlist
+  validation and create/rename logic; Cancel makes no changes. Saved
+  playlists follow with entry counts. Tap a playlist to open it;
+  long-press one to **Rename playlist** or **Delete playlist**.
 - Open playlist: **Play all**, **Shuffle**, **Add songs**, **Rename playlist**,
   **Export M3U8**, **Delete playlist**, followed by the ordered track list.
   Playing one track uses the available songs of that playlist as its Media3
