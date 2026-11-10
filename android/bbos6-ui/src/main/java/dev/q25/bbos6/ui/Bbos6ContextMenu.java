@@ -55,14 +55,18 @@ public final class Bbos6ContextMenu {
 
     private static final int DEFAULT_COLUMNS = 3;
     private static final int MAX_COLUMNS = 6;
-    private static final float WIDTH_FRACTION = 0.98f;
-    private static final float HEIGHT_FRACTION = 0.94f;
-    private static final int MAX_WIDTH_DP = 560;
-    private static final int CORNER_RADIUS_DP = 8;
-    private static final int CONTENT_INSET_DP = 7;
-    private static final int TILE_SIDE_INSET_DP = 3;
-    private static final int TILE_TOP_INSET_DP = 6;
-    private static final float LABEL_SIZE_SP = 15f;
+    // Natural, fixed-sized cells; no viewport-derived row stretching.
+    // Single/two-column menus stay compact instead of occupying a full grid.
+    private static final int ONE_COLUMN_WIDTH_DP = 112;
+    private static final int TWO_COLUMN_WIDTH_DP = 212;
+    private static final int MULTI_COLUMN_WIDTH_DP = 312;
+    private static final int ROW_HEIGHT_DP = 94;
+    private static final int ICON_SIZE_DP = 42;
+    private static final int CORNER_RADIUS_DP = 7;
+    private static final int CONTENT_INSET_DP = 5;
+    private static final int TILE_SIDE_INSET_DP = 2;
+    private static final int TILE_TOP_INSET_DP = 3;
+    private static final float LABEL_SIZE_SP = 14f;
 
     public interface OnActionListener {
         void onAction(Bbos6ContextMenuItem item);
@@ -202,28 +206,14 @@ public final class Bbos6ContextMenu {
             // action forms one compact centered tile; when the caller adds
             // more actions, the popup expands toward the reference grid.
             int visibleColumns = Math.min(columns, largestGroup);
-            int fullGridWidth = Math.max(1, Math.min(dp(activity, MAX_WIDTH_DP),
-                    Math.round(viewport[0] * WIDTH_FRACTION)));
-            int panelWidth = Math.max(1,
-                    Math.round(fullGridWidth * (visibleColumns / (float) columns)));
-            int maxHeight = Math.max(1, Math.round(viewport[1] * HEIGHT_FRACTION));
-            int innerWidth = Math.max(1, panelWidth - 2 * dp(activity, CONTENT_INSET_DP));
-            int cellWidth = Math.max(1, innerWidth / visibleColumns);
-            int rowHeight = Math.max(dp(activity, 94),
-                    Math.min(dp(activity, 166), Math.round(cellWidth * 1.02f)));
-            // Fit the reference's three square-ish rows on Q25 square screens
-            // when possible. Tall menus still scroll instead of truncating.
-            int totalRows = 0;
-            for (List<Bbos6ContextMenuItem> group : groups) {
-                totalRows += (group.size() + visibleColumns - 1) / visibleColumns;
-            }
-            int separators = Math.max(0, groups.size() - 1) * dp(activity, 2);
-            int roomForRows = maxHeight - separators
-                    - 2 * dp(activity, CONTENT_INSET_DP);
-            int fittingRowHeight = roomForRows / Math.max(1, totalRows);
-            if (fittingRowHeight >= dp(activity, 94)) {
-                rowHeight = Math.min(rowHeight, fittingRowHeight);
-            }
+            // Choose intrinsic grid widths, bounded only by the usable
+            // viewport. ScrollView handles excess menu height naturally.
+            int panelWidthDp = visibleColumns == 1 ? ONE_COLUMN_WIDTH_DP
+                    : visibleColumns == 2 ? TWO_COLUMN_WIDTH_DP
+                    : MULTI_COLUMN_WIDTH_DP;
+            int panelWidth = Math.min(dp(activity, panelWidthDp), viewport[0]);
+            int maxHeight = viewport[1];
+            int rowHeight = dp(activity, ROW_HEIGHT_DP);
 
             FrameLayout panel = new FrameLayout(activity);
             panel.setBackground(panelBackground(activity));
@@ -263,8 +253,7 @@ public final class Bbos6ContextMenu {
                     for (int col = 0; col < visibleColumns; col++) {
                         int itemPosition = start + col;
                         if (itemPosition < group.size()) {
-                            addCell(row, group.get(itemPosition),
-                                    globalRow, col, rowHeight, cellWidth);
+                            addCell(row, group.get(itemPosition), globalRow, col);
                         } else {
                             // Keep partial rows left aligned in the same grid.
                             row.addView(new View(activity),
@@ -314,33 +303,26 @@ public final class Bbos6ContextMenu {
         }
 
         private void addCell(LinearLayout row, Bbos6ContextMenuItem item,
-                int gridRow, int column, int heightPx, int cellWidthPx) {
+                int gridRow, int column) {
             FrameLayout hitTarget = new FrameLayout(activity);
             row.addView(hitTarget, new LinearLayout.LayoutParams(
                     0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
-            int insetX = dp(activity, TILE_SIDE_INSET_DP);
-            int insetY = dp(activity, TILE_TOP_INSET_DP);
 
-            FrameLayout tile = new FrameLayout(activity);
-            // StateListDrawable on the tile responds to the parent hit target
-            // so touch-down shows the same blue face as trackpad selection.
+            // The normal Android vertical layout measures the icon and
+            // two-line label directly. Nothing is resized to compensate for
+            // computed cell dimensions or viewport height.
+            LinearLayout tile = new LinearLayout(activity);
+            tile.setOrientation(LinearLayout.VERTICAL);
+            tile.setGravity(Gravity.CENTER);
             tile.setDuplicateParentStateEnabled(true);
             FrameLayout.LayoutParams tileParams = new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT);
-            tileParams.setMargins(insetX, insetY, insetX, insetY);
+            tileParams.setMargins(dp(activity, TILE_SIDE_INSET_DP),
+                    dp(activity, TILE_TOP_INSET_DP),
+                    dp(activity, TILE_SIDE_INSET_DP),
+                    dp(activity, TILE_TOP_INSET_DP));
             hitTarget.addView(tile, tileParams);
-
-            int tileHeight = heightPx - 2 * insetY;
-            int labelHeight = Math.max(dp(activity, 36),
-                    Math.round(tileHeight * 0.38f));
-            // Reserve sufficient space for two-line labels before sizing the
-            // icon; a compact Q25 screen must not clip the action artwork.
-            int iconAreaHeight = Math.max(1, tileHeight - labelHeight);
-            FrameLayout iconArea = new FrameLayout(activity);
-            tile.addView(iconArea, new FrameLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, iconAreaHeight,
-                    Gravity.TOP));
 
             ImageView icon = new ImageView(activity);
             icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
@@ -350,11 +332,8 @@ public final class Bbos6ContextMenu {
             } else {
                 icon.setVisibility(View.INVISIBLE);
             }
-            int iconSize = Math.max(1, Math.min(
-                    Math.min(dp(activity, 66), Math.round(cellWidthPx * 0.48f)),
-                    Math.max(1, iconAreaHeight - dp(activity, 3))));
-            iconArea.addView(icon, new FrameLayout.LayoutParams(
-                    iconSize, iconSize, Gravity.CENTER));
+            tile.addView(icon, new LinearLayout.LayoutParams(
+                    dp(activity, ICON_SIZE_DP), dp(activity, ICON_SIZE_DP)));
 
             TextView label = new TextView(activity);
             label.setText(item.label());
@@ -365,9 +344,11 @@ public final class Bbos6ContextMenu {
             label.setIncludeFontPadding(false);
             label.setEllipsize(android.text.TextUtils.TruncateAt.END);
             label.setPadding(dp(activity, 2), 0, dp(activity, 2), 0);
-            tile.addView(label, new FrameLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, labelHeight,
-                    Gravity.BOTTOM));
+            LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT);
+            labelParams.topMargin = dp(activity, 3);
+            tile.addView(label, labelParams);
 
             hitTarget.setEnabled(item.enabled());
             hitTarget.setClickable(item.enabled());
