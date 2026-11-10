@@ -381,9 +381,13 @@ menu definition, not the shared renderer.
 ### Native track and group deletion
 
 Delete permanently removes the **actual audio documents** from selected
-music folders. The UI always shows a native confirmation with the **exact
-number of tracks**, the group/track name, and a warning that deletion cannot
-be undone. Cancel changes nothing.
+music folders. The native confirmation uses **Delete** and **Cancel**
+buttons. For a track, it asks **"Are you sure you want to delete
+<filename> permanently from storage?"** using the document provider's
+`COLUMN_DISPLAY_NAME` (not the track-title metadata). If the provider does
+not supply a filename, it says "this track" rather than inventing one.
+For artist/album/genre groups, it asks the corresponding question naming
+the group and the number of songs affected. Cancel changes nothing.
 
 - A track row deletes that single track.
 - An Artist, Album, or Genre group deletes all **indexed tracks** in that
