@@ -14,6 +14,7 @@ import androidx.media3.session.SessionToken;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
@@ -41,6 +42,8 @@ final class MusicPlaybackClient {
     private List<MediaItem> pendingItems;
     private int pendingIndex;
     private boolean pendingShuffle;
+    // Apply deletions if a result arrives before the Media3 controller does.
+    private final Set<String> pendingDeletedIds = new HashSet<>();
 
     private final Player.Listener playerListener = new Player.Listener() {
         @Override public void onEvents(Player player, Player.Events events) {
@@ -93,6 +96,10 @@ final class MusicPlaybackClient {
                 controller = established;
                 connectionRetryCount = 0;
                 controller.addListener(playerListener);
+                if (!pendingDeletedIds.isEmpty()) {
+                    removeDeletedFromController(pendingDeletedIds);
+                    pendingDeletedIds.clear();
+                }
                 Log.i(TAG, "Media3 controller connected; queuePending="
                         + (pendingItems != null));
                 boolean hadNewQueue = pendingItems != null;
@@ -304,11 +311,9 @@ final class MusicPlaybackClient {
         if (pendingItems != null) {
             ArrayList<MediaItem> remaining = new ArrayList<>();
             int newIndex = 0;
-            boolean removedCurrent = false;
             for (int i = 0; i < pendingItems.size(); i++) {
                 MediaItem item = pendingItems.get(i);
                 if (deletedIds.contains(item.mediaId)) {
-                    if (i == pendingIndex) removedCurrent = true;
                 } else {
                     if (i < pendingIndex) newIndex++;
                     remaining.add(item);
@@ -324,16 +329,23 @@ final class MusicPlaybackClient {
             }
         }
         if (controller != null) {
-            // Remove backwards so indices are not shifted before their turn.
-            // Media3 handles moving to the next surviving timeline item.
-            for (int i = controller.getMediaItemCount() - 1; i >= 0; i--) {
-                if (deletedIds.contains(controller.getMediaItemAt(i).mediaId)) {
-                    controller.removeMediaItem(i);
-                }
-            }
+            removeDeletedFromController(deletedIds);
+        } else {
+            pendingDeletedIds.addAll(deletedIds);
         }
         MusicPlaybackRetention.forgetDeleted(context, deletedIds);
         listener.onPlaybackChanged();
+    }
+
+    private void removeDeletedFromController(Set<String> deletedIds) {
+        if (controller == null) return;
+        // Remove backwards so indices are not shifted before their turn.
+        // Media3 handles moving to the next surviving timeline item.
+        for (int i = controller.getMediaItemCount() - 1; i >= 0; i--) {
+            if (deletedIds.contains(controller.getMediaItemAt(i).mediaId)) {
+                controller.removeMediaItem(i);
+            }
+        }
     }
 
     void disconnect() {
