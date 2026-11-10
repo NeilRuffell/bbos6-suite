@@ -451,9 +451,13 @@ public final class Bbos6PopupButtonList {
             input.setHint(hint);
             input.setSelectAllOnFocus(true);
             input.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
+            input.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+            // Popup text entry and buttons share one intrinsic height. Override
+            // only this instance's default Bbos6TextField minimum (43dp).
+            input.setMinHeight(0);
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT);
+                    dp(activity, BUTTON_HEIGHT_DP));
             params.bottomMargin = dp(activity, 14);
             content.addView(input, params);
         }
