@@ -119,7 +119,9 @@ Pure-Java unit tests cover grouped grid movement, partial rows, edge
 clamping, disabled cells and action-item validation.
 
 ```bash
-gradle -p music-app :bbos6-ui:testDebugUnitTest :app:assembleRelease
+cd ~/Projects/bb-music
+git submodule update --init --recursive
+gradle :bbos6-ui:testDebugUnitTest :app:assembleRelease
 ```
 
 Compilation and on-device Q25 appearance/interaction must be verified before

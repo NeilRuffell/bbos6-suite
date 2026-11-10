@@ -3,9 +3,9 @@
 A standalone, pure-Java/native-Android UI library. No Media3, storage,
 music metadata, BB UI Vector/LSPosed or third-party dependency.
 
-It is currently consumed by the independent `music-app/` Gradle build; other
-Android applications may include the module from their own `settings.gradle`
-and add an `implementation project(':bbos6-ui')` dependency.
+Consumed by the independent [`bb-music`](https://github.com/NeilRuffell/bb-music)
+application through the pinned `assets/bbos6` Git submodule. Other native Android
+applications can use the same module without maintaining their own copy.
 
 ## Components
 
@@ -84,7 +84,7 @@ In its `settings.gradle`:
 
 ```gradle
 include ':bbos6-ui'
-project(':bbos6-ui').projectDir = file('../shared/android/bbos6-ui')
+project(':bbos6-ui').projectDir = file('assets/bbos6/android/bbos6-ui')
 ```
 
 Adjust the project-relative path as needed. In the application's module:
@@ -95,23 +95,23 @@ dependencies {
 }
 ```
 
-The Music app opens `Bbos6ContextMenu` on long presses of playable
-track rows with one action, **Properties**. The action opens the existing
-`Bbos6PropertiesPopup`, with `MusicTrackPropertiesReader` supplying SAF and
-indexed metadata. Neither shared widget queries files or handles Music
+The Music app opens `Bbos6ContextMenu` for playable tracks with
+**Properties** and **Delete** actions, and offers **Delete** for artist,
+album and genre groups. Properties opens the existing
+`Bbos6PropertiesPopup`; Music owns the SAF metadata and deletion logic. Neither shared widget queries files or handles Music
 navigation. Other applications can supply any context actions and property
 rows through their respective builders without copying UI code.
 
 ## Local verification
 
-From the BB UI repository root:
+From the independent `bb-music` repository root:
 
 ```bash
-gradle -p music-app :bbos6-ui:testDebugUnitTest :app:assembleRelease
-adb -s 202512003630 install -r music-app/app/build/outputs/apk/release/app-release.apk
+git submodule update --init --recursive
+gradle :bbos6-ui:testDebugUnitTest :app:testDebugUnitTest :app:assembleRelease
+adb -s 202512003630 install -r app/build/outputs/apk/release/app-release.apk
 ```
 
-The model tests verify value preservation and input validation. The popup
-has not yet been wired into Music actions, so visual testing requires a
-caller. Follow the repository's existing tested-APK/approval workflow before
-publishing; do not replace the existing Android signing identity.
+The model tests verify value preservation and input validation. Music
+supplies a working caller for both popup helpers. Follow Music's tested
+release-APK/approval workflow; never replace the installed signing identity.
