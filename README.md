@@ -52,14 +52,15 @@ Home screen, in order:
 3. Artists
 4. Albums
 5. Genres
-6. **Folders** — browse directories chosen in Settings
-7. Shuffle Songs (first-party shuffled playback)
-8. Settings
+6. **Playlists** — local, persistent, ordered playlists
+7. **Folders** — browse directories chosen in Settings
+8. Shuffle Songs (first-party shuffled playback)
+9. Settings
 
-**Playlists** (internal menu index 4) is temporarily hidden from the home
-screen until playlist functionality is implemented. Its menu definition, icon,
-placeholder activation handler and numeric routing are retained unchanged,
-so the entry can be restored without reconstructing the feature.
+**Playlists** uses the existing menu index 4 and original verified BBOS6
+`337.png` icon. Folders keeps index 7, preserving the existing Shuffle
+and Settings routing. Both native touch and Q25 trackpad controls work in
+the existing list and context menus.
 
 The **Now Playing...** item is the first row of the existing shared native
 `MusicListView`, with the original BBOS6 `341.png` icon and identical
@@ -1120,3 +1121,85 @@ adb -s 202512003630 install -r app/build/outputs/apk/release/app-release.apk
 ```
 
 Do not publish an APK until that exact build has passed on-device validation and explicit approval. Retain the existing signing identity for updates.
+
+
+## Playlists (Room + Media3 + M3U8)
+
+Playlists use the existing app-private Room database, migrated **non-destructively
+from v2 to v3**. `music_playlists` contains playlist names and IDs;
+`music_playlist_entries` stores independently ordered entries with exact
+`content://` SAF references and a fallback song title. Repeated songs are
+allowed and retain distinct entry IDs. The scanned music catalog remains
+the only source of playable tracks. No audio files are moved or copied and
+no new broad storage permission is required. Both databases are accessed on
+background workers; the native ListView and Media3 controller are reused.
+
+### Interaction
+
+- **Playlists** at Home: **Create playlist**, **Import M3U8**, and the
+  saved playlists with entry counts. Tap a playlist to open it; long-press
+  one to **Rename playlist** or **Delete playlist**.
+- Open playlist: **Play all**, **Shuffle**, **Add songs**, **Rename playlist**,
+  **Export M3U8**, **Delete playlist**, followed by the ordered track list.
+  Playing one track uses the available songs of that playlist as its Media3
+  queue. Shuffle uses the existing Media3 queue shuffle mode.
+- **Add songs** opens the existing All Songs list as a picker. Enter/tap
+  inserts the selected song; Back returns to the playlist. To add a whole
+  album, artist, or genre at once, long-press its group row anywhere in the
+  music library and choose **Add to playlist**. The same action is available
+  for individual track rows.
+- In a playlist, long-press an available track to **Move up**, **Move down**,
+  or **Remove from playlist**. The context menu also offers Properties,
+  Add to playlist and the separate destructive **Delete audio file** action
+  with its existing SAF confirmation. Removing an entry or deleting a
+  playlist **never** deletes the audio file.
+- If an entry is absent from the currently indexed/authorized music folders,
+  it is displayed as unavailable; it cannot be played or replaced by a
+  filename-only guess. It can still be moved or removed. Reauthorizing the
+  exact song URI makes it playable again on library reload.
+- Playlist edits and order survive app restarts. Active queue retention
+  continues to use the existing Media3 and playback retention mechanisms.
+
+### M3U8 interoperability and limitations
+
+- **Import M3U8** uses Android's `ACTION_OPEN_DOCUMENT` picker and reads
+  UTF-8 M3U/M3U8 text (including `#EXTM3U`, `#EXTINF` and CRLF).
+  The imported playlist is saved in Room, with a unique name if necessary.
+  Absolute paths and `file://` references are resolved against the
+  **already-indexed** selected-folder catalog. Relative paths are supported
+  only when the picked playlist document has a resolvable primary-storage
+  location. Unresolved references are counted and skipped. No arbitrary
+  filesystem scan, network playback, filename-only matching, or provider
+  permission escalation occurs.
+- **Export M3U8** uses Android's `ACTION_CREATE_DOCUMENT` picker. External
+  entries use absolute filesystem paths derived from Android's primary
+  external-storage location and standard `primary:` SAF document IDs.
+  Unsupported opaque/custom-provider IDs and unavailable tracks cannot be
+  represented in a portable path-based M3U8; export reports failure rather
+  than silently omitting them. The exported file is an interoperability
+  artifact, not the app's source of truth. No storage folder is opened
+  outside the user's chosen document-picker destination.
+- Import is bounded to 2 MiB and 20,000 entries. Only the `content://` song
+  URIs from the current authorized catalog are accepted into playlists.
+  M3U8 `http://`/`https://` streams are not supported by this offline player.
+
+### Q25 verification
+
+Run the existing release workflow below without uninstalling or clearing data:
+
+```bash
+cd ~/Projects/bb-music
+git fetch origin
+git switch feature/native-playlists-m3u8
+git pull --ff-only
+git submodule update --init --recursive
+gradle :bbos6-ui:testDebugUnitTest :app:testDebugUnitTest :app:assembleRelease
+adb -s 202512003630 install -r app/build/outputs/apk/release/app-release.apk
+```
+
+Check playlist create/rename/delete, duplicate tracks, group inserts, reordering
+via long-press on the trackpad, removing without touching the audio file,
+sequential/shuffle playback, process restart persistence, unavailable files
+after removing a folder and reauthorizing it, plus M3U8 roundtrip using
+primary-storage audio. Test cancellation and unsupported SAF document providers.
+Only merge/publish after actual Q25 results and explicit approval.
