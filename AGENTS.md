@@ -96,6 +96,11 @@ The reusable, app-neutral library lives in
   Do not maintain a second popup renderer or screen-specific button styles.
 - Keep Android-owned system permission prompts and document pickers native.
   Complex input dialogs requiring an editable view are not button-only popups.
+- In `Bbos6PopupButtonList`, the selected button index is remembered even
+  when an `EditText` has focus, but its blue selection face must appear
+  **only while the popup's button-focus owner is focused**. Refresh the
+  button faces on focus changes. Do not replace the selection with a
+  disabled button or add a transparent overlay; keep native text editing.
 - Use the shared `Bbos6FocusPolicy.forManagedContainers(root)` for
   composite BBOS6 panels that own trackpad/DPAD focus and render their own
   selection. Call it **after** the child container hierarchy is assembled,
