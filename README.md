@@ -1343,3 +1343,19 @@ The Music feature branch pins shared commit
 `b7310c4f8682f2394e33c9b23fa65d9373815730`. Verify album detail
 artwork (present/missing), Back, scrolling/trackpad selection and rotation
 before approving or merging.
+
+### Compose-backed Music empty state
+
+The list viewport's `emptyState` is now a
+`Bbos6EmptyStateComposeView` from `bbos6-shared`, implemented entirely
+through the shared Compose `Bbos6EmptyState`. It exposes the existing
+`setContent(...)` and `setArtworkResource(...)` methods to the unchanged
+`updateEmptyState()` logic. The empty-state component remains outside the
+selectable `MusicListView` adapter, non-focusable, non-clickable and
+transparent behind its content. List selection, keyboard/trackpad navigation,
+reserved action-row spacing, Playlists' original 354.png artwork, search,
+playback and data are unchanged.
+
+The integration remains unmerged until verified on the Q25. Check the empty
+Playlists page and an empty playlist detail, including focus staying on the
+action rows, Back, and both touch and physical trackpad behavior.

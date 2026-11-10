@@ -32,7 +32,7 @@ import dev.q25.bbos6.ui.Bbos6ContextMenu;
 import dev.q25.bbos6.ui.Bbos6ContextMenuItem;
 import dev.q25.bbos6.ui.Bbos6PopupButtonList;
 import dev.q25.bbos6.ui.Bbos6TextField;
-import dev.q25.bbos6.ui.Bbos6EmptyStateView;
+import dev.q25.bbos6.ui.compose.Bbos6EmptyStateComposeView;
 import dev.q25.bbos6.ui.Bbos6PropertiesPopup;
 
 import androidx.activity.ComponentActivity;
@@ -102,7 +102,7 @@ public final class MusicActivity extends ComponentActivity {
 
     private MusicListView list;
     private FrameLayout listViewport;
-    private Bbos6EmptyStateView emptyState;
+    private Bbos6EmptyStateComposeView emptyState;
     private LinearLayout libraryShell;
     private MusicAlbumHeaderView albumHeader;
     private Bbos6TextField searchInput;
@@ -453,7 +453,7 @@ public final class MusicActivity extends ComponentActivity {
         listViewport.addView(list, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
-        emptyState = new Bbos6EmptyStateView(this);
+        emptyState = new Bbos6EmptyStateComposeView(this);
         emptyState.setVisibility(View.GONE);
         listViewport.addView(emptyState, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,

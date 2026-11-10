@@ -236,3 +236,11 @@ Java-callable constructor, `bind(...)`, `clear()`, and static `heightDp()`
 contract. Keep `MusicActivity.bindAlbumHeader()`, the `MusicListView` art
 cache, selected SAF source scope, stale callback generation guard, and
 non-selectable header position unchanged.
+
+### Compose empty-state transition
+
+`MusicActivity` uses the shared
+`dev.q25.bbos6.ui.compose.Bbos6EmptyStateComposeView`; do not maintain
+a Music-only Compose empty state. Preserve `updateEmptyState()` byte-for-byte
+apart from the field type/constructor migration. All conditions, reserved
+row offsets and original resource IDs remain Music-owned.
