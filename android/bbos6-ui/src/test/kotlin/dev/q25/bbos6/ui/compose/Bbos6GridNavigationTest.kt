@@ -26,7 +26,7 @@ class Bbos6GridNavigationTest {
         assertEquals(4, Bbos6GridNavigation.move(cells, 0, Bbos6GridDirection.DOWN))
         assertEquals(5, Bbos6GridNavigation.move(cells, 4, Bbos6GridDirection.DOWN))
         assertEquals(4, Bbos6GridNavigation.move(cells, 5, Bbos6GridDirection.UP))
-        assertEquals(2, Bbos6GridNavigation.move(cells, 4, Bbos6GridDirection.UP))
+        assertEquals(0, Bbos6GridNavigation.move(cells, 4, Bbos6GridDirection.UP))
         assertEquals(0, Bbos6GridNavigation.move(cells, 0, Bbos6GridDirection.UP))
     }
 
