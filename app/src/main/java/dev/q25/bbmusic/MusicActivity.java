@@ -646,6 +646,7 @@ public final class MusicActivity extends Activity {
         }
         MenuRow row = visibleRows.get(position);
         if (!rowPresentation(row).enabled) return false;
+        if (currentPage.playlistPickerId >= 0) return false;
         switch (row.kind) {
             case ROW_SONG:
                 return row.song != null;
@@ -695,30 +696,74 @@ public final class MusicActivity extends Activity {
         // Dismiss any pending metadata result from a previous long press.
         propertiesRequestSerial++;
         Bbos6ContextMenu.Builder menu = Bbos6ContextMenu.builder();
-        if (row.kind == ROW_SONG) {
+        if (row.kind == ROW_PLAYLIST) {
             menu.addGroup(
-                    Bbos6ContextMenuItem.resource(
-                            "properties", "Properties",
-                            android.R.drawable.ic_menu_info_details),
-                    Bbos6ContextMenuItem.resource(
-                            "delete", "Delete",
-                            android.R.drawable.ic_menu_delete));
+                    Bbos6ContextMenuItem.resource("playlist-rename",
+                            "Rename playlist", android.R.drawable.ic_menu_edit),
+                    Bbos6ContextMenuItem.resource("playlist-delete",
+                            "Delete playlist", android.R.drawable.ic_menu_delete));
+            menu.initiallySelected("playlist-rename");
+        } else if (row.kind == ROW_SONG) {
+            menu.addGroup(
+                    Bbos6ContextMenuItem.resource("properties",
+                            "Properties", android.R.drawable.ic_menu_info_details),
+                    Bbos6ContextMenuItem.resource("add-to-playlist",
+                            "Add to playlist", android.R.drawable.ic_menu_add));
+            if (row.playlistEntryId >= 0) {
+                menu.addGroup(
+                        Bbos6ContextMenuItem.resource("move-up",
+                                "Move up", android.R.drawable.arrow_up_float),
+                        Bbos6ContextMenuItem.resource("move-down",
+                                "Move down", android.R.drawable.arrow_down_float),
+                        Bbos6ContextMenuItem.resource("remove-from-playlist",
+                                "Remove from playlist", android.R.drawable.ic_menu_close_clear_cancel));
+            }
+            menu.addGroup(Bbos6ContextMenuItem.resource(
+                    "delete", "Delete audio file", android.R.drawable.ic_menu_delete));
             menu.initiallySelected("properties");
         } else {
-            menu.addGroup(Bbos6ContextMenuItem.resource(
-                    "delete", "Delete",
-                    android.R.drawable.ic_menu_delete));
-            menu.initiallySelected("delete");
+            menu.addGroup(
+                    Bbos6ContextMenuItem.resource("add-to-playlist",
+                            "Add to playlist", android.R.drawable.ic_menu_add),
+                    Bbos6ContextMenuItem.resource("delete",
+                            "Delete audio files", android.R.drawable.ic_menu_delete));
+            menu.initiallySelected("add-to-playlist");
         }
         contextMenuDialog = menu.onAction(item -> {
                     if (isFinishing() || isDestroyed() || nowPlayingVisible
                             || currentPage != page || !visibleRows.contains(row)) {
                         return;
                     }
-                    if ("properties".equals(item.id()) && row.kind == ROW_SONG) {
-                        showTrackProperties(row);
-                    } else if ("delete".equals(item.id())) {
-                        confirmDelete(row);
+                    switch (item.id()) {
+                        case "properties":
+                            if (row.kind == ROW_SONG) showTrackProperties(row);
+                            break;
+                        case "add-to-playlist":
+                            choosePlaylist(row.kind == ROW_SONG
+                                    ? Collections.singletonList(row.song) : row.songs);
+                            break;
+                        case "move-up":
+                            movePlaylistEntry(row, -1);
+                            break;
+                        case "move-down":
+                            movePlaylistEntry(row, 1);
+                            break;
+                        case "remove-from-playlist":
+                            removePlaylistEntry(row);
+                            break;
+                        case "playlist-rename":
+                            renamePlaylist(row.playlistId);
+                            break;
+                        case "playlist-delete":
+                            confirmPlaylistDelete(row.playlistId, row.title);
+                            break;
+                        case "delete":
+                            if (row.kind == ROW_SONG || row.kind == ROW_GROUP) {
+                                confirmDelete(row);
+                            }
+                            break;
+                        default:
+                            break;
                     }
                 })
                 .show(this);
