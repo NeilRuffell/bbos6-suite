@@ -17,7 +17,7 @@ class MusicBeveledTextLabel(
     private val textSizeSp: Float
 ) : AbstractComposeView(context) {
     private var value by mutableStateOf("")
-    private var metadataFocused by mutableStateOf(false)
+    private var metadataHighlightState by mutableStateOf(false)
 
     init {
         isFocusable = false
@@ -33,7 +33,7 @@ class MusicBeveledTextLabel(
 
     /** Selection is still determined by Now Playing's native zone state. */
     fun setMetadataFocused(focused: Boolean) {
-        metadataFocused = focused
+        metadataHighlightState = focused
     }
 
     @Composable
@@ -41,7 +41,7 @@ class MusicBeveledTextLabel(
         Bbos6MetadataPlate(
             text = value,
             textSizeSp = textSizeSp,
-            highlighted = metadataFocused
+            highlighted = metadataHighlightState
         )
     }
 }

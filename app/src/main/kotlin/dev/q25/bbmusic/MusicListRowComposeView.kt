@@ -24,12 +24,12 @@ class MusicListRowComposeView(context: Context) : AbstractComposeView(context) {
     private var rowSubtitle by mutableStateOf<String?>(null)
     private var rowDuration by mutableStateOf<String?>(null)
     private var rowTrackNumber by mutableStateOf<String?>(null)
-    private var highlighted by mutableStateOf(false)
+    private var rowHighlightState by mutableStateOf(false)
     private var removeVisible by mutableStateOf(false)
     private var removeCallback by mutableStateOf<Runnable?>(null)
 
     private var artworkMode by mutableStateOf(0)
-    private var artworkBitmap by mutableStateOf<Bitmap?>(null)
+    private var rowArtworkImage by mutableStateOf<Bitmap?>(null)
     private var artworkDescription by mutableStateOf("Album artwork")
     private var imageBindingKey: String? = null
     private val missingCover = MusicCoverPlaceholderDrawable()
@@ -58,7 +58,7 @@ class MusicListRowComposeView(context: Context) : AbstractComposeView(context) {
     }
 
     fun setHighlighted(isHighlighted: Boolean) {
-        highlighted = isHighlighted
+        rowHighlightState = isHighlighted
     }
 
     fun getArtworkBindingKey(): String? = imageBindingKey
@@ -69,29 +69,29 @@ class MusicListRowComposeView(context: Context) : AbstractComposeView(context) {
 
     fun hideArtwork() {
         artworkMode = 0
-        artworkBitmap = null
+        rowArtworkImage = null
     }
 
     fun setMenuIconBitmap(image: Bitmap?, description: String) {
-        artworkBitmap = image
+        rowArtworkImage = image
         artworkDescription = description
         artworkMode = 2
     }
 
     fun setArtworkBitmap(image: Bitmap) {
-        artworkBitmap = image
+        rowArtworkImage = image
         artworkDescription = "Album artwork"
         artworkMode = 1
     }
 
     fun showAlbumFallback() {
-        artworkBitmap = null
+        rowArtworkImage = null
         artworkDescription = "Album artwork"
         artworkMode = 3
     }
 
     fun showGenericFallback() {
-        artworkBitmap = null
+        rowArtworkImage = null
         artworkDescription = "Album artwork"
         artworkMode = 4
     }
@@ -99,7 +99,7 @@ class MusicListRowComposeView(context: Context) : AbstractComposeView(context) {
     @Composable
     override fun Content() {
         val picture: Painter? = when (artworkMode) {
-            1, 2 -> artworkBitmap?.let { image ->
+            1, 2 -> rowArtworkImage?.let { image ->
                 androidx.compose.runtime.remember(image) {
                     BitmapPainter(image.asImageBitmap())
                 }
@@ -120,7 +120,7 @@ class MusicListRowComposeView(context: Context) : AbstractComposeView(context) {
             artwork = picture,
             artworkContentDescription = artworkDescription,
             menuArtwork = artworkMode == 2,
-            highlighted = highlighted,
+            highlighted = rowHighlightState,
             showRemoveAction = removeVisible,
             onRemove = if (removal == null) null else { { removal.run() } }
         )
