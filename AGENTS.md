@@ -121,6 +121,30 @@ The reusable, app-neutral library lives in
   popup implementation in an app.
 - Build this as a Gradle Android library project inside the consuming app.
 
+## Shared BBOS6 text-input appearance
+
+`Bbos6TextField` is the canonical reusable editable field for native BBOS6
+screens. It extends Android `EditText` to retain system text editing, IME,
+selection, cursor, clipboard and genuine focus behavior, while owning the
+existing verified beveled Music-search input appearance (light inset gradient,
+rounded grey rim, text/hint colors, field insets and a 43dp minimum height).
+No application may maintain a second field-background renderer.
+
+- Use `new Bbos6TextField(context)` for search and app-owned single-line text
+  dialogs; set input type, IME options, hints, text watcher, text size and
+  value in the caller. The shared helper does not query music or save data.
+- The search header's charcoal gradient and top border are **surrounding
+  panel**, not part of the text field. Keep that panel separate; do not
+  force it into small modal dialogs.
+- `Bbos6PopupButtonList` uses this text field internally for optional
+  `.textInput(...)`; only that shared helper controls text/button focus
+  ownership, highlighted selection and navigation.
+- Never substitute a fake TextView or custom text engine for native editing.
+  A BBOS6-styled native EditText is the intended outcome, not an unstyled
+  native Android field.
+- Do not add a new field variant, second maintained drawable, focus overlay,
+  density adjustment, or screen-specific copies to mimic the screenshot.
+
 ## Design philosophy: trackpad focus and visual selection
 
 A remembered selection is **state**, not proof that its control currently
