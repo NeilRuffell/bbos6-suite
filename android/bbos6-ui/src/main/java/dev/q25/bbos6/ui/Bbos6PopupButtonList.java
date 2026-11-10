@@ -92,6 +92,7 @@ public final class Bbos6PopupButtonList {
     public static final class Builder {
         private final List<Action> actions = new ArrayList<>();
         private String title;
+        private String message;
         private int iconResourceId;
         private Drawable iconDrawable;
         private String initialSelectionId;
@@ -101,6 +102,12 @@ public final class Bbos6PopupButtonList {
         /** Optional caption. Without it, only the button stack is shown. */
         public Builder title(String text) {
             title = text == null || text.trim().isEmpty() ? null : text;
+            return this;
+        }
+
+        /** Optional detail or confirmation warning below the caption. */
+        public Builder message(String text) {
+            message = text == null || text.trim().isEmpty() ? null : text;
             return this;
         }
 
@@ -167,7 +174,7 @@ public final class Bbos6PopupButtonList {
                 }
             }
 
-            PopupDialog dialog = new PopupDialog(activity, title,
+            PopupDialog dialog = new PopupDialog(activity, title, message,
                     iconResourceId, iconDrawable, new ArrayList<>(actions),
                     initialSelectionId, dismissOnAction, listener);
             dialog.show();
@@ -187,8 +194,9 @@ public final class Bbos6PopupButtonList {
         private int selection = -1;
         private int heldConfirm = KeyEvent.KEYCODE_UNKNOWN;
 
-        PopupDialog(Activity activity, String title, int titleIconResource,
-                Drawable titleIcon, List<Action> actions, String initialSelectionId,
+        PopupDialog(Activity activity, String title, String message,
+                int titleIconResource, Drawable titleIcon, List<Action> actions,
+                String initialSelectionId,
                 boolean dismissOnAction, OnActionListener listener) {
             super(activity);
             this.activity = activity;
@@ -199,10 +207,11 @@ public final class Bbos6PopupButtonList {
             requestWindowFeature(Window.FEATURE_NO_TITLE);
             setCancelable(true);
             setCanceledOnTouchOutside(false);
-            buildContent(title, titleIconResource, titleIcon);
+            buildContent(title, message, titleIconResource, titleIcon);
         }
 
-        private void buildContent(String title, int iconResource, Drawable iconDrawable) {
+        private void buildContent(String title, String message,
+                int iconResource, Drawable iconDrawable) {
             int[] viewport = availableViewport(activity);
             int width = Math.max(1, Math.min(dp(activity, 440),
                     Math.round(viewport[0] * 0.92f)));
@@ -230,11 +239,15 @@ public final class Bbos6PopupButtonList {
             content.setGravity(Gravity.CENTER_HORIZONTAL);
             content.setOrientation(LinearLayout.VERTICAL);
             boolean hasHeader = title != null || iconResource != 0 || iconDrawable != null;
-            content.setPadding(dp(activity, 18), dp(activity, hasHeader ? 36 : 28),
+            content.setPadding(dp(activity, 18),
+                    dp(activity, hasHeader || message != null ? 36 : 28),
                     dp(activity, 18), dp(activity, 40));
 
             if (hasHeader) {
                 addHeader(content, title, iconResource, iconDrawable);
+            }
+            if (message != null) {
+                addMessage(content, message);
             }
             int buttonWidth = Math.max(1, Math.min(dp(activity, BUTTON_WIDTH_DP),
                     width - dp(activity, 36)));
@@ -336,6 +349,24 @@ public final class Bbos6PopupButtonList {
                     ViewGroup.LayoutParams.WRAP_CONTENT);
             params.bottomMargin = dp(activity, 38);
             content.addView(header, params);
+        }
+
+        /** Wrap long warnings within the bounded scrollable dialog. */
+        private void addMessage(LinearLayout content, String text) {
+            TextView detail = new TextView(activity);
+            detail.setText(text);
+            detail.setTextColor(0xfff1f1f1);
+            detail.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+            detail.setGravity(Gravity.CENTER);
+            detail.setFocusable(false);
+            detail.setClickable(false);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT);
+            params.leftMargin = dp(activity, 5);
+            params.rightMargin = dp(activity, 5);
+            params.bottomMargin = dp(activity, 26);
+            content.addView(detail, params);
         }
 
         private void addButton(LinearLayout content, int index, int buttonWidth) {
