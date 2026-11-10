@@ -1,0 +1,25 @@
+name: Validate canonical BBOS6 asset index
+
+on:
+  pull_request:
+    paths:
+      - 'icon-index.csv'
+      - 'icons/**'
+      - 'tools/validate_icon_index.py'
+      - '.github/workflows/validate-icon-index.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'icon-index.csv'
+      - 'icons/**'
+      - 'tools/validate_icon_index.py'
+      - '.github/workflows/validate-icon-index.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout shared repository
+        uses: actions/checkout@v4
+      - name: Validate index
+        run: python3 tools/validate_icon_index.py
