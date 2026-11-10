@@ -13,6 +13,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.LayerDrawable;
 import android.os.Build;
 import android.text.SpannableString;
+import android.text.Spanned;
 import android.text.TextUtils;
 import android.text.style.UnderlineSpan;
 import android.util.TypedValue;
@@ -235,7 +236,11 @@ public final class Bbos6PopupButtonList {
             if (hasHeader) {
                 addHeader(content, title, iconResource, iconDrawable);
             }
-            for (int i = 0; i < actions.size(); i++) addButton(content, i);
+            int buttonWidth = Math.max(1, Math.min(dp(activity, BUTTON_WIDTH_DP),
+                    width - dp(activity, 36)));
+            for (int i = 0; i < actions.size(); i++) {
+                addButton(content, i, buttonWidth);
+            }
 
             scroller.addView(content, new ScrollView.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
@@ -333,7 +338,7 @@ public final class Bbos6PopupButtonList {
             content.addView(header, params);
         }
 
-        private void addButton(LinearLayout content, int index) {
+        private void addButton(LinearLayout content, int index, int buttonWidth) {
             Action action = actions.get(index);
             TextView button = new TextView(activity);
             button.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
@@ -351,7 +356,8 @@ public final class Bbos6PopupButtonList {
             if (action.enabled) {
                 int underline = uniqueShortcutIndex(action.label, index);
                 if (underline >= 0) {
-                    styled.setSpan(new UnderlineSpan(), underline, underline + 1, 0);
+                    styled.setSpan(new UnderlineSpan(), underline, underline + 1,
+                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                 }
                 button.setOnTouchListener((view, event) -> {
                     if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
@@ -367,7 +373,7 @@ public final class Bbos6PopupButtonList {
             button.setText(styled);
             button.setAlpha(action.enabled ? 1f : 0.45f);
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                    dp(activity, BUTTON_WIDTH_DP), dp(activity, BUTTON_HEIGHT_DP));
+                    buttonWidth, dp(activity, BUTTON_HEIGHT_DP));
             params.gravity = Gravity.CENTER_HORIZONTAL;
             if (index < actions.size() - 1) params.bottomMargin = dp(activity, BUTTON_GAP_DP);
             content.addView(button, params);
