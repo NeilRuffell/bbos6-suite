@@ -1450,6 +1450,9 @@ public final class MusicActivity extends Activity {
 
     private void activatePlaylistAction(MenuRow row) {
         switch (row.playlistAction) {
+            case "noop":
+                // Intentional placeholder. Add Playlist wiring is deferred.
+                break;
             case "create":
                 createPlaylist(Collections.emptyList());
                 break;
