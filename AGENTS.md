@@ -74,11 +74,14 @@ The reusable, app-neutral library lives in
   must not invent imagery, choose empty-data conditions, or affect focus.
 - Keep app-specific actions, data queries, and permissions in the caller.
 - `Bbos6PopupButtonList` is the canonical reusable modal stacked-button
-  helper. Reuse `Bbos6SelectionBackground.blue(context)` instead of
-  copying its blue selection colors. Preserve rounded button faces,
-  subtle shadows, optional caller-owned title/icon and DPAD/trackpad
-  activation. Do not add application actions or assume the reference
-  screenshot's artwork is available as an original BBOS6 numbered asset.
+  helper. The BB9900 reference uses a brighter, more uniform blue button
+  face than the separate context-grid selection: source it from
+  `Bbos6SelectionBackground.popupButtonBlue(...)` and do not change the
+  existing context-menu gradient to imitate the button popup.
+  Buttons use one native rounded gradient with a thin border, **not**
+  a black shadow-underlay, inset workaround, or button elevation.
+  Preserve optional caller-owned title/icon and DPAD/trackpad activation.
+  Do not invent artwork or app-specific button styles.
 - Use `Bbos6PopupButtonList` for app-owned confirmations and simple
   button-only choice popups. A title and optional `.message(...)` preserve
   the caller's existing warning text. Place confirmation actions and their
