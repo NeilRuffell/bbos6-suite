@@ -194,18 +194,28 @@ public final class Bbos6ContextMenu {
 
         private void buildContent() {
             int[] viewport = availableViewport(activity);
-            int panelWidth = Math.max(1, Math.min(dp(activity, MAX_WIDTH_DP),
+            int largestGroup = 1;
+            for (List<Bbos6ContextMenuItem> group : groups) {
+                largestGroup = Math.max(largestGroup, group.size());
+            }
+            // The configured column count is an upper bound. A single
+            // action forms one compact centered tile; when the caller adds
+            // more actions, the popup expands toward the reference grid.
+            int visibleColumns = Math.min(columns, largestGroup);
+            int fullGridWidth = Math.max(1, Math.min(dp(activity, MAX_WIDTH_DP),
                     Math.round(viewport[0] * WIDTH_FRACTION)));
+            int panelWidth = Math.max(1,
+                    Math.round(fullGridWidth * (visibleColumns / (float) columns)));
             int maxHeight = Math.max(1, Math.round(viewport[1] * HEIGHT_FRACTION));
             int innerWidth = Math.max(1, panelWidth - 2 * dp(activity, CONTENT_INSET_DP));
-            int cellWidth = Math.max(1, innerWidth / columns);
+            int cellWidth = Math.max(1, innerWidth / visibleColumns);
             int rowHeight = Math.max(dp(activity, 94),
                     Math.min(dp(activity, 166), Math.round(cellWidth * 1.02f)));
             // Fit the reference's three square-ish rows on Q25 square screens
             // when possible. Tall menus still scroll instead of truncating.
             int totalRows = 0;
             for (List<Bbos6ContextMenuItem> group : groups) {
-                totalRows += (group.size() + columns - 1) / columns;
+                totalRows += (group.size() + visibleColumns - 1) / visibleColumns;
             }
             int separators = Math.max(0, groups.size() - 1) * dp(activity, 2);
             int roomForRows = maxHeight - separators
@@ -243,14 +253,14 @@ public final class Bbos6ContextMenu {
             int globalRow = 0;
             for (int groupIndex = 0; groupIndex < groups.size(); groupIndex++) {
                 List<Bbos6ContextMenuItem> group = groups.get(groupIndex);
-                for (int start = 0; start < group.size(); start += columns) {
+                for (int start = 0; start < group.size(); start += visibleColumns) {
                     LinearLayout row = new LinearLayout(activity);
                     row.setOrientation(LinearLayout.HORIZONTAL);
                     row.setGravity(Gravity.CENTER_VERTICAL);
                     body.addView(row, new LinearLayout.LayoutParams(
                             ViewGroup.LayoutParams.MATCH_PARENT, rowHeight));
 
-                    for (int col = 0; col < columns; col++) {
+                    for (int col = 0; col < visibleColumns; col++) {
                         int itemPosition = start + col;
                         if (itemPosition < group.size()) {
                             addCell(row, group.get(itemPosition),
