@@ -395,6 +395,10 @@ The popup sizing and long-press menu sizing are both owned by the
 `bbos6-shared` implementation. The current integration pins the compact
 Bold 9900-inspired helpers; Music does not add pixel offsets, density
 overrides, layout-scale corrections, or separate row-size calculations.
+The button popup specifically uses a screenshot-measured blue/silver
+gradient, a thin native outline and **no opaque black underlay or per-button
+elevation**. The former thick black frame and continuously darkening face
+have been removed centrally in the shared renderer.
 Review button/label sizes and three-column context menus directly on the
 Q25 before approving the shared or Music PRs.
 
