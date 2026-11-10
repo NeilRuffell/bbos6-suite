@@ -31,6 +31,7 @@ import android.widget.Toast;
 
 import dev.q25.bbos6.ui.Bbos6ContextMenu;
 import dev.q25.bbos6.ui.Bbos6ContextMenuItem;
+import dev.q25.bbos6.ui.Bbos6EmptyStateView;
 import dev.q25.bbos6.ui.Bbos6PropertiesPopup;
 
 import androidx.media3.common.MediaItem;
@@ -98,6 +99,8 @@ public final class MusicActivity extends Activity {
     };
 
     private MusicListView list;
+    private FrameLayout listViewport;
+    private Bbos6EmptyStateView emptyState;
     private LinearLayout libraryShell;
     private MusicAlbumHeaderView albumHeader;
     private EditText searchInput;
@@ -282,6 +285,17 @@ public final class MusicActivity extends Activity {
         boolean playlistDirectory;
         long playlistId = -1L;
         long playlistPickerId = -1L;
+        String emptyTitle;
+        String emptyMessage;
+        int emptyArtworkRes;
+        int emptyAfterRows;
+        void setEmptyState(String title, String message, int afterRows) {
+            emptyTitle = title;
+            emptyMessage = message;
+            emptyAfterRows = afterRows;
+            // Original BBOS6 artwork is supplied only after positive identification.
+            emptyArtworkRes = 0;
+        }
         int selected;
         int selectedTop;
 
@@ -429,7 +443,19 @@ public final class MusicActivity extends Activity {
         libraryShell.addView(noSearchResults, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT));
-        libraryShell.addView(list, new LinearLayout.LayoutParams(
+        // Keep native list ownership and scrolling unchanged. The shared
+        // empty-state view is an independent, non-focusable sibling, never
+        // a ListView adapter row or DPAD/trackpad selection.
+        listViewport = new FrameLayout(this);
+        listViewport.addView(list, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
+        emptyState = new Bbos6EmptyStateView(this);
+        emptyState.setVisibility(View.GONE);
+        listViewport.addView(emptyState, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
+        libraryShell.addView(listViewport, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
         safeViewport.addView(libraryShell, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -1155,10 +1181,13 @@ public final class MusicActivity extends Activity {
             ArrayList<MenuRow> rows = new ArrayList<>();
             rows.add(MenuRow.playlistAction("Create playlist", "create", -1));
             rows.add(MenuRow.playlistAction("Import M3U8", "import", -1));
+            page.setEmptyState(null, null, 0);
             if (error != null) {
                 rows.add(MenuRow.message("Unable to load playlists"));
             } else if (items == null || items.isEmpty()) {
-                rows.add(MenuRow.message("No playlists yet"));
+                page.setEmptyState("No playlists.",
+                        "You can create playlists from music on your device "
+                                + "by selecting Create playlist.", rows.size());
             } else {
                 for (MusicLibraryDatabase.PlaylistSummary item : items) {
                     rows.add(MenuRow.playlist(item));
@@ -1204,10 +1233,12 @@ public final class MusicActivity extends Activity {
             rows.add(MenuRow.playlistAction("Rename playlist", "rename", id));
             rows.add(MenuRow.playlistAction("Export M3U8", "export", id));
             rows.add(MenuRow.playlistAction("Delete playlist", "delete", id));
+            page.setEmptyState(null, null, 0);
             if (error != null) {
                 rows.add(MenuRow.message("Unable to load playlist songs"));
             } else if (items == null || items.isEmpty()) {
-                rows.add(MenuRow.message("Empty playlist"));
+                page.setEmptyState("Empty playlist",
+                        "Add songs to this playlist to start listening.", rows.size());
             } else if (localSongs == null) {
                 rows.add(MenuRow.message("Loading music library..."));
             } else {
@@ -1683,6 +1714,7 @@ public final class MusicActivity extends Activity {
         int top = selectedView == null ? 0 : selectedView.getTop();
         visibleRows = page.rows;
         list.notifyRowsChanged();
+        updateEmptyState();
         list.post(() -> {
             if (currentPage != page || searchOpen || nowPlayingVisible
                     || isFinishing() || isDestroyed()) return;
@@ -2314,6 +2346,7 @@ public final class MusicActivity extends Activity {
         bindAlbumHeader(page);
         trackpadPress.cancel();
         list.notifyRowsChanged();
+        updateEmptyState();
         list.post(() -> {
             if (currentPage != page || searchOpen
                     || isFinishing() || isDestroyed()) return;
@@ -2336,6 +2369,7 @@ public final class MusicActivity extends Activity {
         // A new text search supersedes an unfinished menu navigation.
         pendingMenu = -1;
         searchBar.setVisibility(View.VISIBLE);
+        updateEmptyState();
         ensureBackCallback();
         // Leave focus on the native ListView: blue selection, hardware
         // arrows, and Enter continue to work on search results.
@@ -2349,6 +2383,7 @@ public final class MusicActivity extends Activity {
         searchInput.setText("");
         visibleRows = currentPage.rows;
         list.notifyRowsChanged();
+        updateEmptyState();
         if (backStack.isEmpty() && !nowPlayingVisible) unregisterNestedBack();
         if (restorePosition) {
             final Page page = currentPage;
