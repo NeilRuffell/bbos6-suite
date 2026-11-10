@@ -132,6 +132,30 @@ This optional mode reuses the existing popup and leaves its colors,
 button sizing and vertical layout unchanged. A new BBOS6 input-field asset
 has not been introduced or identified.
 
+### Shared BBOS6 focus policy
+
+`Bbos6FocusPolicy.forManagedContainers(root)` is the canonical policy for
+composite BBOS6 widgets that already render their own focus/selection
+indicators. It traverses the existing `ViewGroup` hierarchy once and uses
+Android's `setDefaultFocusHighlightEnabled(false)` on API 26+ to prevent
+the framework from drawing a second, pale highlight over an entire
+focused panel. This is an Android focus **behavior setting**, not an
+alpha/color replacement, overlaid drawable, or workaround dimension.
+
+It deliberately preserves focusability, input events, DPAD/trackpad
+navigation, current BBOS6 blue selection visuals, and native leaf
+controls such as `EditText`. Apply only to *custom-managed composite
+containers*, after their children have been added. Avoid applying it
+globally to arbitrary Android controls that need the native focus
+indicator. Child views created later require a fresh application of the
+policy when necessary.
+
+`Bbos6ContextMenu`, `Bbos6PopupButtonList` (including its text-entry
+mode) and `Bbos6PropertiesPopup` now apply it to their finished panel
+trees. Consuming applications should apply it to their own composite
+focus owners, such as the Music Now Playing root, rather than introduce
+screen-specific translucent overlays or duplicate focus flags.
+
 ### Compact Bold 9900-inspired sizing
 
 Both `Bbos6PopupButtonList` and `Bbos6ContextMenu` use compact,
