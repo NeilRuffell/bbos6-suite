@@ -1184,7 +1184,7 @@ public final class MusicActivity extends Activity {
             if (error != null) {
                 rows.add(MenuRow.message("Unable to load playlists"));
             } else if (items == null || items.isEmpty()) {
-                page.setEmptyState("No playlists.",
+                page.setEmptyState("No Playlists.",
                         "You can import or create playlists for music on your device "
                                 + "by selecting Add Playlist", rows.size());
                 page.emptyArtworkRes = R.drawable.bbos6_playlist_empty;
