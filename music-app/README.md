@@ -333,15 +333,14 @@ Vector/LSPosed, a custom ROM, or another music app.
 
 ### Track Properties (long press)
 
-Only a playable **track** row in the shared Music browser opens the reusable
-`Bbos6ContextMenu` overlay, currently containing **one action: Properties**.
-Choosing Properties opens the existing `Bbos6PropertiesPopup` for the exact
-track that was long-pressed. Track rows are available under All Songs,
-Artists, Albums, Genres, Folders, and song-search results. A touchscreen hold
-or a held Q25 trackpad confirm uses the same existing eligible-row callback.
-Normal single presses still play/open tracks; no media control or Now Playing
-component acquires a long-press action. Album, Artist, Folder and Genre
-long presses remain registered but have no assigned context actions.
+Track rows in All Songs, Artists, Albums, Genres, Folders and search results
+open the shared `Bbos6ContextMenu` on touchscreen or Q25 trackpad long press.
+Their actions are **Properties** (existing `Bbos6PropertiesPopup`) and
+**Delete** (native Storage Access Framework deletion). Artist, Album and Genre
+group rows display only **Delete**: it operates on all songs in that specific
+indexed group, never on album, artist, or directory containers. Folder entries
+still have no long-press actions. Normal short presses still play/open tracks;
+nothing on Now Playing, Home or Settings acquires long-press behavior.
 
 `MusicTrackPropertiesReader` reads metadata asynchronously for the exact
 selected song's `content://` SAF document, checking that its source folder
@@ -373,18 +372,61 @@ search changes or Activity stop. Back dismisses the context menu first;
 when Properties is open, Back dismisses the Properties dialog. The underlying
 list selection, scroll position and playback remain unchanged.
 
-The context menu uses the shared builder with an Android-provided temporary
-information icon (`android.R.drawable.ic_menu_info_details`), not an
-unverified BlackBerry asset. Its single action is presented in a centered,
-compact column. Adding future actions or groups requires editing the Music
-caller's menu definition, not the shared renderer.
+The context menu uses the shared builder with Android-provided information
+and delete icons (`android.R.drawable.ic_menu_info_details` and
+`android.R.drawable.ic_menu_delete`), not unverified BlackBerry assets.
+Adding future actions or groups requires editing the Music caller's
+menu definition, not the shared renderer.
+
+### Native track and group deletion
+
+Delete permanently removes the **actual audio documents** from selected
+music folders. The UI always shows a native confirmation with the **exact
+number of tracks**, the group/track name, and a warning that deletion cannot
+be undone. Cancel changes nothing.
+
+- A track row deletes that single track.
+- An Artist, Album, or Genre group deletes all **indexed tracks** in that
+  group. Document URIs are deduplicated. Other groups or folder contents
+  not in the selection are untouched. Folder directories are **never** deleted.
+- Existing SAF grants were intentionally persisted read-only. When a selected
+  tree lacks persistent write access, Android's
+  `Intent.ACTION_OPEN_DOCUMENT_TREE` picker is used to authorize the
+  **same tree** (possibly more than once for a multi-root group).
+  Choosing a different tree is rejected without adding it to the music
+  library. A denied or unavailable grant cancels the operation. Write grants
+  persist so the user does not need to reauthorize each subsequent deletion;
+  removing a selected folder releases **both** read and write grants.
+- `MusicTrackDeletion` performs file operations off the UI thread using
+  `DocumentsContract.deleteDocument()`, after verifying the exact selected
+  tree identity, an active persisted read/write grant, and the provider's
+  `Document.FLAG_SUPPORTS_DELETE`. It refuses directory documents.
+  It does not use `java.io.File`, rename/move files, or request broad storage
+  permissions.
+- Provider failures or unsupported documents are counted as failures; other
+  selected songs can still be deleted. The UI reports successes and failures
+  separately and never reports a failed file as removed.
+- Before the first deletion the worker invalidates the persistent Room scan
+  marker, allowing recovery from a process termination during a batch.
+  Successfully deleted track rows are removed from the private catalog,
+  visible library pages, album artwork caches, the active Media3 queue, and
+  the saved playback-resumption data. Surviving files stay indexed and a
+  normal incremental SAF refresh reconciles the library afterward.
+- Deleting or removing a selected **folder configuration** in Settings is
+  a different operation: it changes authorization and never deletes files.
+
+**Testing:** On the Q25, first verify a track with a disposable audio file,
+then test Artist/Album/Genre groups, cancellation, multi-folder write grants,
+partial failures, active playback and restart retention. Run the existing
+release APK build and install workflow; never uninstall or clear app data
+as part of routine testing.
 
 ### Shared long-press input
 
 BB Music uses the platform's long-press gesture handling for **music library
 entries only**. Touch and physical Q25 trackpad holds share the same Activity
-callback. Track holds open Properties; artist, album, genre and folder
-holds currently have no assigned action.
+callback. Tracks open Properties/Delete; artist, album and genre groups
+open Delete; folder holds currently have no assigned action.
 
 - **Allowed rows:** playable songs/tracks; artist, album and genre group rows;
   and folder rows, configured roots and subdirectories (including entries
@@ -404,9 +446,9 @@ holds currently have no assigned action.
   their normal short-click action on release even after a long hold.
   Eligible holds fire once and suppress the release click.
   Pending holds are canceled on other keys, touch, focus loss and Activity stop.
-- **Actions:** playable track rows open the read-only BBOS6 Properties dialog.
-  Eligible artist, album, genre and folder holds remain unassigned.
-  Hardware long presses request Android native haptic feedback.
+- **Actions:** tracks show Properties and Delete; artist, album and genre
+  groups show Delete; folder holds remain unassigned. Hardware long
+  presses request Android native haptic feedback.
 
 Run `gradle -p music-app :app:testDebugUnitTest` for the
 press-state gating regression tests, then verify touchscreen and Q25
@@ -592,8 +634,10 @@ With no selections there are no media queries.
 
 - Settings > Music Folders > Add folders opens Android's trusted
   `Intent.ACTION_OPEN_DOCUMENT_TREE` folder picker.
-- Each folder chosen grants **read-only** access to its directory and its
-  subfolders using Android's Storage Access Framework (SAF).
+- Each folder initially grants **read-only** access to its directory and
+  subfolders using Android's Storage Access Framework (SAF). The separate
+  user-confirmed Delete action can request a persisted **write grant for the
+  same selected tree**, and only uses it for explicit file deletions.
 - The app persists the returned tree URI in `MusicFolders.java`, together
   with Android's durable read grant. Selecting another folder adds it to the
   allowlist rather than replacing earlier selections.
@@ -639,7 +683,7 @@ Tapping Remove, tapping a folder row, or pressing Enter/trackpad on a
 highlighted folder row opens a **Remove / Cancel confirmation**.
 
 Confirming removal deletes only that tree's saved allowlist entry and
-releases this app's persisted read grant. It **never deletes, moves or
+releases this app's persisted read/write grants. It **never deletes, moves or
 modifies files on the device**. The removed folder disappears from Music Folders;
 in-progress scans are invalidated, old library metadata and artwork caches
 are cleared, and the remaining authorized folders are scanned again.
