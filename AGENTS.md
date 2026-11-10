@@ -72,6 +72,28 @@ trackpad/touch verification rules live in
 `assets/bbos6/AGENTS.md` and the shared README. Consult those before
 building any new focusable composite controls.
 
+## Canonical BBOS6 text entry
+
+Use the shared `Bbos6TextField` for app-owned editable text fields. It is
+the sole source of the existing beveled grey-to-white search-input face,
+including the rim, inset gradient, font colors, padding and 43dp minimum
+height. It **extends Android EditText** to preserve genuine keyboard,
+cursor, selection, IME, clipboard and accessibility behavior; do not
+implement a second text-editing engine.
+
+- Music's search field instantiates `Bbos6TextField` and retains its existing
+  text watcher, physical-keyboard search and ListView focus behavior.
+- `MusicSearchBarView` owns **only** the charcoal search-header panel and
+  top rule. Do not copy the text-field drawables back into it.
+- `Bbos6PopupButtonList` creates the **same shared text field** for
+  New/Rename Playlist; its existing button-focus ownership, Save/Cancel
+  callback and text input remain unchanged. The search panel is not
+  attached to dialog fields.
+- Text editing options belong to the caller; shared helper changes
+  require shared-first PR, pinned submodule and Q25 testing.
+- Prefer fixing shared appearance at the renderer, never add Music-specific
+  compensating overlays, field palette copies or focus suppressors.
+
 ## Reusable empty-state UI
 
 Use `Bbos6EmptyStateView` from the shared `bbos6-ui` module for title,
