@@ -73,3 +73,19 @@ These new Compose helpers are not connected to any Music screen and have
 not yet been Q25 parity-tested. The legacy native Java helpers remain the
 runtime implementation until their equivalents are verified. No app logic
 or stored data was modified.
+
+## Kotlin-only Compose models and Properties dialog
+
+- Compose context actions use `Bbos6ContextAction`, a reusable Kotlin model
+  for stable IDs, labels, untinted caller-owned icons and enabled state.
+- Read-only Properties content uses Kotlin `Bbos6PropertyRow` variants:
+  text, inline, trailing and spacer, retaining empty values without filling
+  missing metadata. Unit tests validate actions, rows and input constraints.
+- `Bbos6PropertiesDialog` owns the reusable Compose modal presentation:
+  centered, 90%-bounded, no additional dim layer, Back to dismiss, outside
+  touch ignored. The row content remains app-supplied.
+
+**Temporary compatibility:** Existing Java helper classes remain for legacy
+View consumers; the new Compose API no longer requires them. Music code and
+persistent application data are unchanged. Runtime parity awaits Compose
+screen integration and on-device testing.

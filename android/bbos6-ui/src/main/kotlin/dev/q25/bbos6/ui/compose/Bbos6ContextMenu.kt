@@ -46,7 +46,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import dev.q25.bbos6.ui.Bbos6ContextMenuItem
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -57,9 +56,9 @@ private val divider = Brush.verticalGradient(listOf(Color(0xFF72869B), Color(0xF
 /** Compose dialog host for the shared, caller-defined context menu. */
 @Composable
 fun Bbos6ContextMenuDialog(
-    groups: List<List<Bbos6ContextMenuItem>>,
+    groups: List<List<Bbos6ContextAction>>,
     onDismissRequest: () -> Unit,
-    onAction: (Bbos6ContextMenuItem) -> Unit,
+    onAction: (Bbos6ContextAction) -> Unit,
     modifier: Modifier = Modifier,
     columns: Int = 3,
     initialSelectionId: String? = null,
@@ -89,8 +88,8 @@ fun Bbos6ContextMenuDialog(
  */
 @Composable
 fun Bbos6ContextMenuGrid(
-    groups: List<List<Bbos6ContextMenuItem>>,
-    onAction: (Bbos6ContextMenuItem) -> Unit,
+    groups: List<List<Bbos6ContextAction>>,
+    onAction: (Bbos6ContextAction) -> Unit,
     modifier: Modifier = Modifier,
     columns: Int = 3,
     initialSelectionId: String? = null,
@@ -101,7 +100,7 @@ fun Bbos6ContextMenuGrid(
         "At least one nonempty group is required"
     }
     val items = groups.flatten()
-    require(items.map { it.id() }.toSet().size == items.size) { "Duplicate menu action ID" }
+    require(items.map { it.id }.toSet().size == items.size) { "Duplicate menu action ID" }
     val visibleColumns = min(columns, groups.maxOf { it.size })
     val cells = remember(groups, visibleColumns) {
         buildList {
@@ -109,7 +108,7 @@ fun Bbos6ContextMenuGrid(
             groups.forEach { group ->
                 group.chunked(visibleColumns).forEach { chunk ->
                     chunk.forEachIndexed { column, item ->
-                        add(Bbos6GridCell(row, column, item.enabled()))
+                        add(Bbos6GridCell(row, column, item.enabled))
                     }
                     row++
                 }
@@ -117,7 +116,7 @@ fun Bbos6ContextMenuGrid(
         }
     }
     val initial = remember(items, initialSelectionId) {
-        items.indexOfFirst { it.id() == initialSelectionId && it.enabled() }
+        items.indexOfFirst { it.id == initialSelectionId && it.enabled }
             .takeIf { it >= 0 } ?: Bbos6GridNavigation.firstEnabled(cells)
     }
     var selected by remember(groups, visibleColumns, initialSelectionId) { mutableIntStateOf(initial) }
@@ -136,7 +135,7 @@ fun Bbos6ContextMenuGrid(
         requesters.getOrNull(selected)?.bringIntoView()
     }
     fun activate() {
-        items.getOrNull(selected)?.takeIf { it.enabled() }?.let(onAction)
+        items.getOrNull(selected)?.takeIf { it.enabled }?.let(onAction)
     }
     Box(
         modifier = modifier
@@ -199,7 +198,7 @@ fun Bbos6ContextMenuGrid(
                             if (column < chunk.size) {
                                 val index = itemIndex++
                                 val item = chunk[column]
-                                val highlighted = (selected == index || pressed == index) && item.enabled()
+                                val highlighted = (selected == index || pressed == index) && item.enabled
                                 Bbos6ContextTile(
                                     item = item, highlighted = highlighted,
                                     modifier = Modifier.weight(1f).fillMaxHeight()
@@ -208,7 +207,7 @@ fun Bbos6ContextMenuGrid(
                                         pressed = if (isPressed) index else -1
                                     },
                                     onActivate = {
-                                        if (item.enabled()) {
+                                        if (item.enabled) {
                                             selected = index
                                             focusOwner.requestFocus()
                                             onAction(item)
@@ -230,10 +229,10 @@ fun Bbos6ContextMenuGrid(
 
 @Composable
 private fun Bbos6ContextTile(
-    item: Bbos6ContextMenuItem, highlighted: Boolean, modifier: Modifier,
+    item: Bbos6ContextAction, highlighted: Boolean, modifier: Modifier,
     onPress: (Boolean) -> Unit, onActivate: () -> Unit
 ) {
-    val enabled = item.enabled()
+    val enabled = item.enabled
     Column(
         modifier = modifier
             .padding(start = 2.dp, end = 2.dp, top = 3.dp, bottom = 3.dp)
@@ -248,7 +247,7 @@ private fun Bbos6ContextTile(
                 )
             }
             .semantics(mergeDescendants = true) {
-                contentDescription = item.label()
+                contentDescription = item.label
                 if (!enabled) disabled() else onClick { onActivate(); true }
             },
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -257,7 +256,7 @@ private fun Bbos6ContextTile(
         Bbos6ContextIcon(item)
         Spacer(Modifier.height(3.dp))
         BasicText(
-            text = item.label(),
+            text = item.label,
             modifier = Modifier.padding(horizontal = 2.dp),
             style = TextStyle(color = Color.White.copy(alpha = if (enabled) 1f else 0.42f),
                 fontSize = 14.sp, textAlign = TextAlign.Center,
@@ -269,12 +268,12 @@ private fun Bbos6ContextTile(
 
 /** Original caller-supplied Android drawables are rasterized without adding Android Views. */
 @Composable
-private fun Bbos6ContextIcon(item: Bbos6ContextMenuItem) {
+private fun Bbos6ContextIcon(item: Bbos6ContextAction) {
     val context = LocalContext.current
     val iconPx = with(LocalDensity.current) { 42.dp.roundToPx() }
     val icon = remember(item, iconPx) {
-        val drawable = item.iconDrawable()
-            ?: item.iconResourceId().takeIf { it != 0 }?.let(context::getDrawable)
+        val drawable = item.iconDrawable
+            ?: item.iconResourceId.takeIf { it != 0 }?.let(context::getDrawable)
         drawable?.toBbos6Bitmap(iconPx)
     }
     if (icon == null) {
@@ -282,7 +281,7 @@ private fun Bbos6ContextIcon(item: Bbos6ContextMenuItem) {
     } else {
         Image(painter = BitmapPainter(icon.asImageBitmap()), contentDescription = null,
             modifier = Modifier.size(42.dp), contentScale = ContentScale.Fit,
-            alpha = if (item.enabled()) 1f else 0.42f)
+            alpha = if (item.enabled) 1f else 0.42f)
     }
 }
 

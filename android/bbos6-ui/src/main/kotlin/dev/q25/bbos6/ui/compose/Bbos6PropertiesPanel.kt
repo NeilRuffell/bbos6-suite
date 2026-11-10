@@ -25,7 +25,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.q25.bbos6.ui.Bbos6PropertiesItem
 
 private val propertiesRim = Brush.verticalGradient(
     listOf(Color(0xFF73797D), Color(0xFF4B5055))
@@ -43,12 +42,12 @@ private val propertiesText = TextStyle(
  * outside-touch disabled, Back dismissal, no dim) and the item list.
  * No filesystem, metadata, storage or application navigation is accessed.
  *
- * Pass the existing Bbos6PropertiesItem models unchanged; while migrating,
- * the native Java popup remains usable until full Q25 input parity is tested.
+ * Uses Kotlin-native Bbos6PropertyRow values. The original Java popup remains
+ * available for old View callers until Music is migrated and Q25 verified.
  */
 @Composable
 fun Bbos6PropertiesPanel(
-    items: List<Bbos6PropertiesItem>,
+    items: List<Bbos6PropertyRow>,
     modifier: Modifier = Modifier
 ) {
     val shape = RoundedCornerShape(10.dp)
@@ -66,31 +65,30 @@ fun Bbos6PropertiesPanel(
                 .padding(horizontal = 12.dp, vertical = 10.dp)
         ) {
             items.forEach { item ->
-                when (item.kind()) {
-                    Bbos6PropertiesItem.Kind.SPACER -> {
-                        if (item.spaceDp() > 0) Spacer(Modifier.height(item.spaceDp().dp))
+                when (item) {
+                    is Bbos6PropertyRow.Spacer -> {
+                        if (item.heightDp > 0) Spacer(Modifier.height(item.heightDp.dp))
                     }
-                    Bbos6PropertiesItem.Kind.TRAILING_PROPERTY -> {
+                    is Bbos6PropertyRow.Trailing -> {
                         Row(
                             modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 18.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            BasicText(item.label(), style = propertiesText)
+                            BasicText(item.label, style = propertiesText)
                             Spacer(Modifier.width(6.dp))
                             BasicText(
-                                item.value(),
+                                item.value,
                                 modifier = Modifier.weight(1f),
                                 style = propertiesText.copy(textAlign = TextAlign.End)
                             )
                         }
                     }
-                    Bbos6PropertiesItem.Kind.INLINE_PROPERTY -> {
+                    is Bbos6PropertyRow.Inline -> {
                         PropertiesLine(
-                            item.label() + if (item.value().isEmpty()) "" else " " + item.value()
+                            item.label + if (item.value.isEmpty()) "" else " " + item.value
                         )
                     }
-                    Bbos6PropertiesItem.Kind.TEXT -> PropertiesLine(item.label())
-                    else -> Unit
+                    is Bbos6PropertyRow.Text -> PropertiesLine(item.content)
                 }
             }
         }
