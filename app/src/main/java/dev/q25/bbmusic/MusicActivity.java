@@ -2339,6 +2339,32 @@ public final class MusicActivity extends Activity {
         albumHeader.setVisibility(View.VISIBLE);
     }
 
+    /**
+     * Empty content belongs to the viewport, NOT the ListView adapter.
+     * Reserve the actual action-row height before centering the shared view;
+     * hardware focus and touch scrolling remain owned by MusicListView.
+     * Other pages may opt in by setting Page.setEmptyState(...).
+     */
+    private void updateEmptyState() {
+        if (emptyState == null || currentPage == null || searchOpen
+                || nowPlayingVisible || currentPage.emptyTitle == null) {
+            if (emptyState != null) emptyState.setVisibility(View.GONE);
+            return;
+        }
+        Page page = currentPage;
+        emptyState.setContent(page.emptyTitle, page.emptyMessage);
+        emptyState.setArtworkResource(page.emptyArtworkRes);
+        int reservedRows = Math.max(0, page.emptyAfterRows);
+        int top = dp(reservedRows * MusicListView.ROW_HEIGHT_DP)
+                + Math.max(0, reservedRows - 1) * list.getDividerHeight();
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT);
+        params.topMargin = top;
+        emptyState.setLayoutParams(params);
+        emptyState.setVisibility(View.VISIBLE);
+    }
+
     private void showPage(Page page) {
         if (searchOpen) closeSearch(false);
         currentPage = page;
