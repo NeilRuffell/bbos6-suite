@@ -15,6 +15,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
 /**
@@ -291,6 +292,48 @@ final class MusicPlaybackClient {
                 ? Player.REPEAT_MODE_ALL
                 : current == Player.REPEAT_MODE_ALL
                 ? Player.REPEAT_MODE_ONE : Player.REPEAT_MODE_OFF);
+    }
+
+    /**
+     * Drop successfully deleted documents from both the live Media3 timeline
+     * and saved playback resumption data. An unrelated playing track remains
+     * active. Playback of a removed track cannot resume from a stale queue.
+     */
+    void removeDeletedSongs(Set<String> deletedIds) {
+        if (deletedIds == null || deletedIds.isEmpty()) return;
+        if (pendingItems != null) {
+            ArrayList<MediaItem> remaining = new ArrayList<>();
+            int newIndex = 0;
+            boolean removedCurrent = false;
+            for (int i = 0; i < pendingItems.size(); i++) {
+                MediaItem item = pendingItems.get(i);
+                if (deletedIds.contains(item.mediaId)) {
+                    if (i == pendingIndex) removedCurrent = true;
+                } else {
+                    if (i < pendingIndex) newIndex++;
+                    remaining.add(item);
+                }
+            }
+            if (remaining.size() != pendingItems.size()) {
+                if (remaining.isEmpty()) {
+                    pendingItems = null;
+                } else {
+                    pendingItems = remaining;
+                    pendingIndex = Math.min(newIndex, remaining.size() - 1);
+                }
+            }
+        }
+        if (controller != null) {
+            // Remove backwards so indices are not shifted before their turn.
+            // Media3 handles moving to the next surviving timeline item.
+            for (int i = controller.getMediaItemCount() - 1; i >= 0; i--) {
+                if (deletedIds.contains(controller.getMediaItemAt(i).mediaId)) {
+                    controller.removeMediaItem(i);
+                }
+            }
+        }
+        MusicPlaybackRetention.forgetDeleted(context, deletedIds);
+        listener.onPlaybackChanged();
     }
 
     void disconnect() {
