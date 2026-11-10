@@ -244,3 +244,14 @@ non-selectable header position unchanged.
 a Music-only Compose empty state. Preserve `updateEmptyState()` byte-for-byte
 apart from the field type/constructor migration. All conditions, reserved
 row offsets and original resource IDs remain Music-owned.
+
+### Compose list, search and metadata batch
+
+Use the canonical shared `Bbos6MediaListRow`, `Bbos6SearchChrome` and
+`Bbos6MetadataPlate` helpers. Music's `MusicListView` remains the
+unchanged native scroll/selection/adapter navigation owner; all artwork
+loading, menu-icon trimming and stale-binding checks remain in its Java
+controller. Keep native `Bbos6TextField` for search during transition;
+only the surrounding chrome is Compose. Now Playing must keep its existing
+zone/trackpad/touch listeners and call the same Java methods on
+`MusicBeveledTextLabel`. Follow the shared-first, pinned-gitlink PR workflow.

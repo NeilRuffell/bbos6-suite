@@ -6,21 +6,15 @@ import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
-import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
-import android.text.TextUtils;
 import android.util.SparseArray;
-import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AbsListView;
 import android.widget.AdapterView;
 import android.widget.BaseAdapter;
-import android.widget.ImageView;
-import android.widget.LinearLayout;
 import android.widget.ListView;
-import android.widget.TextView;
 
 import java.util.List;
 
@@ -90,26 +84,10 @@ final class MusicListView extends ListView {
     private static final int MENU_ICON_VISIBLE_DP = 52;
     private static final int MENU_ICON_ALPHA_THRESHOLD = 16;
     private static final class RowViews {
-        final LinearLayout root;
-        final ImageView artwork;
-        final Drawable noArtwork;
-        final TextView trackNumber;
-        final TextView label;
-        final TextView duration;
-        final TextView count;
-        final TextView removeAction;
+        final MusicListRowComposeView root;
 
-        RowViews(LinearLayout root, ImageView artwork, Drawable noArtwork,
-                TextView trackNumber, TextView label, TextView duration,
-                TextView count, TextView removeAction) {
+        RowViews(MusicListRowComposeView root) {
             this.root = root;
-            this.artwork = artwork;
-            this.noArtwork = noArtwork;
-            this.trackNumber = trackNumber;
-            this.label = label;
-            this.duration = duration;
-            this.count = count;
-            this.removeAction = removeAction;
         }
     }
 
@@ -119,8 +97,6 @@ final class MusicListView extends ListView {
     // Original BBOS6 menu PNGs are decoded and trimmed, once each.
     private final SparseArray<Bitmap> menuIconCache = new SparseArray<>();
     private final int canvasColor;
-    private final int rowColor;
-    private final int titleColor;
 
     MusicListView(Context context, DataSource data) {
         super(context);
@@ -130,8 +106,6 @@ final class MusicListView extends ListView {
         // BBOS6 Music always uses a black canvas and black unfocused rows,
         // regardless of the host's system light/dark setting.
         canvasColor = Color.BLACK;
-        rowColor = Color.BLACK;
-        titleColor = Color.WHITE;
         int dividerColor = 0xff303030;
 
         // Focus selection colors are provided by the same shared gradient
@@ -292,197 +266,75 @@ final class MusicListView extends ListView {
         return true;
     }
 
+    /**
+     * Kotlin Compose owns only row drawing; this native ListView remains the
+     * adapter, scroll/selection, DPAD, touch, and long-press controller.
+     */
     private View createRowView() {
-        LinearLayout row = new LinearLayout(getContext());
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        // Selection spans the entire row; art touches all three outer edges.
-        row.setPadding(0, 0, 0, 0);
+        MusicListRowComposeView row = new MusicListRowComposeView(getContext());
         row.setLayoutParams(new AbsListView.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(ROW_HEIGHT_DP)));
         row.setFocusable(false);
-
-        // Album detail songs use a text number in the same left-side
-        // position previously occupied by their square artwork. A missing
-        // metadata track number is rendered as two hyphens, per BBOS6.
-        TextView number = new TextView(getContext());
-        number.setTextSize(15);
-        number.setGravity(Gravity.CENTER);
-        number.setSingleLine(true);
-        number.setFocusable(false);
-        number.setVisibility(View.GONE);
-        row.addView(number, new LinearLayout.LayoutParams(
-                dp(ROW_HEIGHT_DP), LayoutParams.MATCH_PARENT));
-
-        ImageView art = new ImageView(getContext());
-        art.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        art.setFocusable(false);
-        art.setContentDescription("Album artwork");
-        art.setVisibility(View.GONE);
-        Drawable placeholder = new MusicCoverPlaceholderDrawable();
-        LinearLayout.LayoutParams artLayout =
-                new LinearLayout.LayoutParams(dp(ROW_HEIGHT_DP), dp(ROW_HEIGHT_DP));
-        row.addView(art, artLayout);
-
-        LinearLayout textColumn = new LinearLayout(getContext());
-        textColumn.setOrientation(LinearLayout.VERTICAL);
-        textColumn.setGravity(Gravity.CENTER_VERTICAL);
-        row.addView(textColumn, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
-
-        // First line: song title expands to available space, while duration
-        // stays right-aligned just as on the original BBOS6 Songs screen.
-        // Non-song rows hide duration and retain their existing title width.
-        LinearLayout titleLine = new LinearLayout(getContext());
-        titleLine.setOrientation(LinearLayout.HORIZONTAL);
-        titleLine.setGravity(Gravity.CENTER_VERTICAL);
-        textColumn.addView(titleLine, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT));
-
-        TextView title = new TextView(getContext());
-        title.setTextSize(15);
-        title.setPadding(dp(16), 0, dp(16), 0);
-        title.setSingleLine(true);
-        title.setEllipsize(TextUtils.TruncateAt.END);
-        titleLine.addView(title, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-
-        TextView duration = new TextView(getContext());
-        duration.setTextSize(15);
-        duration.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
-        duration.setPadding(0, 0, dp(16), 0);
-        duration.setSingleLine(true);
-        duration.setVisibility(View.GONE);
-        titleLine.addView(duration, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT));
-
-        TextView count = new TextView(getContext());
-        count.setTextSize(12);
-        count.setPadding(dp(16), 0, dp(16), 0);
-        count.setSingleLine(true);
-        count.setEllipsize(TextUtils.TruncateAt.END);
-        textColumn.addView(count, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT));
-
-        // Folder rows reuse the shared native ListView selection. Their
-        // right-side touch control is deliberately not a focusable item:
-        // keyboard/trackpad Enter on the row opens the same confirmation.
-        TextView remove = new TextView(getContext());
-        remove.setText("Remove");
-        remove.setTextSize(13);
-        remove.setTextColor(Color.WHITE);
-        remove.setGravity(Gravity.CENTER);
-        remove.setFocusable(false);
-        remove.setClickable(true);
-        remove.setVisibility(View.GONE);
-        GradientDrawable removeBackground = new GradientDrawable(
-                GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{0xff4b4e53, 0xff292c31});
-        removeBackground.setCornerRadius(dp(4));
-        removeBackground.setStroke(dp(1), 0xff5a5d63);
-        remove.setBackground(removeBackground);
-        LinearLayout.LayoutParams removeLayout =
-                new LinearLayout.LayoutParams(dp(76), dp(36));
-        removeLayout.setMargins(dp(4), 0, dp(10), 0);
-        row.addView(remove, removeLayout);
-
-        row.setTag(new RowViews(row, art, placeholder, number, title, duration,
-                count, remove));
+        row.setTag(new RowViews(row));
         return row;
     }
 
     private void bindRow(RowViews views, RowData row, int position) {
-        views.label.setText(row.title);
-        views.duration.setVisibility(
-                row.durationLabel == null ? View.GONE : View.VISIBLE);
-        views.duration.setText(row.durationLabel == null ? "" : row.durationLabel);
-        boolean numbered = row.trackNumber != null;
-        views.trackNumber.setVisibility(numbered ? View.VISIBLE : View.GONE);
-        views.trackNumber.setText(numbered ? row.trackNumber : "");
-        String detail = row.subtitle;
-        views.count.setVisibility(detail == null ? View.GONE : View.VISIBLE);
-        views.count.setText(detail == null ? "" : detail);
-        views.removeAction.setVisibility(
-                row.showRemoveButton ? View.VISIBLE : View.GONE);
-        if (row.showRemoveButton) {
-            views.removeAction.setContentDescription("Remove " + row.title);
-            views.removeAction.setOnClickListener(view -> data.activate(position));
-        } else {
-            // A recycled folder row must never remove a later music item.
-            views.removeAction.setOnClickListener(null);
-        }
+        views.root.bindText(row.title, row.subtitle,
+                row.durationLabel, row.trackNumber,
+                row.showRemoveButton,
+                row.showRemoveButton ? () -> data.activate(position) : null);
+
         String spoken = row.trackNumber == null ? row.title
                 : ("--".equals(row.trackNumber) ? "Track number unavailable, "
                 : "Track " + row.trackNumber + ", ") + row.title;
-        views.root.setContentDescription((detail == null ? spoken
-                : spoken + ", " + detail)
+        views.root.setContentDescription((row.subtitle == null ? spoken
+                : spoken + ", " + row.subtitle)
                 + (row.durationLabel == null ? "" : ", " + row.durationLabel)
                 + (row.showRemoveButton ? ", Remove available" : ""));
+
         bindArtwork(views, row);
         styleRow(views, position);
     }
 
     private void bindArtwork(RowViews views, RowData row) {
+        MusicListRowComposeView target = views.root;
         if (row.menuIconRes != 0) {
-            // Uniform visible-art bounds: crop transparent source margins
-            // in memory, then fit the original proportions into 52dp.
-            // The shared 68dp square row slot and original PNGs stay intact.
-            int inset = dp((ROW_HEIGHT_DP - MENU_ICON_VISIBLE_DP) / 2f);
-            views.artwork.setPadding(inset, inset, inset, inset);
-            views.artwork.setTag(null);
-            views.artwork.setVisibility(View.VISIBLE);
-            // FIT_CENTER, unlike CENTER_INSIDE, also upscales smaller
-            // originals; all visible silhouettes reach the same 52dp fit box.
-            views.artwork.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            views.artwork.setContentDescription(row.title + " icon");
-            views.artwork.setImageBitmap(menuIconBitmap(row.menuIconRes));
+            // The original alpha-based trim and resource cache remain in this
+            // Java ListView; Compose only paints the resulting Bitmap.
+            target.setArtworkBindingKey(null);
+            target.setMenuIconBitmap(menuIconBitmap(row.menuIconRes),
+                    row.title + " icon");
             return;
         }
-        // Recycled rows must restore edge-to-edge album art: the menu-only
-        // inset must never bleed into song, artist, album or genre covers.
-        views.artwork.setPadding(0, 0, 0, 0);
-        views.artwork.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        views.artwork.setContentDescription("Album artwork");
         if (!row.showArtwork) {
-            views.artwork.setVisibility(View.GONE);
-            views.artwork.setTag(null);
-            views.artwork.setImageDrawable(null);
+            target.setArtworkBindingKey(null);
+            target.hideArtwork();
             return;
         }
-        views.artwork.setVisibility(View.VISIBLE);
         if (row.artworkKey == null
                 || row.artworkCandidates == null || row.artworkCandidates.isEmpty()) {
-            views.artwork.setTag(null);
+            target.setArtworkBindingKey(null);
             showAlbumFallback(views, row.albumFallback);
             return;
         }
         String requestKey = row.artworkKey;
         String bindingKey = requestKey + (row.albumFallback ? "|album" : "|default");
-        if (!bindingKey.equals(views.artwork.getTag())) {
-            views.artwork.setTag(bindingKey);
+        if (!bindingKey.equals(target.getArtworkBindingKey())) {
+            target.setArtworkBindingKey(bindingKey);
             showAlbumFallback(views, row.albumFallback);
         }
-        // A recycled image can never display a previous row's cover.
         artworkLoader.request(requestKey, row.artworkCandidates, image -> {
-            if (!bindingKey.equals(views.artwork.getTag())) return;
+            // Prevent a pending callback from painting a recycled list row.
+            if (!bindingKey.equals(target.getArtworkBindingKey())) return;
             if (image == null) showAlbumFallback(views, row.albumFallback);
-            else {
-                views.artwork.setScaleType(ImageView.ScaleType.CENTER_CROP);
-                views.artwork.setImageBitmap(image);
-            }
+            else target.setArtworkBitmap(image);
         });
     }
 
-    private void showAlbumFallback(RowViews views, boolean useOriginalAlbumArt) {
-        if (useOriginalAlbumArt) {
-            views.artwork.setScaleType(ImageView.ScaleType.CENTER_CROP);
-            views.artwork.setImageResource(R.drawable.bbos6_album_no_art);
-        } else {
-            views.artwork.setImageDrawable(views.noArtwork);
-        }
+    private void showAlbumFallback(RowViews views, boolean originalAlbumIcon) {
+        if (originalAlbumIcon) views.root.showAlbumFallback();
+        else views.root.showGenericFallback();
     }
 
     /**
@@ -539,17 +391,7 @@ final class MusicListView extends ListView {
     }
 
     private void styleRow(RowViews views, int position) {
-        boolean focused = hasFocus() && getSelectedItemPosition() == position;
-        if (focused) {
-            views.root.setBackground(MusicSelectionGradient.create(getContext()));
-        } else {
-            views.root.setBackgroundColor(rowColor);
-        }
-        views.label.setTextColor(focused ? Color.WHITE : titleColor);
-        views.duration.setTextColor(focused ? Color.WHITE : titleColor);
-        views.trackNumber.setTextColor(focused ? Color.WHITE : 0xffc9c9c9);
-        views.count.setTextColor(focused ? 0xffedf4ff : (rowColor == Color.WHITE
-                ? 0xff66798a : 0xffb3c1ce));
+        views.root.setHighlighted(hasFocus() && getSelectedItemPosition() == position);
     }
 
     private int dp(float value) {

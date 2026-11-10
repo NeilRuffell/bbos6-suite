@@ -1359,3 +1359,34 @@ playback and data are unchanged.
 The integration remains unmerged until verified on the Q25. Check the empty
 Playlists page and an empty playlist detail, including focus staying on the
 action rows, Back, and both touch and physical trackpad behavior.
+
+
+## Large Compose presentation batch: list rows, search and Now Playing metadata
+
+This batch migrates three additional, distinct Music presentation layers
+together, after making their reusable Composables in `bbos6-shared`:
+
+1. **Every non-section Music library/menu/folder/song/playlist row** now
+   uses `MusicListRowComposeView` backed by `Bbos6MediaListRow`. The native
+   `MusicListView` retains the same adapter, scroll/selection/DPAD rules,
+   click and long-click routing, original menu-icon pixel trimming, and
+   artwork loader/cache. The artwork binding key still prevents stale
+   asynchronous callbacks from leaking into recycled rows. The optional
+   Remove control invokes the exact existing `DataSource.activate(position)`.
+2. **Search header chrome** uses shared `Bbos6SearchChrome`. The same
+   native `Bbos6TextField` remains attached, with the existing text watcher,
+   IME and hardware type-to-search logic unchanged.
+3. **Now Playing artist/album metadata plates** use `Bbos6MetadataPlate`
+   via `MusicBeveledTextLabel`, preserving `setText`,
+   `setMetadataFocused`, the native zone/focus controller, caller touch
+   listeners and metadata navigation callbacks. Transport/seek controls and
+   Media3 playback are not modified.
+
+Shared submodule is pinned to `9656f1d56ccbc224dd5da4bf6b156a75418a0648`.
+No application IDs, signing identities, persistent data, SAF grants or
+playback methods were changed.
+
+This batch requires Q25 regression testing of all Music library pages,
+row icon/cover sizing, fast scrolling/recycling, keyboard/trackpad selected
+gradient, long-press context menu, folder Remove touch, type-to-search,
+and Now Playing artist/album tap/DPAD and focus.
