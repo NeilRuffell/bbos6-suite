@@ -55,6 +55,18 @@ final class MusicFolders {
         return selected;
     }
 
+    /** A write grant is required for the native SAF deleteDocument API. */
+    static boolean hasWriteGrant(Context context, Uri tree) {
+        if (!selectedTrees(context).contains(tree)) return false;
+        for (UriPermission permission :
+                context.getContentResolver().getPersistedUriPermissions()) {
+            if (tree.equals(permission.getUri())
+                    && permission.isReadPermission()
+                    && permission.isWritePermission()) return true;
+        }
+        return false;
+    }
+
     static boolean add(Context context, Uri tree) {
         SharedPreferences preferences =
                 context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
@@ -116,7 +128,7 @@ final class MusicFolders {
         return path.isEmpty() ? "Internal storage" : path;
     }
 
-    /** Remove only this app's allowance and persisted read grant; never files. */
+    /** Remove this app's allowance and every persisted grant; never files. */
     static boolean remove(Context context, Uri tree) {
         SharedPreferences preferences =
                 context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
@@ -128,12 +140,21 @@ final class MusicFolders {
         if (!preferences.edit().putStringSet(TREES, updated).commit()) {
             throw new IllegalStateException("Cannot remove selected music folder");
         }
-        try {
-            context.getContentResolver().releasePersistableUriPermission(
-                    tree, Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        } catch (SecurityException | IllegalArgumentException exception) {
-            // An already-revoked grant does not undo the allowlist removal.
-            Log.w(TAG, "Selected folder read grant is no longer held", exception);
+        for (UriPermission permission :
+                context.getContentResolver().getPersistedUriPermissions()) {
+            if (!tree.equals(permission.getUri())) continue;
+            int flags = (permission.isReadPermission()
+                    ? Intent.FLAG_GRANT_READ_URI_PERMISSION : 0)
+                    | (permission.isWritePermission()
+                    ? Intent.FLAG_GRANT_WRITE_URI_PERMISSION : 0);
+            if (flags == 0) continue;
+            try {
+                context.getContentResolver().releasePersistableUriPermission(
+                        tree, flags);
+            } catch (SecurityException | IllegalArgumentException exception) {
+                // A revoked grant does not undo the allowlist removal.
+                Log.w(TAG, "Selected folder grant is no longer held", exception);
+            }
         }
         return true;
     }
