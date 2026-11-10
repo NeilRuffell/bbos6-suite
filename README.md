@@ -391,6 +391,13 @@ confirmation/choice dialogs, rather than native Android AlertDialog buttons.
 title, full explanatory message, labels and callback; the shared helper owns
 visuals and hardware/touch input. Cancel is the safe initial selection.
 
+The popup sizing and long-press menu sizing are both owned by the
+`bbos6-shared` implementation. The current integration pins the compact
+Bold 9900-inspired helpers; Music does not add pixel offsets, density
+overrides, layout-scale corrections, or separate row-size calculations.
+Review button/label sizes and three-column context menus directly on the
+Q25 before approving the shared or Music PRs.
+
 The shared helper now handles **per-track and artist/album/genre file deletion**,
 **playlist deletion**, **removing a selected music folder**, and
 **Full rescan** confirmation. It changes no file-operation, playback,
