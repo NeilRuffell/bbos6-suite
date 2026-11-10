@@ -24,6 +24,24 @@ final class Bbos6SelectionBackground {
         return face;
     }
 
+    /**
+     * Separate button face measured from the supplied BB9900 simulator image.
+     * The original context-menu blue stays unchanged: its gradient is
+     * intentionally darker and belongs to a different control.
+     *
+     * Five evenly spaced stops reach the solid blue lower face after the
+     * upper half, instead of continuously darkening to the bottom.
+     */
+    static GradientDrawable popupButtonBlue(Context context, int cornerRadiusDp) {
+        GradientDrawable face = new GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{0xff0a8fef, 0xff1080ea, 0xff1766db,
+                        0xff1766db, 0xff1766db});
+        face.setCornerRadius(dp(context, cornerRadiusDp));
+        face.setStroke(1, 0xff3980c4);
+        return face;
+    }
+
     private static int dp(Context context, float size) {
         return Math.round(size * context.getResources().getDisplayMetrics().density);
     }
