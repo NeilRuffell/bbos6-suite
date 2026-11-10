@@ -129,7 +129,7 @@ public final class MusicActivity extends Activity {
     private int deleteConfirmationSerial;
     private Dialog propertiesDialog;
     private Dialog contextMenuDialog;
-    private Dialog buttonConfirmationDialog;
+    private Dialog buttonPopupDialog;
     private int propertiesRequestSerial;
     private Map<String, List<Uri>> albumArtworkSources = Collections.emptyMap();
     private MusicPlaybackClient playback;
@@ -888,13 +888,22 @@ public final class MusicActivity extends Activity {
      * appearance and focus; the app retains confirmation text and operations.
      * Cancel is selected first to avoid accidental destructive activation.
      */
+    /** Owns dialog lifetime only; visual/input behavior belongs to shared UI. */
+    private void showButtonPopup(Bbos6PopupButtonList.Builder popup) {
+        if (buttonPopupDialog != null) {
+            buttonPopupDialog.dismiss();
+            buttonPopupDialog = null;
+        }
+        Dialog shown = popup.show(this);
+        buttonPopupDialog = shown;
+        shown.setOnDismissListener(dialog -> {
+            if (buttonPopupDialog == shown) buttonPopupDialog = null;
+        });
+    }
+
     private void showButtonConfirmation(String title, String message,
             String confirmLabel, Runnable onConfirm) {
-        if (buttonConfirmationDialog != null) {
-            buttonConfirmationDialog.dismiss();
-            buttonConfirmationDialog = null;
-        }
-        Dialog shown = Bbos6PopupButtonList.builder()
+        showButtonPopup(Bbos6PopupButtonList.builder()
                 .title(title)
                 .message(message)
                 .addButton("cancel", "Cancel")
@@ -905,12 +914,7 @@ public final class MusicActivity extends Activity {
                             && !isFinishing() && !isDestroyed()) {
                         onConfirm.run();
                     }
-                })
-                .show(this);
-        buttonConfirmationDialog = shown;
-        shown.setOnDismissListener(dialog -> {
-            if (buttonConfirmationDialog == shown) buttonConfirmationDialog = null;
-        });
+                }));
     }
 
     private void showDeleteConfirmation(DeleteRequest request, String message) {
@@ -1207,7 +1211,7 @@ public final class MusicActivity extends Activity {
         playlists.list((items, error) -> {
             if (isFinishing() || isDestroyed() || page != playlistsPage) return;
             ArrayList<MenuRow> rows = new ArrayList<>();
-            rows.add(MenuRow.playlistAction("Add Playlist", "noop", -1));
+            rows.add(MenuRow.playlistAction("Add Playlist", "choose-add", -1));
             page.setEmptyState(null, null, 0);
             if (error != null) {
                 rows.add(MenuRow.message("Unable to load playlists"));
@@ -1231,7 +1235,7 @@ public final class MusicActivity extends Activity {
 
     private void openPlaylistDirectory() {
         ArrayList<MenuRow> rows = new ArrayList<>();
-        rows.add(MenuRow.playlistAction("Add Playlist", "noop", -1));
+        rows.add(MenuRow.playlistAction("Add Playlist", "choose-add", -1));
         rows.add(MenuRow.message("Loading playlists..."));
         playlistsPage = new Page("Playlists", rows);
         playlistsPage.playlistDirectory = true;
@@ -1471,10 +1475,27 @@ public final class MusicActivity extends Activity {
                 shuffle);
     }
 
+    /** Choose between existing local creation and M3U8 import flows. */
+    private void showAddPlaylistPopup() {
+        showButtonPopup(Bbos6PopupButtonList.builder()
+                .message("Please select how you would like to add a playlist:")
+                .addButton("new", "New Playlist")
+                .addButton("import", "Import Playlist")
+                .initiallySelected("new")
+                .onAction(actionId -> {
+                    if (isFinishing() || isDestroyed()) return;
+                    if ("new".equals(actionId)) {
+                        createPlaylist(Collections.emptyList());
+                    } else if ("import".equals(actionId)) {
+                        pickPlaylistImport();
+                    }
+                }));
+    }
+
     private void activatePlaylistAction(MenuRow row) {
         switch (row.playlistAction) {
-            case "noop":
-                // Intentional placeholder. Add Playlist wiring is deferred.
+            case "choose-add":
+                showAddPlaylistPopup();
                 break;
             case "create":
                 createPlaylist(Collections.emptyList());
@@ -2626,9 +2647,9 @@ public final class MusicActivity extends Activity {
             propertiesDialog.dismiss();
             propertiesDialog = null;
         }
-        if (buttonConfirmationDialog != null) {
-            buttonConfirmationDialog.dismiss();
-            buttonConfirmationDialog = null;
+        if (buttonPopupDialog != null) {
+            buttonPopupDialog.dismiss();
+            buttonPopupDialog = null;
         }
         // Finishing via root Back is a close, not background navigation.
         // Let the service retain the position before disconnecting.
