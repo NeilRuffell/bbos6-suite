@@ -59,6 +59,19 @@ the same policy internally. Leave native `EditText` editing/focus intact.
 When modifying shared policy, change `bbos6-shared` first, pin the
 consumer submodule to its approved commit, and verify Q25 trackpad/touch.
 
+### Cross-component focus design rule
+
+Treat a remembered selection and actual focus as separate states. Only the
+currently focused interaction area may draw its blue BBOS6 highlight.
+When moving from a text field to buttons and back, retain the selected
+button index but show blue only while the button group owns focus.
+Use the shared `Bbos6PopupButtonList` and `Bbos6FocusPolicy`; never add
+Music-only colors, transparent covers, duplicate focus suppressors, or
+per-screen focus compensation. The complete reusable policy and
+trackpad/touch verification rules live in
+`assets/bbos6/AGENTS.md` and the shared README. Consult those before
+building any new focusable composite controls.
+
 ## Reusable empty-state UI
 
 Use `Bbos6EmptyStateView` from the shared `bbos6-ui` module for title,
