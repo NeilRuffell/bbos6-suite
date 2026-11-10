@@ -137,8 +137,12 @@ No application may maintain a second field-background renderer.
   panel**, not part of the text field. Keep that panel separate; do not
   force it into small modal dialogs.
 - `Bbos6PopupButtonList` uses this text field internally for optional
-  `.textInput(...)`; only that shared helper controls text/button focus
-  ownership, highlighted selection and navigation.
+  `.textInput(...)`; its input height is **exactly the same 30dp** as
+  `BUTTON_HEIGHT_DP` for its buttons. The popup overrides only its input
+  instance's 43dp field minimum and sets an explicit shared button-height
+  layout constraint. It preserves centered vertical text, input behavior,
+  text/button focus ownership, highlighted selection and navigation.
+  Do not resize the search field or introduce a popup-specific field renderer.
 - Never substitute a fake TextView or custom text engine for native editing.
   A BBOS6-styled native EditText is the intended outcome, not an unstyled
   native Android field.
