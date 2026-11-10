@@ -132,8 +132,13 @@ final class MusicPlaylists {
         if (dao.playlist(playlistId) == null) {
             throw new IllegalArgumentException("Playlist no longer exists");
         }
+        List<LocalMusicSource.Song> verified = authorized(songs);
+        if (songs == null || verified.size() != songs.size()) {
+            throw new SecurityException(
+                    "Music folder access changed; refresh your library");
+        }
         int position = dao.nextPosition(playlistId);
-        for (LocalMusicSource.Song song : authorized(songs)) {
+        for (LocalMusicSource.Song song : verified) {
             MusicLibraryDatabase.PlaylistEntryRow row =
                     new MusicLibraryDatabase.PlaylistEntryRow();
             row.playlistId = playlistId;
