@@ -157,3 +157,13 @@ The caller retains list scrolling, selection, actions and artwork cache.
 highlight flag; app code still chooses which metadata link is selected.
 `Bbos6NativeDrawablePainter` exposes source Android drawables in Compose
 without an extra rendered image copy.
+
+### Compose Now Playing presentation
+
+`Bbos6NowPlayingSurface(panel)` provides pure-Compose mode/seek/transport
+chrome and the right-anchored half-radial artwork backdrop.
+`Bbos6NowPlayingSurfaceView` is a non-clickable, non-focusable host for
+staged Android View integrations; the parent still owns its interactive
+children. `Bbos6NowPlayingText` draws caller-supplied Now Playing labels.
+Media3 interaction, seekbar action semantics, and DPAD focus remain outside
+the shared package.

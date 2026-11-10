@@ -150,3 +150,26 @@ artwork decoding/cache, menu-icon alpha trimming, selection and DPAD logic,
 playlist/file removal callbacks, and playback/navigation methods.
 
 All three UI conversions require release-build and on-device parity checks.
+
+## Now Playing presentation batch
+
+The native player remains responsible for its Media3 controller, ticker,
+track position/seek policy, button actions, focus zones, DPAD/trackpad
+routing, artwork lookup and lifecycle.
+
+The shared Compose package now provides:
+
+- `Bbos6NowPlayingSurface` and its non-interactive
+  `Bbos6NowPlayingSurfaceView` host for the mode, half-radial artwork,
+  seek-strip and transport backgrounds. Their original gradient stop
+  palettes, separator placement and 56%-width right-edge radial geometry
+  are recorded in the shared helper. The shallow beveled glints are
+  Compose-drawn interpretations pending screenshot parity.
+- `Bbos6NowPlayingText` for caller-formatted queue position, title and
+  elapsed/remaining labels. It owns only text presentation and alignment.
+
+Native ImageView buttons, the exact native SeekBar/pill geometry and
+MusicPlayerChrome's existing foreground separators and selection drawables
+remain unchanged during this stage. Android View wrappers own all layouts,
+player actions and state. Build and physical Q25 comparison are required
+before merging.
