@@ -184,7 +184,7 @@ Java `MusicPlayerChrome` renderer with the Compose port isolated a
 - Mode header (verified BBOS6 2513.png mapping): the original reflected
   at most 42/255 alpha in a narrow horizontal centre and reduced its
   opacity *on each physical row* as `(1 - progress)^1.55`. The first
-  Compose port substituted a constant-full-width 7dp glow.
+  Compose port substituted a full-width linear vertical fade that missed the nonlinear and horizontal taper.
 - Seek panel (verified 2486.png): the original reflection peaked at only
   52/255 in the horizontal centre and brightened toward the bottom as
   `rise^3.2`. The Compose port substituted a constant-strength 5dp

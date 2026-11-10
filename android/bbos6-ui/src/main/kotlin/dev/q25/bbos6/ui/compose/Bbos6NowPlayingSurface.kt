@@ -80,7 +80,7 @@ private fun DrawScope.drawModeChrome() {
     // Match the original 2513.png renderer: only the 1dp top rule is
     // continuously bright. The seven-dp *bevel* has a centre-weighted
     // horizontal highlight, diminishing nonlinearly on every physical row.
-    // A constant-alpha 7dp strip causes the unwanted thick top glow.
+    // A full-width, merely linear 7dp fade caused the unwanted top glow.
     val rule = max(1, 1.dp.toPx().roundToInt()).toFloat()
     val top = rule.toInt()
     val bottom = minOf(
