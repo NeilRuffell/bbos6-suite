@@ -1,6 +1,7 @@
 package dev.q25.bbos6.ui.compose
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -50,6 +51,7 @@ fun Bbos6MetadataPlate(
             .shadow(2.dp, shape)
             .clip(shape)
             .background(if (highlighted) metadataSelection else metadataRim)
+            .then(if (highlighted) Modifier.border(1.dp, Color(0xFFB4E2FB), shape) else Modifier)
             .padding(1.dp)
             .clip(RoundedCornerShape(4.dp))
             .background(if (highlighted) metadataSelection else metadataFace)

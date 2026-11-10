@@ -2,6 +2,7 @@ package dev.q25.bbos6.ui.compose
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -156,6 +157,7 @@ fun Bbos6MediaListRow(
                     .size(width = 76.dp, height = 36.dp)
                     .clip(RoundedCornerShape(4.dp))
                     .background(removeFace)
+                    .border(1.dp, Color(0xFF5A5D63), RoundedCornerShape(4.dp))
                     .semantics {
                         contentDescription = "Remove $title"
                         if (onRemove != null) onClick {
