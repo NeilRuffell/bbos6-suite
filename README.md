@@ -1137,7 +1137,7 @@ When Playlists contains zero saved playlists, its single **Add Playlist**
 row is selectable but intentionally has no action. **Create playlist** and
 **Import M3U8** are removed from the Playlists menu (their underlying logic
 is retained). Below the row, the independent empty-state area displays the
-original, unmodified `354.png` artwork, the heading **No playlists.**, and
+original, unmodified `354.png` artwork, the heading **No Playlists.**, and
 **You can import or create playlists for music on your device by selecting Add Playlist**.
 The artwork and explanatory text cannot be selected or scrolled to as an item. Empty playlist detail pages use
 the same helper instead of an **Empty playlist** menu item. Search hides the
