@@ -67,6 +67,24 @@ This extracts existing verified styling instead of creating a second
 visual approximation. It does not remove Android text-editing APIs: it
 removes the native **look** while keeping native **behavior**.
 
+### Reusable popup button and centered button groups
+
+`Bbos6PopupButtonView` owns the existing silver/selected-blue button
+gradients, text presentation and intrinsic width rule. With
+`setContentSized(true)`, buttons size to their measured captions plus
+14dp padding on each side (minimum 48dp), retaining 30dp height.
+`Bbos6PopupButtonList.horizontalButtons()` uses an ordinary
+`LinearLayout` to center those content-width buttons as one group,
+with an 8dp gap. Its `HorizontalScrollView` handles groups wider
+than the popup without compressing short and long labels into equal cells.
+The scroll view does not acquire keyboard focus.
+
+`Bbos6PopupButtonList` continues to own actions, input focus, selection
+and popup lifetime. The vertical mode retains 176dp-wide buttons; text
+entry remains 30dp high. This reflects the supplied reference showing
+individual OK/Cancel widths and a centered pair, without assuming
+undocumented historical BBOS6 implementation details.
+
 ### Popup button list
 
 `Bbos6PopupButtonList` is a standalone modal dialog helper inspired by the
@@ -133,9 +151,12 @@ panel/background or alternate button-gradient implementation.
 - `.textInput(initialValue, hint)` adds a native Android single-line `EditText`
   beneath the optional title/message. Android owns the keyboard, text selection,
   input method, cursor and editing; no custom text-field rendering is invented.
-- `.horizontalButtons()` lays out the same existing action buttons side by
-  side using `LinearLayout` weights, with no device-specific width arithmetic.
-  Vertical stacking remains the default; existing dialogs are unaffected.
+- `.horizontalButtons()` uses the same canonical `Bbos6PopupButtonView`
+  buttons, each sized to its measured label plus shared horizontal padding
+  and a minimum touch width, **not equal-width weights**. The complete group
+  is centered inside a horizontally scrollable, non-focusable container
+  so long sets are not clipped. Vertical stacking remains the default with
+  its original fixed widths.
 - `.onTextAction((actionId, text) -> ...)` returns the current field value
   when a button is activated. Applications retain validation, cancellation and
   persistence logic; the shared helper owns no data.
@@ -160,9 +181,10 @@ Bbos6PopupButtonList.builder()
         .show(activity);
 ```
 
-This optional mode reuses the existing popup and leaves its colors,
-button sizing and vertical layout unchanged. A new BBOS6 input-field asset
-has not been introduced or identified.
+This optional mode reuses the existing popup and preserves its colors,
+selection and vertical-layout sizes. Horizontal button width now follows
+the text length and the group is centered; no new BBOS6 image assets
+have been introduced or identified.
 
 ### Popup button highlight and native text focus
 
@@ -244,11 +266,12 @@ Android handles `dp`/`sp` conversion normally; there is no device-density
 override, screen-percentage zoom, post-layout translation, compensating
 offset, or cell-size-derived vertical scaling.
 
-- Button popup: a nominal **320dp** panel, **176 × 30dp** buttons, **14dp**
-  spacing, **17sp** button labels, **18sp** heading, and **4dp** button radius.
-  The existing shared blue selection gradient is reused with the same
-  corner radius as the silver face. A native viewport bound prevents a
-  popup exceeding the available display on narrower devices.
+- Button popup: a nominal **320dp** panel, **176 × 30dp vertical buttons**
+  with **14dp** vertical gaps, **30dp-high horizontal buttons** whose widths
+  depend on their labels, **17sp** button labels, **18sp** heading, and
+  **4dp** button radius. The shared popup blue gradient has the same
+  radius as the silver face. A native viewport bound and a horizontal
+  scroller prevent overflow on narrower displays.
 - Long-press context grid: stable **94dp** rows, **42dp** icons and **14sp**
   labels, with **112dp** single-column, **212dp** two-column, and **312dp**
   multicolumn panel widths. The existing touch, trackpad/DPAD and

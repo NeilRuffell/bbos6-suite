@@ -149,6 +149,39 @@ No application may maintain a second field-background renderer.
 - Do not add a new field variant, second maintained drawable, focus overlay,
   density adjustment, or screen-specific copies to mimic the screenshot.
 
+## Shared BBOS6 popup button sizing and grouping
+
+`Bbos6PopupButtonView` is the canonical reusable native View for popup
+action-button appearance and intrinsic text-sized width. It owns the 17sp
+button typography, rounded silver face, existing selected-blue face through
+`Bbos6SelectionBackground.popupButtonBlue`, visual text color, horizontal
+padding and the common **30dp** button height. The popup owns button
+selection, accelerators, callbacks, actual focus and layout.
+
+- **Horizontal popup mode:** set `setContentSized(true)` on every button.
+  Width follows the measured label plus the button's own 14dp padding on
+  each side, with a 48dp minimum for short captions. Use
+  `WRAP_CONTENT` rather than equal-width weights. The popup centers the
+  **entire group** with a horizontal LinearLayout inside a
+  `HorizontalScrollView` that allows longer groups to overflow safely.
+  Keep the horizontal scroller out of the keyboard focus order.
+- **Vertical popup mode:** preserve the existing 176dp fixed button width,
+  30dp height and 14dp vertical gaps. Neither unrelated popup behavior nor
+  icon selection gradients should be changed to fix horizontal sizing.
+- **Ownership:** place intrinsic button geometry, visual faces and
+  formatting in the button helper; use `Bbos6PopupButtonList` for the
+  centered group, scrolling, navigation, selected index and actions.
+  Do not copy widths or drawables into Music or other app screens.
+- **Focus:** selected blue means the owning button group is currently
+  focused; a remembered index remains silver while a field is focused.
+  This remains the existing focus policy, not a new visual workaround.
+- **Testing:** verify short/long labels in the same horizontal group,
+  centering, touch and trackpad left/right, field-to-buttons focus, and
+  overflow with several longer actions. Confirm vertical dialogs unchanged.
+
+The screenshot demonstrates label-dependent button widths and a centered
+group; sizes not documented as actual BBOS6 API metrics remain approximations.
+
 ## Design philosophy: trackpad focus and visual selection
 
 A remembered selection is **state**, not proof that its control currently

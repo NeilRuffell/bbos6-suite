@@ -29,6 +29,7 @@ import android.view.WindowInsets;
 import android.view.WindowManager;
 import android.view.WindowMetrics;
 import android.widget.FrameLayout;
+import android.widget.HorizontalScrollView;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -59,9 +60,7 @@ public final class Bbos6PopupButtonList {
     private static final int PANEL_WIDTH_DP = 320;
     private static final int PANEL_CORNER_DP = 7;
     private static final int BUTTON_WIDTH_DP = 176;
-    private static final int BUTTON_HEIGHT_DP = 30;
     private static final int BUTTON_GAP_DP = 14;
-    private static final int BUTTON_CORNER_DP = 4;
     private static final int ICON_SIZE_DP = 30;
     private static final int INPUT_BUTTON_GAP_DP = 8;
 
@@ -222,7 +221,7 @@ public final class Bbos6PopupButtonList {
     private static final class PopupDialog extends Dialog {
         private final Activity activity;
         private final List<Action> actions;
-        private final List<TextView> buttons = new ArrayList<>();
+        private final List<Bbos6PopupButtonView> buttons = new ArrayList<>();
         private final Map<Character, Integer> shortcuts = new HashMap<>();
         private final OnActionListener listener;
         private final OnTextActionListener textListener;
@@ -305,9 +304,24 @@ public final class Bbos6PopupButtonList {
             int buttonWidth = dp(activity, BUTTON_WIDTH_DP);
             LinearLayout buttonParent = content;
             if (horizontalButtons) {
+                // Each button measures its label. Center the intrinsic group;
+                // scroll horizontally if several long labels exceed the panel.
+                HorizontalScrollView horizontalScroller =
+                        new HorizontalScrollView(activity);
+                horizontalScroller.setHorizontalScrollBarEnabled(false);
+                // Scrollable for touch/overflow, but not a second focus owner.
+                horizontalScroller.setFocusable(false);
+                horizontalScroller.setFocusableInTouchMode(false);
+                horizontalScroller.setFillViewport(true);
+                horizontalScroller.setOverScrollMode(View.OVER_SCROLL_IF_CONTENT_SCROLLS);
                 buttonParent = new LinearLayout(activity);
                 buttonParent.setOrientation(LinearLayout.HORIZONTAL);
-                content.addView(buttonParent, new LinearLayout.LayoutParams(
+                buttonParent.setGravity(Gravity.CENTER_HORIZONTAL);
+                horizontalScroller.addView(buttonParent,
+                        new HorizontalScrollView.LayoutParams(
+                                ViewGroup.LayoutParams.WRAP_CONTENT,
+                                ViewGroup.LayoutParams.WRAP_CONTENT));
+                content.addView(horizontalScroller, new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.WRAP_CONTENT));
             }
@@ -457,21 +471,15 @@ public final class Bbos6PopupButtonList {
             input.setMinHeight(0);
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
-                    dp(activity, BUTTON_HEIGHT_DP));
+                    dp(activity, Bbos6PopupButtonView.HEIGHT_DP));
             params.bottomMargin = dp(activity, 14);
             content.addView(input, params);
         }
 
         private void addButton(LinearLayout content, int index, int buttonWidth) {
             Action action = actions.get(index);
-            TextView button = new TextView(activity);
-            button.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
-            button.setGravity(Gravity.CENTER);
-            button.setSingleLine(true);
-            button.setEllipsize(TextUtils.TruncateAt.END);
-            button.setIncludeFontPadding(false);
-            button.setPadding(dp(activity, 6), 0, dp(activity, 6), 0);
-            button.setFocusable(false);
+            Bbos6PopupButtonView button = new Bbos6PopupButtonView(activity);
+            button.setContentSized(horizontalButtons);
             button.setEnabled(action.enabled);
             button.setClickable(action.enabled);
             button.setContentDescription(action.label);
@@ -499,13 +507,14 @@ public final class Bbos6PopupButtonList {
             LinearLayout.LayoutParams params;
             if (horizontalButtons) {
                 params = new LinearLayout.LayoutParams(
-                        0, dp(activity, BUTTON_HEIGHT_DP), 1f);
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        dp(activity, Bbos6PopupButtonView.HEIGHT_DP));
                 if (index < actions.size() - 1) {
                     params.rightMargin = dp(activity, INPUT_BUTTON_GAP_DP);
                 }
             } else {
                 params = new LinearLayout.LayoutParams(
-                        buttonWidth, dp(activity, BUTTON_HEIGHT_DP));
+                        buttonWidth, dp(activity, Bbos6PopupButtonView.HEIGHT_DP));
                 params.gravity = Gravity.CENTER_HORIZONTAL;
                 if (index < actions.size() - 1) {
                     params.bottomMargin = dp(activity, BUTTON_GAP_DP);
@@ -554,18 +563,16 @@ public final class Bbos6PopupButtonList {
 
         private void refreshButtons() {
             for (int i = 0; i < buttons.size(); i++) {
-                TextView button = buttons.get(i);
+                Bbos6PopupButtonView button = buttons.get(i);
                 boolean selected = i == selection && actions.get(i).enabled
                         && panel.hasFocus();
-                button.setBackground(buttonBackground(activity, selected));
-                button.setTextColor(selected ? Color.WHITE : 0xff242629);
-                // A flat native drawable avoids double shadows and black rims.
+                button.setBbos6Highlighted(selected);
             }
         }
 
         private void revealSelection() {
             if (scroll == null || selection < 0) return;
-            TextView selected = buttons.get(selection);
+            Bbos6PopupButtonView selected = buttons.get(selection);
             scroll.post(() -> {
                 if (!isShowing()) return;
                 Rect rect = new Rect(0, 0, selected.getWidth(), selected.getHeight());
@@ -670,25 +677,6 @@ public final class Bbos6PopupButtonList {
             }
             return super.dispatchKeyEvent(event);
         }
-    }
-
-    /**
-     * One native gradient face per button. The BB9900 screenshot shows a
-     * slender outer edge and a largely uniform lower face: there is no
-     * separate black underlay, inset shadow, or elevated button surface.
-     */
-    private static Drawable buttonBackground(Context context, boolean selected) {
-        if (selected) {
-            return Bbos6SelectionBackground.popupButtonBlue(
-                    context, BUTTON_CORNER_DP);
-        }
-        GradientDrawable face = new GradientDrawable(
-                GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{0xffd8d8d9, 0xffcccdcf, 0xffafb1b4,
-                        0xffafb1b4, 0xffafb1b4});
-        face.setCornerRadius(dp(context, BUTTON_CORNER_DP));
-        face.setStroke(1, 0xff959aa2);
-        return face;
     }
 
     private static Drawable panelBackground(Context context) {
