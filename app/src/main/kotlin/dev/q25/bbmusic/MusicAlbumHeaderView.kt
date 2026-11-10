@@ -18,7 +18,7 @@ import dev.q25.bbos6.ui.compose.Bbos6MediaDetailHeader
  * cache, request-key handling, and stale-binding guard remain unchanged.
  * The Activity still owns all metadata, selection and navigation.
  */
-class MusicAlbumHeaderView(
+class MusicAlbumHeaderView internal constructor(
     context: Context,
     private val list: MusicListView
 ) : AbstractComposeView(context) {
