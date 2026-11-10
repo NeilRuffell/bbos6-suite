@@ -11,10 +11,15 @@ final class Bbos6SelectionBackground {
     private Bbos6SelectionBackground() {}
 
     static GradientDrawable blue(Context context) {
+        return blue(context, 7);
+    }
+
+    /** Same selection face, with the corner radius owned by each component. */
+    static GradientDrawable blue(Context context, int cornerRadiusDp) {
         GradientDrawable face = new GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[]{0xff138fe4, 0xff0974cb, 0xff0750a8});
-        face.setCornerRadius(dp(context, 7));
+        face.setCornerRadius(dp(context, cornerRadiusDp));
         face.setStroke(Math.max(1, dp(context, 1)), 0xff2368a0);
         return face;
     }
