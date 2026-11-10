@@ -309,6 +309,9 @@ public final class Bbos6PopupButtonList {
                 HorizontalScrollView horizontalScroller =
                         new HorizontalScrollView(activity);
                 horizontalScroller.setHorizontalScrollBarEnabled(false);
+                // Scrollable for touch/overflow, but not a second focus owner.
+                horizontalScroller.setFocusable(false);
+                horizontalScroller.setFocusableInTouchMode(false);
                 horizontalScroller.setFillViewport(true);
                 horizontalScroller.setOverScrollMode(View.OVER_SCROLL_IF_CONTENT_SCROLLS);
                 buttonParent = new LinearLayout(activity);
