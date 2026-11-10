@@ -73,6 +73,14 @@ The reusable, app-neutral library lives in
   content areas; keep it outside the selectable list adapter. The helper
   must not invent imagery, choose empty-data conditions, or affect focus.
 - Keep app-specific actions, data queries, and permissions in the caller.
+- `Bbos6PopupButtonList` is the canonical reusable modal stacked-button
+  helper. Reuse `Bbos6SelectionBackground.blue(context)` instead of
+  copying its blue selection colors. Preserve rounded button faces,
+  subtle shadows, optional caller-owned title/icon and DPAD/trackpad
+  activation. Do not add application actions or assume the reference
+  screenshot's artwork is available as an original BBOS6 numbered asset.
+- The popup-button-list implementation is initially **unused by both apps**.
+  Keep app integration in separately approved consumer PRs.
 - Build this as a Gradle Android library project inside the consuming app.
 
 ## Private owner-maintained dependency
