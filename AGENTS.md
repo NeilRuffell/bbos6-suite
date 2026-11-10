@@ -96,6 +96,15 @@ The reusable, app-neutral library lives in
   Do not maintain a second popup renderer or screen-specific button styles.
 - Keep Android-owned system permission prompts and document pickers native.
   Complex input dialogs requiring an editable view are not button-only popups.
+- Use the shared `Bbos6FocusPolicy.forManagedContainers(root)` for
+  composite BBOS6 panels that own trackpad/DPAD focus and render their own
+  selection. Call it **after** the child container hierarchy is assembled,
+  before requesting focus. It disables Android's automatic default focus
+  highlight only for ViewGroup containers on API 26+, preserving actual
+  focusability, event delivery, selection drawing, and native leaf controls
+  (especially EditText). Apply to shared popup and context-menu panels.
+  Do **not** use transparent overlays, color compensation, global theme
+  overrides, or blanket suppression on unrelated native Android views.
 - Size BBOS6 popup components using their own fixed, reference-grounded
   `dp`/`sp` dimensions and ordinary Android layout measurement. Do not
   introduce display-density overrides, arbitrary offset compensations,
