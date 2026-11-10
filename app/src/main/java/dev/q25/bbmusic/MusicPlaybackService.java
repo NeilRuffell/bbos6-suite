@@ -22,7 +22,10 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 
+import java.lang.ref.WeakReference;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.List;
 
 /**
@@ -34,6 +37,29 @@ public final class MusicPlaybackService extends MediaLibraryService {
     private static final String TAG = "BBMusic-Service";
     private static final String LIBRARY_ROOT = "bbmusic-recent-queue";
     private static final long CHECKPOINT_INTERVAL_MS = 5000L;
+    // Application-local handle: all player operations remain on the main
+    // thread, even when the deletion worker outlives its Activity.
+    private static volatile WeakReference<MusicPlaybackService> activeService =
+            new WeakReference<>(null);
+
+    static void pruneDeletedDocuments(android.content.Context context,
+            Set<String> deletedIds) {
+        if (deletedIds == null || deletedIds.isEmpty()) return;
+        final HashSet<String> ids = new HashSet<>(deletedIds);
+        new Handler(Looper.getMainLooper()).post(() -> {
+            MusicPlaybackService service = activeService.get();
+            if (service != null && service.player != null) {
+                for (int i = service.player.getMediaItemCount() - 1; i >= 0; i--) {
+                    if (ids.contains(service.player.getMediaItemAt(i).mediaId)) {
+                        service.player.removeMediaItem(i);
+                    }
+                }
+            }
+            // Service teardown may have checkpointed the original timeline
+            // just before this callback; prune retention again afterward.
+            MusicPlaybackRetention.forgetDeleted(context, ids);
+        });
+    }
 
     private final Handler checkpointHandler = new Handler(Looper.getMainLooper());
     private ExoPlayer player;
@@ -180,6 +206,7 @@ public final class MusicPlaybackService extends MediaLibraryService {
     @Override
     public void onCreate() {
         super.onCreate();
+        activeService = new WeakReference<>(this);
         // Preserve existing BBOS Stop behaviour: no stopped media notification.
         setShowNotificationForIdlePlayer(SHOW_NOTIFICATION_FOR_IDLE_PLAYER_NEVER);
         // All indexed music is progressive SAF audio, not HLS/DASH.
@@ -224,6 +251,9 @@ public final class MusicPlaybackService extends MediaLibraryService {
 
     @Override
     public void onDestroy() {
+        if (activeService.get() == this) {
+            activeService = new WeakReference<>(null);
+        }
         checkpointHandler.removeCallbacks(checkpointTicker);
         if (player != null) {
             if (player.getCurrentMediaItem() != null
