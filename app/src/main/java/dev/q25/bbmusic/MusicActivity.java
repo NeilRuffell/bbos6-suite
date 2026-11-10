@@ -27,6 +27,8 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import dev.q25.bbos6.ui.Bbos6ContextMenu;
+import dev.q25.bbos6.ui.Bbos6ContextMenuItem;
 import dev.q25.bbos6.ui.Bbos6PropertiesPopup;
 
 import androidx.media3.common.MediaItem;
@@ -104,6 +106,7 @@ public final class MusicActivity extends Activity {
     private MusicFolderBrowser folderBrowser;
     private MusicTrackPropertiesReader trackPropertiesReader;
     private Dialog propertiesDialog;
+    private Dialog contextMenuDialog;
     private int propertiesRequestSerial;
     private Map<String, List<Uri>> albumArtworkSources = Collections.emptyMap();
     private MusicPlaybackClient playback;
@@ -598,10 +601,39 @@ public final class MusicActivity extends Activity {
         if (!supportsRowLongPress(position)) return;
         if (hardware) list.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
         MenuRow row = visibleRows.get(position);
-        // Only actual playable track rows have a Properties dialog.
-        // Artist/Album/Genre/Folder long presses remain unassigned.
+        // Only playable tracks presently have context actions. Other eligible
+        // library entries retain their long-press gesture for future menus.
         if (row.kind != ROW_SONG || row.song == null) return;
-        showTrackProperties(row);
+        showTrackContextMenu(row);
+    }
+
+    /**
+     * Track actions live here, never in the app-neutral BBOS6 menu widget.
+     * Keep the selected MenuRow so Properties resolves the touched track,
+     * not whichever row is selected after the dialog has been dismissed.
+     */
+    private void showTrackContextMenu(MenuRow row) {
+        final Page page = currentPage;
+        if (contextMenuDialog != null) contextMenuDialog.dismiss();
+        // Dismiss any pending metadata result from a previous long press.
+        propertiesRequestSerial++;
+        contextMenuDialog = Bbos6ContextMenu.builder()
+                .addGroup(Bbos6ContextMenuItem.resource(
+                        "properties", "Properties",
+                        android.R.drawable.ic_menu_info_details))
+                .initiallySelected("properties")
+                .onAction(item -> {
+                    if (!"properties".equals(item.id())
+                            || isFinishing() || isDestroyed()
+                            || nowPlayingVisible || currentPage != page
+                            || !visibleRows.contains(row)) return;
+                    showTrackProperties(row);
+                })
+                .show(this);
+        Dialog shownMenu = contextMenuDialog;
+        shownMenu.setOnDismissListener(dialog -> {
+            if (contextMenuDialog == shownMenu) contextMenuDialog = null;
+        });
     }
 
     private void showTrackProperties(MenuRow row) {
@@ -1634,6 +1666,10 @@ public final class MusicActivity extends Activity {
     protected void onStop() {
         trackpadPress.cancel();
         propertiesRequestSerial++;
+        if (contextMenuDialog != null) {
+            contextMenuDialog.dismiss();
+            contextMenuDialog = null;
+        }
         if (propertiesDialog != null) {
             propertiesDialog.dismiss();
             propertiesDialog = null;
