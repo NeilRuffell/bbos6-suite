@@ -10,6 +10,8 @@ import android.text.InputType;
 import android.text.TextWatcher;
 import android.net.Uri;
 import android.provider.DocumentsContract;
+import android.provider.OpenableColumns;
+import android.database.Cursor;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Gravity;
@@ -46,6 +48,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.function.Consumer;
 
 /**
  * Standalone BBOS6 Music main menu.
@@ -62,6 +65,8 @@ public final class MusicActivity extends Activity {
     private static final String TAG = "BBMusic";
     private static final int ADD_FOLDER_REQUEST = 6102;
     private static final int AUTHORIZE_DELETE_FOLDER_REQUEST = 6103;
+    private static final int IMPORT_PLAYLIST_REQUEST = 6104;
+    private static final int EXPORT_PLAYLIST_REQUEST = 6105;
     private static final String MUSIC_SETTINGS_PREFS = "bbmusic_settings";
     private static final String AUTO_REFRESH_PREF = "auto_refresh_on_launch";
     private static final int ROW_MENU = 0;
@@ -76,6 +81,9 @@ public final class MusicActivity extends Activity {
     private static final int ROW_BROWSER_FILE = 9;
     private static final int ROW_BROWSER_UNAVAILABLE = 10;
     private static final int ROW_BROWSER_ROOT = 11;
+    private static final int ROW_PLAYLIST = 12;
+    private static final int ROW_PLAYLIST_ACTION = 13;
+    private static final int ROW_PLAYLIST_MISSING = 14;
     // Existing menu indices 0-6 are reserved for their original actions.
     private static final int MENU_FOLDERS = 7;
     private static final String[] MENU = {
@@ -98,6 +106,11 @@ public final class MusicActivity extends Activity {
     private Page rootPage;
     private Page settingsPage;
     private Page musicFoldersPage;
+    private Page playlistsPage;
+    private MusicPlaylists playlists;
+    private MusicPlaylistTransfer playlistTransfer;
+    private int playlistCount;
+    private long exportingPlaylistId = -1L;
     private List<MenuRow> visibleRows;
     private boolean searchOpen;
     private int searchOriginalPosition;
@@ -138,10 +151,21 @@ public final class MusicActivity extends Activity {
         final LocalMusicSource.Song song;
         final Uri folderTree;
         final String folderLocation;
+        final long playlistId;
+        final long playlistEntryId;
+        final String playlistAction;
 
         MenuRow(String title, int kind, int menuIndex, int groupCategory,
                 List<LocalMusicSource.Song> songs, LocalMusicSource.Song song,
                 Uri folderTree, String folderLocation) {
+            this(title, kind, menuIndex, groupCategory, songs, song,
+                    folderTree, folderLocation, -1L, -1L, null);
+        }
+
+        MenuRow(String title, int kind, int menuIndex, int groupCategory,
+                List<LocalMusicSource.Song> songs, LocalMusicSource.Song song,
+                Uri folderTree, String folderLocation,
+                long playlistId, long playlistEntryId, String playlistAction) {
             this.title = title;
             this.kind = kind;
             this.menuIndex = menuIndex;
@@ -150,6 +174,9 @@ public final class MusicActivity extends Activity {
             this.song = song;
             this.folderTree = folderTree;
             this.folderLocation = folderLocation;
+            this.playlistId = playlistId;
+            this.playlistEntryId = playlistEntryId;
+            this.playlistAction = playlistAction;
         }
 
         static MenuRow root(String name, int index) {
@@ -168,6 +195,27 @@ public final class MusicActivity extends Activity {
 
         static MenuRow song(LocalMusicSource.Song song) {
             return new MenuRow(song.title, ROW_SONG, -1, -1, null, song, null, null);
+        }
+
+        static MenuRow playlist(MusicLibraryDatabase.PlaylistSummary summary) {
+            return new MenuRow(summary.name, ROW_PLAYLIST, -1, summary.songCount,
+                    null, null, null, null, summary.id, -1L, null);
+        }
+
+        static MenuRow playlistAction(String title, String action, long playlistId) {
+            return new MenuRow(title, ROW_PLAYLIST_ACTION, -1, -1,
+                    null, null, null, null, playlistId, -1L, action);
+        }
+
+        static MenuRow playlistSong(LocalMusicSource.Song song,
+                long playlistId, long entryId) {
+            return new MenuRow(song.title, ROW_SONG, -1, -1,
+                    null, song, null, null, playlistId, entryId, null);
+        }
+
+        static MenuRow playlistMissing(String title, long playlistId, long entryId) {
+            return new MenuRow(title, ROW_PLAYLIST_MISSING, -1, -1,
+                    null, null, null, null, playlistId, entryId, null);
         }
 
         static MenuRow message(String message) {
@@ -231,6 +279,9 @@ public final class MusicActivity extends Activity {
         // so a library refresh can rebind song availability without requerying.
         Uri browserTree;
         List<MusicFolderBrowser.Entry> browserEntries;
+        boolean playlistDirectory;
+        long playlistId = -1L;
+        long playlistPickerId = -1L;
         int selected;
         int selectedTop;
 
@@ -270,6 +321,9 @@ public final class MusicActivity extends Activity {
         folderBrowser = new MusicFolderBrowser(this);
         trackPropertiesReader = new MusicTrackPropertiesReader(this);
         trackDeletion = new MusicTrackDeletion(this);
+        playlists = new MusicPlaylists(this);
+        playlistTransfer = new MusicPlaylistTransfer(this);
+        refreshPlaylistCount();
         playback = new MusicPlaybackClient(this, new MusicPlaybackClient.Listener() {
             @Override public void onPlaybackChanged() {
                 updateNowPlayingHomeRow();
@@ -282,9 +336,7 @@ public final class MusicActivity extends Activity {
         });
         ArrayList<MenuRow> rootRows = new ArrayList<>();
         for (int index = 0; index < MENU.length - 1; index++) {
-            // Playlists (index 4) is reserved for future support. Hide only
-            // its home row; retain the menu definition, icon and handler.
-            if (index != 4) rootRows.add(MenuRow.root(MENU[index], index));
+            rootRows.add(MenuRow.root(MENU[index], index));
             // Preserve existing menu indices and place Folders with library
             // categories instead of changing Shuffle/Settings routing.
             if (index == 4) rootRows.add(MenuRow.root(MENU[MENU_FOLDERS], MENU_FOLDERS));
@@ -424,6 +476,9 @@ public final class MusicActivity extends Activity {
         // duration sits at the far right of the title line. Existing menu
         // counts and folder locations keep their original subtitle policies.
         String subtitle = row.kind == ROW_SONG ? row.song.artist
+                : row.kind == ROW_PLAYLIST
+                        ? countLabel(row.groupCategory, "Song", "Songs")
+                : row.kind == ROW_PLAYLIST_MISSING ? "Track unavailable"
                 : row.kind == ROW_FOLDER ? row.folderLocation
                 : row.kind == ROW_BROWSER_ROOT
                         ? MusicFolders.displayLocation(row.folderLocation)
@@ -439,7 +494,8 @@ public final class MusicActivity extends Activity {
                 row.title, subtitle,
                 row.kind != ROW_MESSAGE && row.kind != ROW_SETTINGS_HEADER
                         && row.kind != ROW_BROWSER_FILE
-                        && row.kind != ROW_BROWSER_UNAVAILABLE,
+                        && row.kind != ROW_BROWSER_UNAVAILABLE
+                        && row.kind != ROW_PLAYLIST_MISSING,
                 hasArtwork, albumFallback,
                 menuIconForRow(row), trackNumber, duration,
                 albumKey == null ? null : "album:" + albumKey,
@@ -548,8 +604,7 @@ public final class MusicActivity extends Activity {
                     : countLabel(count, "Item", "Items");
         }
         if (row.menuIndex == 4) {
-            // Playlist storage is not implemented, hence no playlist children.
-            return "0 Items";
+            return countLabel(playlistCount, "Item", "Items");
         }
         if (row.menuIndex == MENU_FOLDERS) return null;
         // Shuffle Songs and Settings have no child-count subtitle.
@@ -595,8 +650,9 @@ public final class MusicActivity extends Activity {
             case ROW_SONG:
                 return row.song != null;
             case ROW_GROUP:
-                // 1 = Artists, 2 = Albums, 3 = Genres. No menu shortcuts.
                 return row.groupCategory >= 1 && row.groupCategory <= 3;
+            case ROW_PLAYLIST:
+                return true;
             case ROW_FOLDER:
             case ROW_BROWSER_ROOT:
             case ROW_BROWSER_DIRECTORY:
@@ -623,7 +679,8 @@ public final class MusicActivity extends Activity {
         // Folders have no delete action. Songs, artists, albums and genres
         // share the same BBOS6 menu renderer and confirmation pipeline.
         if (row.kind == ROW_SONG && row.song == null) return;
-        if (row.kind != ROW_SONG && row.kind != ROW_GROUP) return;
+        if (row.kind != ROW_SONG && row.kind != ROW_GROUP
+                && row.kind != ROW_PLAYLIST) return;
         showMusicContextMenu(row);
     }
 
@@ -856,6 +913,7 @@ public final class MusicActivity extends Activity {
                 updateAlbumArtworkSources();
                 updateLocalCategoryCounts();
                 refreshBrowsedSongs();
+                refreshAllPlaylistPages();
                 // Native SAF enumeration reconciles provider-side changes,
                 // and preserves all failed deletions in the catalog.
                 startLocalScan(false, true);
@@ -963,8 +1021,7 @@ public final class MusicActivity extends Activity {
             if (row.menuIndex < 4) {
                 openLocalCategory(row.menuIndex);
             } else if (row.menuIndex == 4) {
-                Toast.makeText(this, "Playlists are not implemented yet",
-                        Toast.LENGTH_SHORT).show();
+                openPlaylistDirectory();
             } else if (row.menuIndex == 5) {
                 shuffleAllSongs();
             } else if (row.menuIndex == 6) {
@@ -996,7 +1053,16 @@ public final class MusicActivity extends Activity {
             openBrowserDirectory(row);
         } else if (row.kind == ROW_GROUP) {
             navigateTo(pageForGroup(row));
+        } else if (row.kind == ROW_PLAYLIST) {
+            openPlaylist(row);
+        } else if (row.kind == ROW_PLAYLIST_ACTION) {
+            activatePlaylistAction(row);
         } else if (row.kind == ROW_SONG) {
+            if (currentPage.playlistPickerId >= 0L) {
+                addSongsToPlaylist(currentPage.playlistPickerId,
+                        Collections.singletonList(row.song));
+                return;
+            }
             // Play this track within its currently displayed folder-scoped
             // song list, preserving the order for native Previous/Next.
             ArrayList<LocalMusicSource.Song> queue = new ArrayList<>();
@@ -1476,6 +1542,21 @@ public final class MusicActivity extends Activity {
     @SuppressWarnings("deprecation")
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == IMPORT_PLAYLIST_REQUEST) {
+            if (resultCode == RESULT_OK && data != null && data.getData() != null) {
+                readImportedPlaylist(data.getData());
+            }
+            return;
+        }
+        if (requestCode == EXPORT_PLAYLIST_REQUEST) {
+            long id = exportingPlaylistId;
+            exportingPlaylistId = -1L;
+            if (id >= 0 && resultCode == RESULT_OK
+                    && data != null && data.getData() != null) {
+                writeExportedPlaylist(id, data.getData());
+            }
+            return;
+        }
         if (requestCode == AUTHORIZE_DELETE_FOLDER_REQUEST) {
             onDeleteFolderAuthorization(resultCode, data);
             return;
@@ -1991,6 +2072,8 @@ public final class MusicActivity extends Activity {
         folderBrowser.close();
         trackPropertiesReader.close();
         trackDeletion.close();
+        playlists.close();
+        playlistTransfer.close();
         super.onDestroy();
     }
 
