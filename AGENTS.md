@@ -222,3 +222,13 @@ submodule availability or collaborator onboarding. Keep the shared repository
 private unless the owner explicitly changes its visibility.
 
 See [README.md](README.md) for paths and usage.
+
+## Kotlin + Jetpack Compose migration target
+
+Future BBOS6 application UI and shared presentation helpers are to use Kotlin
+and Jetpack Compose. Migration is staged in feature branches, not directly in
+`master`. Do not rewrite application-specific behavior or alter persistent
+data as a side effect of converting UI. Keep legacy native Views available
+until each Compose replacement is parity-verified for real hardware focus,
+touch, keyboard and trackpad. Read
+`android/bbos6-ui/COMPOSE_MIGRATION.md` for current progress.

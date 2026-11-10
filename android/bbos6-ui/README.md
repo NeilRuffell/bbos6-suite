@@ -115,3 +115,9 @@ adb -s 202512003630 install -r app/build/outputs/apk/release/app-release.apk
 The model tests verify value preservation and input validation. Music
 supplies a working caller for both popup helpers. Follow Music's tested
 release-APK/approval workflow; never replace the installed signing identity.
+
+## Compose migration in progress
+
+See [COMPOSE_MIGRATION.md](COMPOSE_MIGRATION.md) for the Kotlin + Jetpack Compose
+presentation migration. The existing Java View APIs remain the runtime path
+until full parity and Q25 verification; no Music logic has been changed.
