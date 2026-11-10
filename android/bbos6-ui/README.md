@@ -146,3 +146,14 @@ It delegates to the same reusable `Bbos6EmptyState` Composable and keeps
 Java-callable `setContent`, `setArtworkResource` and `setArtwork` APIs.
 The enclosing application still decides visibility, content, sizing and
 list-scroll position. Neither helper acquires focus or responds to taps.
+
+### Compose media-list rows and app-neutral chrome
+
+`Bbos6MediaListRow` draws 68dp content-sized rows with optional artwork,
+track number, second line, duration, selected background and Remove target.
+The caller retains list scrolling, selection, actions and artwork cache.
+`Bbos6SearchChrome` is only the search-panel background/top border.
+`Bbos6MetadataPlate` is a non-focus-owner beveled label with an explicit
+highlight flag; app code still chooses which metadata link is selected.
+`Bbos6NativeDrawablePainter` exposes source Android drawables in Compose
+without an extra rendered image copy.

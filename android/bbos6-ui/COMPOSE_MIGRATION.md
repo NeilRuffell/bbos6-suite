@@ -132,3 +132,21 @@ kept intact for existing consumers until all applications migrate.
 
 The new host requires a successful release build and Q25 review of empty
 Playlists and empty playlist-detail states. No parity claim before testing.
+
+## Batch: Music list rows, search chrome and Now Playing metadata plates
+
+Compose now provides `Bbos6MediaListRow`, `Bbos6SearchChrome`, and
+`Bbos6MetadataPlate` as app-neutral shared presentations. The list
+helper owns the 68dp artwork/text/duration/track-number/remove layout and
+the existing BBOS6 selection colors. The search helper owns only the
+charcoal panel and top rule; the editable Android field remains native in
+the transitional Music view. Metadata plates retain intrinsic measured width
+and explicit highlight state supplied by the original Now Playing controller.
+
+The shared `Bbos6NativeDrawablePainter` is exposed for other transitional
+Compose hosts so original caller-provided Drawables are not copied into
+screen-specific renderers. Music retains its current ListView adapter,
+artwork decoding/cache, menu-icon alpha trimming, selection and DPAD logic,
+playlist/file removal callbacks, and playback/navigation methods.
+
+All three UI conversions require release-build and on-device parity checks.

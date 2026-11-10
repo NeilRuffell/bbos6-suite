@@ -81,7 +81,7 @@ class Bbos6EmptyStateComposeView(context: Context) : AbstractComposeView(context
  * second Android View, icon substitution, or resampling to a forced bitmap.
  * Intrinsic dimensions preserve Image(contentScale = Fit) aspect ratio.
  */
-private class Bbos6NativeDrawablePainter(private val drawable: Drawable) : Painter() {
+class Bbos6NativeDrawablePainter(private val drawable: Drawable) : Painter() {
     override val intrinsicSize: Size =
         if (drawable.intrinsicWidth > 0 && drawable.intrinsicHeight > 0) {
             Size(drawable.intrinsicWidth.toFloat(), drawable.intrinsicHeight.toFloat())
