@@ -44,6 +44,27 @@ and user-authorized SAF tree boundaries.
 
 Never require user-entered commands for in-app functionality.
 
+## Playlist maintenance
+
+Playlists are implemented only in this repository, through
+`MusicPlaylists`, `MusicPlaylistTransfer` and the existing
+`MusicLibraryDatabase` Room schema (v3). Preserve playlist entries,
+order, names and existing music catalog through forward migrations.
+A playlist references indexed, user-authorized SAF `content://` songs,
+not a new filesystem crawler or an unscoped `MediaStore` query.
+
+Playlist selection uses the existing `MusicListView`,
+`Bbos6ContextMenu` and Media3 playback client. Reuse the shared
+widgets without maintaining screen-specific copies. Import/export is
+explicit, bounded SAF document-picker M3U8 I/O; only resolvable
+primary-storage paths can be represented in portable file playlists.
+Never silently match a missing entry by filename, access unselected
+folders, or delete audio as a side effect of playlist removal.
+
+Release checks must include native trackpad long-press, duplicate
+entries, repeat/shuffle queue behavior, persistence, missing/unavailable
+files, permission revocation, and M3U8 import/export. See README.
+
 ## Build, test and release
 
 In a local clone:

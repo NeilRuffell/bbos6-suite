@@ -10,6 +10,8 @@ import android.text.InputType;
 import android.text.TextWatcher;
 import android.net.Uri;
 import android.provider.DocumentsContract;
+import android.provider.OpenableColumns;
+import android.database.Cursor;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Gravity;
@@ -46,6 +48,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.function.Consumer;
 
 /**
  * Standalone BBOS6 Music main menu.
@@ -62,6 +65,8 @@ public final class MusicActivity extends Activity {
     private static final String TAG = "BBMusic";
     private static final int ADD_FOLDER_REQUEST = 6102;
     private static final int AUTHORIZE_DELETE_FOLDER_REQUEST = 6103;
+    private static final int IMPORT_PLAYLIST_REQUEST = 6104;
+    private static final int EXPORT_PLAYLIST_REQUEST = 6105;
     private static final String MUSIC_SETTINGS_PREFS = "bbmusic_settings";
     private static final String AUTO_REFRESH_PREF = "auto_refresh_on_launch";
     private static final int ROW_MENU = 0;
@@ -76,6 +81,9 @@ public final class MusicActivity extends Activity {
     private static final int ROW_BROWSER_FILE = 9;
     private static final int ROW_BROWSER_UNAVAILABLE = 10;
     private static final int ROW_BROWSER_ROOT = 11;
+    private static final int ROW_PLAYLIST = 12;
+    private static final int ROW_PLAYLIST_ACTION = 13;
+    private static final int ROW_PLAYLIST_MISSING = 14;
     // Existing menu indices 0-6 are reserved for their original actions.
     private static final int MENU_FOLDERS = 7;
     private static final String[] MENU = {
@@ -98,6 +106,11 @@ public final class MusicActivity extends Activity {
     private Page rootPage;
     private Page settingsPage;
     private Page musicFoldersPage;
+    private Page playlistsPage;
+    private MusicPlaylists playlists;
+    private MusicPlaylistTransfer playlistTransfer;
+    private int playlistCount;
+    private long exportingPlaylistId = -1L;
     private List<MenuRow> visibleRows;
     private boolean searchOpen;
     private int searchOriginalPosition;
@@ -138,10 +151,21 @@ public final class MusicActivity extends Activity {
         final LocalMusicSource.Song song;
         final Uri folderTree;
         final String folderLocation;
+        final long playlistId;
+        final long playlistEntryId;
+        final String playlistAction;
 
         MenuRow(String title, int kind, int menuIndex, int groupCategory,
                 List<LocalMusicSource.Song> songs, LocalMusicSource.Song song,
                 Uri folderTree, String folderLocation) {
+            this(title, kind, menuIndex, groupCategory, songs, song,
+                    folderTree, folderLocation, -1L, -1L, null);
+        }
+
+        MenuRow(String title, int kind, int menuIndex, int groupCategory,
+                List<LocalMusicSource.Song> songs, LocalMusicSource.Song song,
+                Uri folderTree, String folderLocation,
+                long playlistId, long playlistEntryId, String playlistAction) {
             this.title = title;
             this.kind = kind;
             this.menuIndex = menuIndex;
@@ -150,6 +174,9 @@ public final class MusicActivity extends Activity {
             this.song = song;
             this.folderTree = folderTree;
             this.folderLocation = folderLocation;
+            this.playlistId = playlistId;
+            this.playlistEntryId = playlistEntryId;
+            this.playlistAction = playlistAction;
         }
 
         static MenuRow root(String name, int index) {
@@ -168,6 +195,27 @@ public final class MusicActivity extends Activity {
 
         static MenuRow song(LocalMusicSource.Song song) {
             return new MenuRow(song.title, ROW_SONG, -1, -1, null, song, null, null);
+        }
+
+        static MenuRow playlist(MusicLibraryDatabase.PlaylistSummary summary) {
+            return new MenuRow(summary.name, ROW_PLAYLIST, -1, summary.songCount,
+                    null, null, null, null, summary.id, -1L, null);
+        }
+
+        static MenuRow playlistAction(String title, String action, long playlistId) {
+            return new MenuRow(title, ROW_PLAYLIST_ACTION, -1, -1,
+                    null, null, null, null, playlistId, -1L, action);
+        }
+
+        static MenuRow playlistSong(LocalMusicSource.Song song,
+                long playlistId, long entryId) {
+            return new MenuRow(song.title, ROW_SONG, -1, -1,
+                    null, song, null, null, playlistId, entryId, null);
+        }
+
+        static MenuRow playlistMissing(String title, long playlistId, long entryId) {
+            return new MenuRow(title, ROW_PLAYLIST_MISSING, -1, -1,
+                    null, null, null, null, playlistId, entryId, null);
         }
 
         static MenuRow message(String message) {
@@ -223,7 +271,7 @@ public final class MusicActivity extends Activity {
     }
 
     private static final class Page {
-        final String name;
+        String name;
         final List<MenuRow> rows;
         // Only a page opened directly from an album group has this header.
         final MenuRow albumGroup;
@@ -231,6 +279,9 @@ public final class MusicActivity extends Activity {
         // so a library refresh can rebind song availability without requerying.
         Uri browserTree;
         List<MusicFolderBrowser.Entry> browserEntries;
+        boolean playlistDirectory;
+        long playlistId = -1L;
+        long playlistPickerId = -1L;
         int selected;
         int selectedTop;
 
@@ -270,6 +321,9 @@ public final class MusicActivity extends Activity {
         folderBrowser = new MusicFolderBrowser(this);
         trackPropertiesReader = new MusicTrackPropertiesReader(this);
         trackDeletion = new MusicTrackDeletion(this);
+        playlists = new MusicPlaylists(this);
+        playlistTransfer = new MusicPlaylistTransfer(this);
+        refreshPlaylistCount();
         playback = new MusicPlaybackClient(this, new MusicPlaybackClient.Listener() {
             @Override public void onPlaybackChanged() {
                 updateNowPlayingHomeRow();
@@ -282,9 +336,7 @@ public final class MusicActivity extends Activity {
         });
         ArrayList<MenuRow> rootRows = new ArrayList<>();
         for (int index = 0; index < MENU.length - 1; index++) {
-            // Playlists (index 4) is reserved for future support. Hide only
-            // its home row; retain the menu definition, icon and handler.
-            if (index != 4) rootRows.add(MenuRow.root(MENU[index], index));
+            rootRows.add(MenuRow.root(MENU[index], index));
             // Preserve existing menu indices and place Folders with library
             // categories instead of changing Shuffle/Settings routing.
             if (index == 4) rootRows.add(MenuRow.root(MENU[MENU_FOLDERS], MENU_FOLDERS));
@@ -424,6 +476,9 @@ public final class MusicActivity extends Activity {
         // duration sits at the far right of the title line. Existing menu
         // counts and folder locations keep their original subtitle policies.
         String subtitle = row.kind == ROW_SONG ? row.song.artist
+                : row.kind == ROW_PLAYLIST
+                        ? countLabel(row.groupCategory, "Song", "Songs")
+                : row.kind == ROW_PLAYLIST_MISSING ? "Track unavailable"
                 : row.kind == ROW_FOLDER ? row.folderLocation
                 : row.kind == ROW_BROWSER_ROOT
                         ? MusicFolders.displayLocation(row.folderLocation)
@@ -548,8 +603,7 @@ public final class MusicActivity extends Activity {
                     : countLabel(count, "Item", "Items");
         }
         if (row.menuIndex == 4) {
-            // Playlist storage is not implemented, hence no playlist children.
-            return "0 Items";
+            return countLabel(playlistCount, "Item", "Items");
         }
         if (row.menuIndex == MENU_FOLDERS) return null;
         // Shuffle Songs and Settings have no child-count subtitle.
@@ -591,12 +645,15 @@ public final class MusicActivity extends Activity {
         }
         MenuRow row = visibleRows.get(position);
         if (!rowPresentation(row).enabled) return false;
+        if (currentPage.playlistPickerId >= 0) return false;
         switch (row.kind) {
             case ROW_SONG:
                 return row.song != null;
             case ROW_GROUP:
-                // 1 = Artists, 2 = Albums, 3 = Genres. No menu shortcuts.
                 return row.groupCategory >= 1 && row.groupCategory <= 3;
+            case ROW_PLAYLIST:
+            case ROW_PLAYLIST_MISSING:
+                return true;
             case ROW_FOLDER:
             case ROW_BROWSER_ROOT:
             case ROW_BROWSER_DIRECTORY:
@@ -623,7 +680,9 @@ public final class MusicActivity extends Activity {
         // Folders have no delete action. Songs, artists, albums and genres
         // share the same BBOS6 menu renderer and confirmation pipeline.
         if (row.kind == ROW_SONG && row.song == null) return;
-        if (row.kind != ROW_SONG && row.kind != ROW_GROUP) return;
+        if (row.kind != ROW_SONG && row.kind != ROW_GROUP
+                && row.kind != ROW_PLAYLIST
+                && row.kind != ROW_PLAYLIST_MISSING) return;
         showMusicContextMenu(row);
     }
 
@@ -638,30 +697,84 @@ public final class MusicActivity extends Activity {
         // Dismiss any pending metadata result from a previous long press.
         propertiesRequestSerial++;
         Bbos6ContextMenu.Builder menu = Bbos6ContextMenu.builder();
-        if (row.kind == ROW_SONG) {
+        if (row.kind == ROW_PLAYLIST) {
             menu.addGroup(
-                    Bbos6ContextMenuItem.resource(
-                            "properties", "Properties",
-                            android.R.drawable.ic_menu_info_details),
-                    Bbos6ContextMenuItem.resource(
-                            "delete", "Delete",
-                            android.R.drawable.ic_menu_delete));
+                    Bbos6ContextMenuItem.resource("playlist-rename",
+                            "Rename playlist", android.R.drawable.ic_menu_edit),
+                    Bbos6ContextMenuItem.resource("playlist-delete",
+                            "Delete playlist", android.R.drawable.ic_menu_delete));
+            menu.initiallySelected("playlist-rename");
+        } else if (row.kind == ROW_PLAYLIST_MISSING) {
+            menu.addGroup(
+                    Bbos6ContextMenuItem.resource("move-up",
+                            "Move up", android.R.drawable.arrow_up_float),
+                    Bbos6ContextMenuItem.resource("move-down",
+                            "Move down", android.R.drawable.arrow_down_float),
+                    Bbos6ContextMenuItem.resource("remove-from-playlist",
+                            "Remove from playlist",
+                            android.R.drawable.ic_menu_close_clear_cancel));
+            menu.initiallySelected("remove-from-playlist");
+        } else if (row.kind == ROW_SONG) {
+            menu.addGroup(
+                    Bbos6ContextMenuItem.resource("properties",
+                            "Properties", android.R.drawable.ic_menu_info_details),
+                    Bbos6ContextMenuItem.resource("add-to-playlist",
+                            "Add to playlist", android.R.drawable.ic_menu_add));
+            if (row.playlistEntryId >= 0) {
+                menu.addGroup(
+                        Bbos6ContextMenuItem.resource("move-up",
+                                "Move up", android.R.drawable.arrow_up_float),
+                        Bbos6ContextMenuItem.resource("move-down",
+                                "Move down", android.R.drawable.arrow_down_float),
+                        Bbos6ContextMenuItem.resource("remove-from-playlist",
+                                "Remove from playlist", android.R.drawable.ic_menu_close_clear_cancel));
+            }
+            menu.addGroup(Bbos6ContextMenuItem.resource(
+                    "delete", "Delete audio file", android.R.drawable.ic_menu_delete));
             menu.initiallySelected("properties");
         } else {
-            menu.addGroup(Bbos6ContextMenuItem.resource(
-                    "delete", "Delete",
-                    android.R.drawable.ic_menu_delete));
-            menu.initiallySelected("delete");
+            menu.addGroup(
+                    Bbos6ContextMenuItem.resource("add-to-playlist",
+                            "Add to playlist", android.R.drawable.ic_menu_add),
+                    Bbos6ContextMenuItem.resource("delete",
+                            "Delete audio files", android.R.drawable.ic_menu_delete));
+            menu.initiallySelected("add-to-playlist");
         }
         contextMenuDialog = menu.onAction(item -> {
                     if (isFinishing() || isDestroyed() || nowPlayingVisible
                             || currentPage != page || !visibleRows.contains(row)) {
                         return;
                     }
-                    if ("properties".equals(item.id()) && row.kind == ROW_SONG) {
-                        showTrackProperties(row);
-                    } else if ("delete".equals(item.id())) {
-                        confirmDelete(row);
+                    switch (item.id()) {
+                        case "properties":
+                            if (row.kind == ROW_SONG) showTrackProperties(row);
+                            break;
+                        case "add-to-playlist":
+                            choosePlaylist(row.kind == ROW_SONG
+                                    ? Collections.singletonList(row.song) : row.songs);
+                            break;
+                        case "move-up":
+                            movePlaylistEntry(row, -1);
+                            break;
+                        case "move-down":
+                            movePlaylistEntry(row, 1);
+                            break;
+                        case "remove-from-playlist":
+                            removePlaylistEntry(row);
+                            break;
+                        case "playlist-rename":
+                            renamePlaylist(row.playlistId);
+                            break;
+                        case "playlist-delete":
+                            confirmPlaylistDelete(row.playlistId, row.title);
+                            break;
+                        case "delete":
+                            if (row.kind == ROW_SONG || row.kind == ROW_GROUP) {
+                                confirmDelete(row);
+                            }
+                            break;
+                        default:
+                            break;
                     }
                 })
                 .show(this);
@@ -856,6 +969,7 @@ public final class MusicActivity extends Activity {
                 updateAlbumArtworkSources();
                 updateLocalCategoryCounts();
                 refreshBrowsedSongs();
+                refreshAllPlaylistPages();
                 // Native SAF enumeration reconciles provider-side changes,
                 // and preserves all failed deletions in the catalog.
                 startLocalScan(false, true);
@@ -963,8 +1077,7 @@ public final class MusicActivity extends Activity {
             if (row.menuIndex < 4) {
                 openLocalCategory(row.menuIndex);
             } else if (row.menuIndex == 4) {
-                Toast.makeText(this, "Playlists are not implemented yet",
-                        Toast.LENGTH_SHORT).show();
+                openPlaylistDirectory();
             } else if (row.menuIndex == 5) {
                 shuffleAllSongs();
             } else if (row.menuIndex == 6) {
@@ -996,7 +1109,18 @@ public final class MusicActivity extends Activity {
             openBrowserDirectory(row);
         } else if (row.kind == ROW_GROUP) {
             navigateTo(pageForGroup(row));
+        } else if (row.kind == ROW_PLAYLIST) {
+            openPlaylist(row);
+        } else if (row.kind == ROW_PLAYLIST_ACTION) {
+            activatePlaylistAction(row);
+        } else if (row.kind == ROW_PLAYLIST_MISSING) {
+            playlistNotice("Track unavailable in selected music folders");
         } else if (row.kind == ROW_SONG) {
+            if (currentPage.playlistPickerId >= 0L) {
+                addSongsToPlaylist(currentPage.playlistPickerId,
+                        Collections.singletonList(row.song));
+                return;
+            }
             // Play this track within its currently displayed folder-scoped
             // song list, preserving the order for native Previous/Next.
             ArrayList<LocalMusicSource.Song> queue = new ArrayList<>();
@@ -1011,6 +1135,441 @@ public final class MusicActivity extends Activity {
                 playback.playSongs(queue, startIndex, false);
             }
         }
+    }
+
+
+    /** Home playlist count uses the same Room tables as the Playlists page. */
+    private void refreshPlaylistCount() {
+        playlists.list((items, error) -> {
+            if (error != null || items == null) return;
+            playlistCount = items.size();
+            if (list != null) list.refreshVisibleRows();
+        });
+    }
+
+    private void refreshPlaylistDirectory() {
+        final Page page = playlistsPage;
+        if (page == null) return;
+        playlists.list((items, error) -> {
+            if (isFinishing() || isDestroyed() || page != playlistsPage) return;
+            ArrayList<MenuRow> rows = new ArrayList<>();
+            rows.add(MenuRow.playlistAction("Create playlist", "create", -1));
+            rows.add(MenuRow.playlistAction("Import M3U8", "import", -1));
+            if (error != null) {
+                rows.add(MenuRow.message("Unable to load playlists"));
+            } else if (items == null || items.isEmpty()) {
+                rows.add(MenuRow.message("No playlists yet"));
+            } else {
+                for (MusicLibraryDatabase.PlaylistSummary item : items) {
+                    rows.add(MenuRow.playlist(item));
+                }
+                playlistCount = items.size();
+                if (list != null) list.refreshVisibleRows();
+            }
+            page.rows.clear();
+            page.rows.addAll(rows);
+            if (currentPage == page) refreshBrowserPage(page);
+        });
+    }
+
+    private void openPlaylistDirectory() {
+        ArrayList<MenuRow> rows = new ArrayList<>();
+        rows.add(MenuRow.playlistAction("Create playlist", "create", -1));
+        rows.add(MenuRow.playlistAction("Import M3U8", "import", -1));
+        rows.add(MenuRow.message("Loading playlists..."));
+        playlistsPage = new Page("Playlists", rows);
+        playlistsPage.playlistDirectory = true;
+        navigateTo(playlistsPage);
+        refreshPlaylistDirectory();
+    }
+
+    private void openPlaylist(MenuRow row) {
+        Page page = new Page(row.title, new ArrayList<>());
+        page.playlistId = row.playlistId;
+        page.rows.add(MenuRow.message("Loading playlist..."));
+        navigateTo(page);
+        refreshPlaylistDetail(page);
+    }
+
+    private void refreshPlaylistDetail(Page page) {
+        if (page == null || page.playlistId < 0) return;
+        playlists.entries(page.playlistId, (items, error) -> {
+            if (isFinishing() || isDestroyed()) return;
+            if (currentPage != page && !backStack.contains(page)) return;
+            ArrayList<MenuRow> rows = new ArrayList<>();
+            long id = page.playlistId;
+            rows.add(MenuRow.playlistAction("Play all", "play", id));
+            rows.add(MenuRow.playlistAction("Shuffle", "shuffle", id));
+            rows.add(MenuRow.playlistAction("Add songs", "add", id));
+            rows.add(MenuRow.playlistAction("Rename playlist", "rename", id));
+            rows.add(MenuRow.playlistAction("Export M3U8", "export", id));
+            rows.add(MenuRow.playlistAction("Delete playlist", "delete", id));
+            if (error != null) {
+                rows.add(MenuRow.message("Unable to load playlist songs"));
+            } else if (items == null || items.isEmpty()) {
+                rows.add(MenuRow.message("Empty playlist"));
+            } else if (localSongs == null) {
+                rows.add(MenuRow.message("Loading music library..."));
+            } else {
+                Map<String, LocalMusicSource.Song> indexed = new HashMap<>();
+                for (LocalMusicSource.Song song : localSongs) {
+                    indexed.put(song.uri.toString(), song);
+                }
+                for (MusicLibraryDatabase.PlaylistEntryRow entry : items) {
+                    LocalMusicSource.Song song = indexed.get(entry.uri);
+                    rows.add(song == null
+                            ? MenuRow.playlistMissing(entry.title, id, entry.id)
+                            : MenuRow.playlistSong(song, id, entry.id));
+                }
+            }
+            page.rows.clear();
+            page.rows.addAll(rows);
+            if (currentPage == page) refreshBrowserPage(page);
+        });
+    }
+
+    private void refreshAllPlaylistPages() {
+        if (playlistsPage != null) refreshPlaylistDirectory();
+        HashSet<Page> pages = new HashSet<>(backStack);
+        pages.add(currentPage);
+        for (Page page : pages) {
+            if (page.playlistId >= 0) refreshPlaylistDetail(page);
+        }
+    }
+
+    private void playlistChanged() {
+        refreshPlaylistCount();
+        refreshAllPlaylistPages();
+    }
+
+    private void playlistNotice(String message) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+    }
+
+    private void playlistFailure(String error) {
+        Toast.makeText(this, error == null ? "Playlist operation failed" : error,
+                Toast.LENGTH_LONG).show();
+    }
+
+    private void askPlaylistName(String title, String original,
+            Consumer<String> onName) {
+        EditText input = new EditText(this);
+        input.setSingleLine(true);
+        input.setInputType(InputType.TYPE_CLASS_TEXT
+                | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        input.setText(original);
+        input.setSelectAllOnFocus(true);
+        LinearLayout holder = new LinearLayout(this);
+        holder.setPadding(dp(20), dp(8), dp(20), 0);
+        holder.addView(input, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT));
+        new AlertDialog.Builder(this)
+                .setTitle(title)
+                .setView(holder)
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Save",
+                        (dialog, which) -> onName.accept(input.getText().toString()))
+                .show();
+    }
+
+    private void createPlaylist(List<LocalMusicSource.Song> initialSongs) {
+        askPlaylistName("Create playlist", "", name -> {
+            playlists.create(name, (id, error) -> {
+                if (error != null || id == null) {
+                    playlistFailure(error);
+                    return;
+                }
+                playlistChanged();
+                if (initialSongs != null && !initialSongs.isEmpty()) {
+                    addSongsToPlaylist(id, initialSongs);
+                } else {
+                    playlistNotice("Playlist created");
+                }
+            });
+        });
+    }
+
+    private void renamePlaylist(long id) {
+        playlists.list((items, error) -> {
+            if (error != null || items == null) {
+                playlistFailure(error);
+                return;
+            }
+            for (MusicLibraryDatabase.PlaylistSummary item : items) {
+                if (item.id != id) continue;
+                askPlaylistName("Rename playlist", item.name, name ->
+                        playlists.rename(id, name, (changed, failure) -> {
+                            if (failure != null || !Boolean.TRUE.equals(changed)) {
+                                playlistFailure(failure);
+                            } else {
+                                if (currentPage.playlistId == id) {
+                                    currentPage.name = name.trim();
+                                }
+                                playlistNotice("Playlist renamed");
+                                playlistChanged();
+                            }
+                        }));
+                return;
+            }
+            playlistFailure("Playlist no longer exists");
+        });
+    }
+
+    private void confirmPlaylistDelete(long id, String name) {
+        new AlertDialog.Builder(this)
+                .setTitle("Delete playlist?")
+                .setMessage("Delete \"" + name
+                        + "\"? The audio files will not be deleted.")
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Delete", (dialog, which) ->
+                        playlists.delete(id, (removed, error) -> {
+                            if (error != null || !Boolean.TRUE.equals(removed)) {
+                                playlistFailure(error);
+                                return;
+                            }
+                            if (currentPage.playlistId == id) navigateBack();
+                            playlistNotice("Playlist deleted");
+                            playlistChanged();
+                        }))
+                .show();
+    }
+
+    private void addSongsToPlaylist(long id, List<LocalMusicSource.Song> songs) {
+        if (songs == null || songs.isEmpty()) {
+            playlistNotice("No songs to add");
+            return;
+        }
+        playlists.add(id, new ArrayList<>(songs), (added, error) -> {
+            if (error != null || !Boolean.TRUE.equals(added)) {
+                playlistFailure(error);
+            } else {
+                playlistNotice(countLabel(songs.size(), "song", "songs")
+                        + " added to playlist");
+                playlistChanged();
+            }
+        });
+    }
+
+    /** A single shared action for tracks and entire artist/album/genre groups. */
+    private void choosePlaylist(List<LocalMusicSource.Song> selected) {
+        if (selected == null || selected.isEmpty()) return;
+        List<LocalMusicSource.Song> songs = new ArrayList<>(selected);
+        playlists.list((items, error) -> {
+            if (error != null || items == null) {
+                playlistFailure(error);
+                return;
+            }
+            String[] choices = new String[items.size() + 1];
+            for (int i = 0; i < items.size(); i++) choices[i] = items.get(i).name;
+            choices[items.size()] = "New playlist...";
+            new AlertDialog.Builder(this)
+                    .setTitle("Add to playlist")
+                    .setItems(choices, (dialog, index) -> {
+                        if (index == items.size()) createPlaylist(songs);
+                        else addSongsToPlaylist(items.get(index).id, songs);
+                    }).show();
+        });
+    }
+
+    private void movePlaylistEntry(MenuRow row, int direction) {
+        playlists.move(row.playlistId, row.playlistEntryId, direction,
+                (moved, error) -> {
+                    if (error != null) playlistFailure(error);
+                    else if (!Boolean.TRUE.equals(moved)) {
+                        playlistNotice("Already at the end of the playlist");
+                    }
+                    refreshAllPlaylistPages();
+                });
+    }
+
+    private void removePlaylistEntry(MenuRow row) {
+        playlists.remove(row.playlistId, row.playlistEntryId, (removed, error) -> {
+            if (error != null || !Boolean.TRUE.equals(removed)) {
+                playlistFailure(error);
+            } else {
+                playlistNotice("Removed from playlist (file preserved)");
+                playlistChanged();
+            }
+        });
+    }
+
+    private void openPlaylistSongPicker(long playlistId) {
+        if (localSongs == null) {
+            playlistNotice("Music library is loading");
+            return;
+        }
+        Page page = new Page("Add songs", songRows(localSongs));
+        page.playlistPickerId = playlistId;
+        navigateTo(page);
+    }
+
+    private void playPlaylist(boolean shuffle) {
+        ArrayList<LocalMusicSource.Song> queue = new ArrayList<>();
+        for (MenuRow item : currentPage.rows) {
+            if (item.kind == ROW_SONG && item.song != null) queue.add(item.song);
+        }
+        if (queue.isEmpty()) {
+            playlistNotice("No available songs in playlist");
+            return;
+        }
+        openNowPlaying();
+        playback.playSongs(queue, shuffle ? new Random().nextInt(queue.size()) : 0,
+                shuffle);
+    }
+
+    private void activatePlaylistAction(MenuRow row) {
+        switch (row.playlistAction) {
+            case "create":
+                createPlaylist(Collections.emptyList());
+                break;
+            case "import":
+                pickPlaylistImport();
+                break;
+            case "play":
+                playPlaylist(false);
+                break;
+            case "shuffle":
+                playPlaylist(true);
+                break;
+            case "add":
+                openPlaylistSongPicker(row.playlistId);
+                break;
+            case "rename":
+                renamePlaylist(row.playlistId);
+                break;
+            case "export":
+                pickPlaylistExport(row.playlistId);
+                break;
+            case "delete":
+                confirmPlaylistDelete(row.playlistId, currentPage.name);
+                break;
+            default:
+                break;
+        }
+    }
+
+    private void pickPlaylistImport() {
+        if (localSongs == null) {
+            playlistNotice("Load the music library before importing");
+            return;
+        }
+        Intent picker = new Intent(Intent.ACTION_OPEN_DOCUMENT)
+                .addCategory(Intent.CATEGORY_OPENABLE)
+                .setType("*/*");
+        picker.putExtra(Intent.EXTRA_LOCAL_ONLY, true);
+        try {
+            startActivityForResult(picker, IMPORT_PLAYLIST_REQUEST);
+        } catch (RuntimeException exception) {
+            Log.w(TAG, "Playlist import picker unavailable", exception);
+            playlistFailure("Playlist file picker unavailable");
+        }
+    }
+
+    private String playlistDocumentName(Uri document) {
+        try (Cursor cursor = getContentResolver().query(document,
+                new String[] {OpenableColumns.DISPLAY_NAME}, null, null, null)) {
+            if (cursor != null && cursor.moveToFirst()) return cursor.getString(0);
+        } catch (RuntimeException exception) {
+            Log.w(TAG, "Cannot read playlist document name", exception);
+        }
+        return "Imported playlist.m3u8";
+    }
+
+    private void readImportedPlaylist(Uri document) {
+        if (localSongs == null) {
+            playlistFailure("Music library is unavailable");
+            return;
+        }
+        String filename = playlistDocumentName(document);
+        if (filename == null) filename = "Imported playlist.m3u8";
+        String lower = filename.toLowerCase(Locale.ROOT);
+        if (!lower.endsWith(".m3u8") && !lower.endsWith(".m3u")) {
+            playlistFailure("Select an M3U or M3U8 playlist file");
+            return;
+        }
+        final String name = filename.replaceFirst("(?i)\\.m3u8?$", "").trim();
+        List<LocalMusicSource.Song> snapshot = new ArrayList<>(localSongs);
+        playlistTransfer.read(document, snapshot, (imported, error) -> {
+            if (error != null || imported == null) {
+                playlistFailure(error);
+                return;
+            }
+            playlists.importSongs(name.isEmpty() ? "Imported playlist" : name,
+                    imported.songs, (id, failure) -> {
+                        if (failure != null || id == null) {
+                            playlistFailure(failure);
+                            return;
+                        }
+                        playlistChanged();
+                        playlistNotice("Imported " + imported.songs.size()
+                                + " songs; " + imported.unmatched + " unmatched");
+                    });
+        });
+    }
+
+    private void pickPlaylistExport(long id) {
+        if (localSongs == null) {
+            playlistFailure("Music library is unavailable");
+            return;
+        }
+        List<LocalMusicSource.Song> snapshot = new ArrayList<>(localSongs);
+        playlists.list((items, error) -> {
+            if (error != null || items == null) {
+                playlistFailure(error);
+                return;
+            }
+            for (MusicLibraryDatabase.PlaylistSummary item : items) {
+                if (item.id != id) continue;
+                String filename = item.name.replaceAll("[/\\\\:*?\"<>|]", "_")
+                        + ".m3u8";
+                playlists.entries(id, (entries, failure) -> {
+                    if (failure != null || entries == null) {
+                        playlistFailure(failure);
+                        return;
+                    }
+                    playlistTransfer.checkExport(entries, snapshot, (valid, reason) -> {
+                        if (reason != null || !Boolean.TRUE.equals(valid)) {
+                            playlistFailure(reason);
+                            return;
+                        }
+                        Intent picker = new Intent(Intent.ACTION_CREATE_DOCUMENT)
+                                .addCategory(Intent.CATEGORY_OPENABLE)
+                                .setType("audio/x-mpegurl");
+                        picker.putExtra(Intent.EXTRA_TITLE, filename);
+                        picker.putExtra(Intent.EXTRA_LOCAL_ONLY, true);
+                        try {
+                            exportingPlaylistId = id;
+                            startActivityForResult(picker, EXPORT_PLAYLIST_REQUEST);
+                        } catch (RuntimeException exception) {
+                            exportingPlaylistId = -1L;
+                            Log.w(TAG, "Playlist export picker unavailable", exception);
+                            playlistFailure("Playlist export picker unavailable");
+                        }
+                    });
+                });
+                return;
+            }
+            playlistFailure("Playlist no longer exists");
+        });
+    }
+
+    private void writeExportedPlaylist(long id, Uri document) {
+        if (localSongs == null) {
+            playlistFailure("Music library is unavailable");
+            return;
+        }
+        List<LocalMusicSource.Song> snapshot = new ArrayList<>(localSongs);
+        playlists.entries(id, (items, error) -> {
+            if (error != null || items == null) {
+                playlistFailure(error);
+                return;
+            }
+            playlistTransfer.write(document, items, snapshot, (count, failure) -> {
+                if (failure != null) playlistFailure(failure);
+                else playlistNotice("Exported " + count + " songs to M3U8");
+            });
+        });
     }
 
     /** Each settings section uses a shared, non-selectable header row. */
@@ -1476,6 +2035,21 @@ public final class MusicActivity extends Activity {
     @SuppressWarnings("deprecation")
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == IMPORT_PLAYLIST_REQUEST) {
+            if (resultCode == RESULT_OK && data != null && data.getData() != null) {
+                readImportedPlaylist(data.getData());
+            }
+            return;
+        }
+        if (requestCode == EXPORT_PLAYLIST_REQUEST) {
+            long id = exportingPlaylistId;
+            exportingPlaylistId = -1L;
+            if (id >= 0 && resultCode == RESULT_OK
+                    && data != null && data.getData() != null) {
+                writeExportedPlaylist(id, data.getData());
+            }
+            return;
+        }
         if (requestCode == AUTHORIZE_DELETE_FOLDER_REQUEST) {
             onDeleteFolderAuthorization(resultCode, data);
             return;
@@ -1991,6 +2565,8 @@ public final class MusicActivity extends Activity {
         folderBrowser.close();
         trackPropertiesReader.close();
         trackDeletion.close();
+        playlists.close();
+        playlistTransfer.close();
         super.onDestroy();
     }
 
