@@ -1133,10 +1133,13 @@ The caller reserves space above the centred content for its existing action
 rows, without modifying DPAD/trackpad navigation or the ListView row layout.
 No icon is supplied unless an existing verified asset is explicitly chosen.
 
-When Playlists contains zero saved playlists, only its actionable **Create
-playlist** and **Import M3U8** rows are in the list. The independent empty-state
-area displays **No playlists.** and explanatory text below those actions; it
-cannot be selected or scrolled to as an item. Empty playlist detail pages use
+When Playlists contains zero saved playlists, its single **Add Playlist**
+row is selectable but intentionally has no action. **Create playlist** and
+**Import M3U8** are removed from the Playlists menu (their underlying logic
+is retained). Below the row, the independent empty-state area displays the
+original, unmodified `354.png` artwork, the heading **No playlists.**, and
+**You can import or create playlists for music on your device by selecting Add Playlist**.
+The artwork and explanatory text cannot be selected or scrolled to as an item. Empty playlist detail pages use
 the same helper instead of an **Empty playlist** menu item. Search hides the
 empty-state panel so search results remain independent. Populated playlists
 do not display the panel.
@@ -1154,9 +1157,10 @@ background workers; the native ListView and Media3 controller are reused.
 
 ### Interaction
 
-- **Playlists** at Home: **Create playlist**, **Import M3U8**, and the
-  saved playlists with entry counts. Tap a playlist to open it; long-press
-  one to **Rename playlist** or **Delete playlist**.
+- **Playlists** at Home: a currently inert **Add Playlist** row and saved
+  playlists with entry counts. The earlier Create/Import menu entries are
+  hidden, with their code retained for later activation. Tap a playlist
+  to open it; long-press one to **Rename playlist** or **Delete playlist**.
 - Open playlist: **Play all**, **Shuffle**, **Add songs**, **Rename playlist**,
   **Export M3U8**, **Delete playlist**, followed by the ordered track list.
   Playing one track uses the available songs of that playlist as its Media3
@@ -1180,7 +1184,8 @@ background workers; the native ListView and Media3 controller are reused.
 
 ### M3U8 interoperability and limitations
 
-- **Import M3U8** uses Android's `ACTION_OPEN_DOCUMENT` picker and reads
+- The existing (currently not exposed by a Playlists menu entry) **Import M3U8**
+  implementation uses Android's `ACTION_OPEN_DOCUMENT` picker and reads
   UTF-8 M3U/M3U8 text (including `#EXTM3U`, `#EXTINF` and CRLF).
   The imported playlist is saved in Room, with a unique name if necessary.
   Absolute paths and `file://` references are resolved against the
