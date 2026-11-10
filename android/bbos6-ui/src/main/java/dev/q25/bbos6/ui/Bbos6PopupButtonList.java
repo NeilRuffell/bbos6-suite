@@ -542,7 +542,7 @@ public final class Bbos6PopupButtonList {
         GradientDrawable face;
         if (selected) {
             // Identical colors and border to the existing shared context menu.
-            face = Bbos6SelectionBackground.blue(context);
+            face = Bbos6SelectionBackground.blue(context, BUTTON_CORNER_DP);
         } else {
             face = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                     new int[]{0xffe5e7e9, 0xffc6c8ca, 0xffb4b6ba});
