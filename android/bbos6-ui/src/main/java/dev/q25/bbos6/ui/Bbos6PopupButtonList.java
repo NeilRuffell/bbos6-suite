@@ -552,7 +552,7 @@ public final class Bbos6PopupButtonList {
             for (int i = 0; i < buttons.size(); i++) {
                 TextView button = buttons.get(i);
                 boolean selected = i == selection && actions.get(i).enabled
-                        && (input == null || panel.hasFocus());
+                        && panel.hasFocus();
                 button.setBackground(buttonBackground(activity, selected));
                 button.setTextColor(selected ? Color.WHITE : 0xff242629);
                 // A flat native drawable avoids double shadows and black rims.
