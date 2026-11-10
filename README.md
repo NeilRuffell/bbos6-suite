@@ -43,13 +43,18 @@ library**. Integration into individual applications requires a pinned
 submodule commit and separate application PR.
 
 The default presentation uses a charcoal rounded panel and thin rim, with
-vertically stacked, beveled silver buttons. The currently highlighted button
-uses the **same blue gradient and border as the existing
-`Bbos6ContextMenu`**. The context menu retains its original 7dp radius;
-the button popup calls `Bbos6SelectionBackground.blue(context, 4)` to
-match its 4dp silver button corners without copying or altering the
-shared colors and stroke. Each button also
-has rounded corners, a subdued inset shadow and native elevation.
+vertically stacked rounded buttons. Based on direct pixel samples from the
+provided 640 × 480 BlackBerry simulator screenshot, the selected button
+transitions from a bright upper blue to a stable **#1766DB** lower face.
+The unselected button transitions from light silver to a stable
+**#AFB1B4** lower face. Both are single native `GradientDrawable`
+backgrounds with a thin one-pixel stroke and a 4dp radius, **without**
+a black underlay or View elevation.
+
+The shared `Bbos6SelectionBackground.popupButtonBlue(...)` owns the
+popup-specific blue palette, avoiding a copy in Music. The separately
+verified `Bbos6ContextMenu` grid selection colors and strokes remain
+unchanged; they are not interchangeable with the screenshot's button face.
 
 The optional `.message(String)` adds wrapped, non-interactive explanatory
 text between the title and button list. This preserves warnings on delete,
@@ -112,8 +117,12 @@ offset, or cell-size-derived vertical scaling.
   corrections are applied to the items or selection.
 
 The button popup and context grid intentionally have different intrinsic
-sizes because they are different BlackBerry controls. Confirm proportions
-and touch behavior on the actual Q25 before merging.
+sizes because they are different BlackBerry controls. Direct reference-to-Q25
+comparison showed the button footprints were already similar; the inaccurate
+appearance came from an extra opaque-black drawable layer, View elevation
+and an excessively dark full-height gradient. The new simple face has no
+visual compensations, offset tricks, or app-specific copies. Confirm
+colors and touch behavior on the actual Q25 before merging.
 
 ## Consumer integration
 
