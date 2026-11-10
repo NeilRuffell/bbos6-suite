@@ -84,7 +84,7 @@ final class MusicListView extends ListView {
 
     // Slightly taller shared rows add 2dp of breathing room above and below
     // centered text; square artwork still fills each row edge-to-edge.
-    private static final int ROW_HEIGHT_DP = 68;
+    static final int ROW_HEIGHT_DP = 68;
     // Menu PNGs have different pixel dimensions and transparent borders.
     // Normalize the alpha-bounded artwork into this shared visible square.
     private static final int MENU_ICON_VISIBLE_DP = 52;
