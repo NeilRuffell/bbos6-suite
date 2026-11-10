@@ -334,12 +334,14 @@ Vector/LSPosed, a custom ROM, or another music app.
 ### Track Properties (long press)
 
 Only a playable **track** row in the shared Music browser opens the reusable
-`Bbos6PropertiesPopup` overlay. Track rows are available under All Songs,
+`Bbos6ContextMenu` overlay, currently containing **one action: Properties**.
+Choosing Properties opens the existing `Bbos6PropertiesPopup` for the exact
+track that was long-pressed. Track rows are available under All Songs,
 Artists, Albums, Genres, Folders, and song-search results. A touchscreen hold
 or a held Q25 trackpad confirm uses the same existing eligible-row callback.
 Normal single presses still play/open tracks; no media control or Now Playing
 component acquires a long-press action. Album, Artist, Folder and Genre
-long presses remain registered but do not open Properties.
+long presses remain registered but have no assigned context actions.
 
 `MusicTrackPropertiesReader` reads metadata asynchronously for the exact
 selected song's `content://` SAF document, checking that its source folder
@@ -367,8 +369,15 @@ Fields, when available:
 Missing fields are omitted instead of displaying fabricated placeholders.
 A failed provider query still permits known indexed track metadata.
 Slow asynchronous results are discarded after navigation, a new request,
-search changes or Activity stop. The popup is dismissed by Back and the
-underlying list and playback are not altered.
+search changes or Activity stop. Back dismisses the context menu first;
+when Properties is open, Back dismisses the Properties dialog. The underlying
+list selection, scroll position and playback remain unchanged.
+
+The context menu uses the shared builder with an Android-provided temporary
+information icon (`android.R.drawable.ic_menu_info_details`), not an
+unverified BlackBerry asset. Its single action is presented in a centered,
+compact column. Adding future actions or groups requires editing the Music
+caller's menu definition, not the shared renderer.
 
 ### Shared long-press input
 
