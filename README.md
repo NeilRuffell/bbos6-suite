@@ -32,8 +32,9 @@ git submodule update --init --recursive
 The consumer's Gradle settings include the shared Android module from
 `assets/bbos6/android/bbos6-ui`.
 
-**Access:** This repository is currently private; GitHub authentication and
-permission to read it are required even when a consuming repository is public.
+**Access:** This is an owner-maintained private repository. Use your authenticated
+GitHub account when initializing its submodule. Public distribution is not
+part of the current setup.
 
 ## Updating shared assets or UI
 
