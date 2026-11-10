@@ -137,3 +137,12 @@ their own list/adapter rows and must mark headers non-selectable.
 separator. It does not fetch artwork or format album/song metadata. Callers
 own any business logic and can use a built-in placeholder Painter when no
 artwork is available.
+
+### Compose-backed empty state for legacy View hosts
+
+`dev.q25.bbos6.ui.compose.Bbos6EmptyStateComposeView` is a temporary
+Kotlin/Compose host for apps migrating an existing Java `ListView` layout.
+It delegates to the same reusable `Bbos6EmptyState` Composable and keeps
+Java-callable `setContent`, `setArtworkResource` and `setArtwork` APIs.
+The enclosing application still decides visibility, content, sizing and
+list-scroll position. Neither helper acquires focus or responds to taps.

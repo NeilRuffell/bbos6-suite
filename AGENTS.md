@@ -232,3 +232,11 @@ data as a side effect of converting UI. Keep legacy native Views available
 until each Compose replacement is parity-verified for real hardware focus,
 touch, keyboard and trackpad. Read
 `android/bbos6-ui/COMPOSE_MIGRATION.md` for current progress.
+
+## Compose-backed empty states
+
+The Kotlin `Bbos6EmptyStateComposeView` is the shared transition host for
+existing Android View containers. All new empty-state visuals remain in the
+`Bbos6EmptyState` Composable, never in a Music-only widget. Preserve the
+Java-callable content/artwork methods and the non-focusable, non-clickable
+contract so list selection/navigation stays exclusively app-owned.

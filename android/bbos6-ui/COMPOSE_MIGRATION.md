@@ -113,3 +113,22 @@ colors/spacing. It is independent of Music data, file access and artwork
 loading. A Music feature branch will use it in the album page via a Kotlin
 presentation wrapper while retaining the existing artwork loader, its
 binding-generation guard, adapter selection and page navigation.
+
+## Shared Compose-backed empty-state host
+
+`Bbos6EmptyStateComposeView` is the shared Kotlin `AbstractComposeView`
+adapter for existing Android View hosts. It delegates all visible rendering
+to `Bbos6EmptyState` and exposes Java-callable `setContent(...)`,
+`setArtworkResource(...)`, and `setArtwork(...)` methods. It cannot
+be selected or clicked, and does not change any host's empty-data detection,
+reserved list rows, viewport alignment or keyboard focus. Caller-supplied
+drawables are drawn by a shared Compose `Painter`, keeping their intrinsic
+aspect ratio without another Android View.
+
+Music's transitional integration changes only the type/constructor of its
+empty-state member, leaving `MusicActivity.updateEmptyState()`, list-row
+selection, search and playback logic untouched. The Java native helper is
+kept intact for existing consumers until all applications migrate.
+
+The new host requires a successful release build and Q25 review of empty
+Playlists and empty playlist-detail states. No parity claim before testing.
