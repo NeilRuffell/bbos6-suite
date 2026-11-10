@@ -60,15 +60,20 @@ The underlying `MusicListView` retains scrolling/trackpad selection.
 The empty Playlists page uses verified original `354.png` from
 `bbos6-shared/icons/`, packaged unchanged as `bbos6_playlist_empty.png`,
 with its mapping recorded in the canonical shared `icon-index.csv`.
-Its **Add Playlist** list row is deliberately inert; previous Create/Import
-menu entries are not displayed, though underlying code remains available.
+Its **Add Playlist** row opens the canonical shared `Bbos6PopupButtonList`
+with the message "Please select how you would like to add a playlist:"
+and the two options **New Playlist** / **Import Playlist**. These invoke
+the existing app-specific create and SAF import methods; do not duplicate
+their logic or add new screen-specific popup renderers. Previous
+standalone Create/Import list entries remain absent.
 Changing this shared helper requires the standard shared-first PR and
 consumer-submodule workflow.
 
 ## BBOS6 confirmation dialogs
 
 Use `Bbos6PopupButtonList` from the canonical shared Android module for
-app-owned button-only confirmations. Music's centralized
+app-owned button-only confirmations and simple choice popups. Music's
+`showButtonPopup(...)` owns dialog lifetime, while centralized
 `showButtonConfirmation(title, message, confirmLabel, callback)` retains
 app-specific text/actions and initially selects **Cancel**. Use it for
 file deletion, playlist deletion, removing configured folders, and full
