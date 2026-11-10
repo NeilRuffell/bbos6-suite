@@ -104,3 +104,12 @@ step, not the final all-Compose Music screen architecture.
 A local Gradle build and on-device Settings list/DPAD/touch comparison are
 required before accepting the Music branch. Do not merge either PR before
 explicit approval.
+
+## Reusable media-detail header
+
+`Bbos6MediaDetailHeader` adds the original 88dp square-image/detail layout
+with 1dp bottom separator, four single-line ellipsized text rows and fixed
+colors/spacing. It is independent of Music data, file access and artwork
+loading. A Music feature branch will use it in the album page via a Kotlin
+presentation wrapper while retaining the existing artwork loader, its
+binding-generation guard, adapter selection and page navigation.

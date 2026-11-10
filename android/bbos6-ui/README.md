@@ -129,3 +129,11 @@ section heading with the existing BlackBerry-style grey vertical gradient,
 1dp rim, bold 14sp title, and 16dp side insets. The shared renderer contains
 no list-selection state or Music-specific settings logic. Applications retain
 their own list/adapter rows and must mark headers non-selectable.
+
+### Compose media-detail header
+
+`Bbos6MediaDetailHeader` is a reusable, non-interactive 89dp detail panel:
+88dp artwork, four independently supplied text lines, and a full-width 1dp
+separator. It does not fetch artwork or format album/song metadata. Callers
+own any business logic and can use a built-in placeholder Painter when no
+artwork is available.
