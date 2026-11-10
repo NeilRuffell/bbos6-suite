@@ -30,6 +30,11 @@ list item, become focusable/selectable, handle DPAD/trackpad events or
 change the host's scrolling and selection logic. Layout bounds and the
 conditions for displaying it are application-owned.
 
+Music's empty Playlists screen opts in to original `354.png` artwork, explicitly
+selected by the project owner. The asset remains unmodified under `icons/`;
+its verified mapping is recorded in the canonical `icon-index.csv`. Other
+empty-state consumers do not receive that artwork automatically.
+
 ## Consumer integration
 
 Check out a consumer with the shared dependency:
