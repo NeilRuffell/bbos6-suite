@@ -24,6 +24,8 @@ import androidx.media3.common.MediaItem;
 import androidx.media3.common.Player;
 import androidx.media3.session.MediaController;
 
+import dev.q25.bbos6.ui.Bbos6FocusPolicy;
+
 /**
  * Standalone presentation port of the BB UI shade's expanded Now Playing:
  * proportionally sized header with Repeat on the left, queue position in the
@@ -317,6 +319,9 @@ final class MusicNowPlayingView extends LinearLayout {
         }
         transportRow.setForeground(
                 MusicPlayerChrome.transportSeparators(context, transportButtons));
+        // The view owns trackpad focus and draws its own BBOS6 selection.
+        // Never let Android paint its default highlight across the player.
+        Bbos6FocusPolicy.forManagedContainers(this);
         render();
         ticker.postDelayed(tick, 1000);
     }

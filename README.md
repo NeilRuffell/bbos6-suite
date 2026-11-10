@@ -1189,6 +1189,25 @@ the same helper instead of an **Empty playlist** menu item. Search hides the
 empty-state panel so search results remain independent. Populated playlists
 do not display the panel.
 
+## Managed BBOS6 focus without Android overlay
+
+The canonical `Bbos6FocusPolicy.forManagedContainers(...)` from
+`bbos6-shared` prevents Android's built-in focus highlighter from painting
+a pale overlay over whole composite BBOS6 panels that already draw their own
+selection. It changes the framework's focus drawing behavior only for
+container views, not text fields or interactive leaf controls, and does not
+alter focusability, key events, trackpad/DPAD navigation, selection palettes
+or opacity.
+
+`MusicNowPlayingView` applies it once after building its view hierarchy;
+`Bbos6ContextMenu`, `Bbos6PopupButtonList` (including text-to-buttons
+navigation), and `Bbos6PropertiesPopup` apply it in the shared library.
+The shared button popup also displays a blue button **only while its
+button-focus container is focused**. Moving into the playlist name's native
+text field turns all buttons silver without losing the remembered selection;
+moving back to the horizontal buttons restores the selected face.
+Test touch and trackpad for each affected control on the Q25 before merging.
+
 ## Playlists (Room + Media3 + M3U8)
 
 Playlists use the existing app-private Room database, migrated **non-destructively
