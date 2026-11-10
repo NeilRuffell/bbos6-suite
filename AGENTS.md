@@ -86,6 +86,12 @@ The reusable, app-neutral library lives in
   choose Cancel as the initially selected safe default.
 - Keep Android-owned system permission prompts and document pickers native.
   Complex input dialogs requiring an editable view are not button-only popups.
+- Size BBOS6 popup components using their own fixed, reference-grounded
+  `dp`/`sp` dimensions and ordinary Android layout measurement. Do not
+  introduce display-density overrides, arbitrary offset compensations,
+  row heights derived from viewport width, or proportional screen-filling.
+  The button popup and long-press grid each retain their own intrinsic
+  sizing, with only a viewport boundary for safe display.
 - Introduce new helper behavior in a shared feature branch and advance the
   consumer's pinned submodule in a separate feature PR; never duplicate the
   popup implementation in an app.
