@@ -595,6 +595,15 @@ public final class Bbos6PopupButtonList {
                 }
                 return true;
             }
+            if (horizontalButtons
+                    && (code == KeyEvent.KEYCODE_DPAD_LEFT
+                    || code == KeyEvent.KEYCODE_DPAD_RIGHT)) {
+                if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                    heldConfirm = KeyEvent.KEYCODE_UNKNOWN;
+                    moveSelection(code == KeyEvent.KEYCODE_DPAD_LEFT ? -1 : 1);
+                }
+                return true;
+            }
             if (code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_DPAD_DOWN) {
                 if (event.getAction() == KeyEvent.ACTION_DOWN) {
                     heldConfirm = KeyEvent.KEYCODE_UNKNOWN;
