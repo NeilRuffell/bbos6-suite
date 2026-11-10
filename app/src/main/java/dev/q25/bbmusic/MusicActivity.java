@@ -1179,15 +1179,15 @@ public final class MusicActivity extends Activity {
         playlists.list((items, error) -> {
             if (isFinishing() || isDestroyed() || page != playlistsPage) return;
             ArrayList<MenuRow> rows = new ArrayList<>();
-            rows.add(MenuRow.playlistAction("Create playlist", "create", -1));
-            rows.add(MenuRow.playlistAction("Import M3U8", "import", -1));
+            rows.add(MenuRow.playlistAction("Add Playlist", "noop", -1));
             page.setEmptyState(null, null, 0);
             if (error != null) {
                 rows.add(MenuRow.message("Unable to load playlists"));
             } else if (items == null || items.isEmpty()) {
                 page.setEmptyState("No playlists.",
-                        "You can create playlists from music on your device "
-                                + "by selecting Create playlist.", rows.size());
+                        "You can import or create playlists for music on your device "
+                                + "by selecting Add Playlist", rows.size());
+                page.emptyArtworkRes = R.drawable.bbos6_playlist_empty;
             } else {
                 for (MusicLibraryDatabase.PlaylistSummary item : items) {
                     rows.add(MenuRow.playlist(item));
@@ -1203,8 +1203,7 @@ public final class MusicActivity extends Activity {
 
     private void openPlaylistDirectory() {
         ArrayList<MenuRow> rows = new ArrayList<>();
-        rows.add(MenuRow.playlistAction("Create playlist", "create", -1));
-        rows.add(MenuRow.playlistAction("Import M3U8", "import", -1));
+        rows.add(MenuRow.playlistAction("Add Playlist", "noop", -1));
         rows.add(MenuRow.message("Loading playlists..."));
         playlistsPage = new Page("Playlists", rows);
         playlistsPage.playlistDirectory = true;
