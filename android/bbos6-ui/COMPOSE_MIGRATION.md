@@ -173,3 +173,29 @@ MusicPlayerChrome's existing foreground separators and selection drawables
 remain unchanged during this stage. Android View wrappers own all layouts,
 player actions and state. Build and physical Q25 comparison are required
 before merging.
+
+## Q25 visual regression: overly thick mode/seek accent lines
+
+A Q25 tester observed a thick glow immediately below the mode header's
+top edge and above the seek panel's bottom edge. Comparing the original
+Java `MusicPlayerChrome` renderer with the Compose port isolated a
+**shared-helper regression**, not a playback, sizing or layout bug:
+
+- Mode header (verified BBOS6 2513.png mapping): the original reflected
+  at most 42/255 alpha in a narrow horizontal centre and reduced its
+  opacity *on each physical row* as `(1 - progress)^1.55`. The first
+  Compose port substituted a constant-full-width 7dp glow.
+- Seek panel (verified 2486.png): the original reflection peaked at only
+  52/255 in the horizontal centre and brightened toward the bottom as
+  `rise^3.2`. The Compose port substituted a constant-strength 5dp
+  strip, making the entire lower region appear thick and bright.
+
+The **1dp silver/white edge rule is intentional** in both original
+backgrounds and is retained. The Compose helper now reproduces the
+original per-physical-pixel nonlinear fade *and* horizontal white-to-clear
+falloff, using exact original alpha curves and recorded gradient stops.
+New `Bbos6NowPlayingBevelTest` protects the intensity functions.
+
+No new Music-specific graphics or changes to native SeekBar, button
+semantics, focus, Media3 or navigation. Q25 screenshot parity is required
+before calling the fix visually verified or merging.

@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.platform.AbstractComposeView
 import androidx.compose.ui.unit.dp
 import kotlin.math.max
+import kotlin.math.roundToInt
 
 /** The four native BBOS6 Now Playing background regions. */
 enum class Bbos6NowPlayingPanel {
@@ -76,18 +77,34 @@ private fun DrawScope.drawModeChrome() {
             1f to Color(0xFF101010)
         )
     )
-    val rule = 1.dp.toPx()
-    val sheenHeight = minOf(7.dp.toPx(), max(0f, size.height - 2f * rule))
-    if (sheenHeight > 0f) {
-        // Shallow, subdued highlight beneath the stronger silver top rule.
-        drawRect(
-            brush = Brush.verticalGradient(
-                0f to Color(0x2AFFFFFF),
-                1f to Color(0x00FFFFFF)
-            ),
-            topLeft = Offset(0f, rule),
-            size = Size(size.width, sheenHeight)
-        )
+    // Match the original 2513.png renderer: only the 1dp top rule is
+    // continuously bright. The seven-dp *bevel* has a centre-weighted
+    // horizontal highlight, diminishing nonlinearly on every physical row.
+    // A constant-alpha 7dp strip causes the unwanted thick top glow.
+    val rule = max(1, 1.dp.toPx().roundToInt()).toFloat()
+    val top = rule.toInt()
+    val bottom = minOf(
+        size.height.roundToInt() - rule.toInt(),
+        top + 7.dp.toPx().roundToInt()
+    )
+    val bevelHeight = bottom - top
+    if (bevelHeight > 0) {
+        for (offset in 0 until bevelHeight) {
+            val alpha = bbos6ModeBevelAlpha(offset, bevelHeight)
+            if (alpha == 0) continue
+            val white = Color.White.copy(alpha = alpha / 255f)
+            val transparentWhite = Color.White.copy(alpha = 0f)
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    0f to transparentWhite,
+                    0.43f to white,
+                    0.57f to white,
+                    1f to transparentWhite
+                ),
+                topLeft = Offset(0f, (top + offset).toFloat()),
+                size = Size(size.width, 1f)
+            )
+        }
     }
     drawRect(
         brush = Brush.horizontalGradient(
@@ -119,7 +136,7 @@ private fun DrawScope.drawSeekChrome() {
             1f to Color(0xFF181818)
         )
     )
-    val rule = 1.dp.toPx()
+    val rule = max(1, 1.dp.toPx().roundToInt()).toFloat()
     drawRect(
         brush = Brush.horizontalGradient(
             0f to Color(0xFF393839),
@@ -129,19 +146,30 @@ private fun DrawScope.drawSeekChrome() {
         ),
         size = Size(size.width, rule)
     )
-    val bevelHeight = minOf(5.dp.toPx(), max(0f, size.height - 2f * rule))
-    if (bevelHeight > 0f) {
-        drawRect(
-            brush = Brush.horizontalGradient(
-                0f to Color.Transparent,
-                0.21f to Color.Transparent,
-                0.50f to Color(0x34FFFFFF),
-                0.79f to Color.Transparent,
-                1f to Color.Transparent
-            ),
-            topLeft = Offset(0f, max(0f, size.height - rule - bevelHeight)),
-            size = Size(size.width, bevelHeight)
-        )
+    // 2486.png: a centre-weighted lower reflection grows with the *cube*
+    // of row depth. The previous flat 52-alpha 5dp strip made a thick glow.
+    // Leave the original one-dp silver separator independently visible.
+    val end = size.height.roundToInt() - rule.toInt()
+    val start = max(rule.toInt(), end - 5.dp.toPx().roundToInt())
+    val bevelHeight = end - start
+    if (bevelHeight > 0) {
+        for (offset in 0 until bevelHeight) {
+            val alpha = bbos6SeekBevelAlpha(offset, bevelHeight)
+            if (alpha == 0) continue
+            val white = Color.White.copy(alpha = alpha / 255f)
+            val transparentWhite = Color.White.copy(alpha = 0f)
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    0f to transparentWhite,
+                    0.21f to transparentWhite,
+                    0.50f to white,
+                    0.79f to transparentWhite,
+                    1f to transparentWhite
+                ),
+                topLeft = Offset(0f, (start + offset).toFloat()),
+                size = Size(size.width, 1f)
+            )
+        }
     }
     drawRect(
         brush = Brush.horizontalGradient(
@@ -154,6 +182,25 @@ private fun DrawScope.drawSeekChrome() {
         topLeft = Offset(0f, max(0f, size.height - rule)),
         size = Size(size.width, rule)
     )
+}
+
+/**
+ * Original native upper bevel intensity, converted one physical pixel at a
+ * time. Pure functions are unit-testable without Android or Compose views.
+ */
+internal fun bbos6ModeBevelAlpha(row: Int, height: Int): Int {
+    require(height > 0 && row in 0 until height)
+    val progress = (row + 0.5f) / height
+    val strength = Math.pow((1f - progress).toDouble(), 1.55).toFloat()
+    return (42f * strength).roundToInt()
+}
+
+/** Original native seek bevel: nearly invisible until the bottom rows. */
+internal fun bbos6SeekBevelAlpha(row: Int, height: Int): Int {
+    require(height > 0 && row in 0 until height)
+    val rise = (row + 1).toFloat() / height
+    val strength = Math.pow(rise.toDouble(), 3.2).toFloat()
+    return (52f * strength).roundToInt()
 }
 
 /**

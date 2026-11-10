@@ -167,3 +167,12 @@ staged Android View integrations; the parent still owns its interactive
 children. `Bbos6NowPlayingText` draws caller-supplied Now Playing labels.
 Media3 interaction, seekbar action semantics, and DPAD focus remain outside
 the shared package.
+
+### Mode/seek chrome fade fidelity
+
+Mode and seek panels intentionally have a **single 1dp edge separator**;
+the secondary 7dp/5dp bevel beneath/above it is *not* a flat, full-width
+glow. Their per-pixel nonlinear alpha gradients and horizontal falloff are
+implemented in `Bbos6NowPlayingSurface.kt` with pure alpha functions
+covered by `Bbos6NowPlayingBevelTest`. This matches the previous native
+MusicPlayerChrome formulas and the verified 2513.png / 2486.png references.
