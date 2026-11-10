@@ -402,6 +402,12 @@ have been removed centrally in the shared renderer.
 Review button/label sizes and three-column context menus directly on the
 Q25 before approving the shared or Music PRs.
 
+The same shared popup also handles the **Add Playlist** two-option
+choice. A single Music helper, `showButtonPopup(...)`, manages dialog
+lifetime for confirmations and the playlist choice without duplicating
+any widget drawing or navigation. The button actions are still
+application-owned and do not change Room, SAF or Media3 logic.
+
 The shared helper now handles **per-track and artist/album/genre file deletion**,
 **playlist deletion**, **removing a selected music folder**, and
 **Full rescan** confirmation. It changes no file-operation, playback,
@@ -1167,9 +1173,13 @@ rows, without modifying DPAD/trackpad navigation or the ListView row layout.
 No icon is supplied unless an existing verified asset is explicitly chosen.
 
 When Playlists contains zero saved playlists, its single **Add Playlist**
-row is selectable but intentionally has no action. **Create playlist** and
-**Import M3U8** are removed from the Playlists menu (their underlying logic
-is retained). Below the row, the independent empty-state area displays the
+row launches the canonical shared `Bbos6PopupButtonList`. The popup says
+**Please select how you would like to add a playlist:** and offers
+**New Playlist** and **Import Playlist**. The first opens the existing
+playlist-name entry flow; the second opens the existing Android SAF M3U/M3U8
+import picker. Both choices use the existing playlist business logic.
+The previous standalone **Create playlist** and **Import M3U8** rows remain
+absent from the Playlists menu. Below the row, the independent empty-state area displays the
 original, unmodified `354.png` artwork, the heading **No Playlists.**, and
 **You can import or create playlists for music on your device by selecting Add Playlist**.
 The artwork and explanatory text cannot be selected or scrolled to as an item. Empty playlist detail pages use
@@ -1190,10 +1200,12 @@ background workers; the native ListView and Media3 controller are reused.
 
 ### Interaction
 
-- **Playlists** at Home: a currently inert **Add Playlist** row and saved
-  playlists with entry counts. The earlier Create/Import menu entries are
-  hidden, with their code retained for later activation. Tap a playlist
-  to open it; long-press one to **Rename playlist** or **Delete playlist**.
+- **Playlists** at Home: **Add Playlist** opens a compact, two-button
+  BBOS6 popup with **New Playlist** (existing name-entry flow) and
+  **Import Playlist** (existing native SAF document picker). It uses the
+  shared `Bbos6PopupButtonList` helper without screen-specific button
+  styling. Saved playlists follow with entry counts. Tap a playlist to
+  open it; long-press one to **Rename playlist** or **Delete playlist**.
 - Open playlist: **Play all**, **Shuffle**, **Add songs**, **Rename playlist**,
   **Export M3U8**, **Delete playlist**, followed by the ordered track list.
   Playing one track uses the available songs of that playlist as its Media3
@@ -1217,8 +1229,8 @@ background workers; the native ListView and Media3 controller are reused.
 
 ### M3U8 interoperability and limitations
 
-- The existing (currently not exposed by a Playlists menu entry) **Import M3U8**
-  implementation uses Android's `ACTION_OPEN_DOCUMENT` picker and reads
+- **Import Playlist**, reached through **Playlists → Add Playlist**, uses
+  the existing `ACTION_OPEN_DOCUMENT` picker and reads
   UTF-8 M3U/M3U8 text (including `#EXTM3U`, `#EXTINF` and CRLF).
   The imported playlist is saved in Room, with a unique name if necessary.
   Absolute paths and `file://` references are resolved against the
