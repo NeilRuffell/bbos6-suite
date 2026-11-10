@@ -95,11 +95,12 @@ dependencies {
 }
 ```
 
-The Music app connects this helper only for long presses on playable
-track rows in its library browser. `MusicTrackPropertiesReader` supplies
-SAF and indexed metadata; the shared library never queries files or handles
-music navigation. Other applications can supply any property rows through
-the same builder without copying UI code.
+The Music app opens `Bbos6ContextMenu` on long presses of playable
+track rows with one action, **Properties**. The action opens the existing
+`Bbos6PropertiesPopup`, with `MusicTrackPropertiesReader` supplying SAF and
+indexed metadata. Neither shared widget queries files or handles Music
+navigation. Other applications can supply any context actions and property
+rows through their respective builders without copying UI code.
 
 ## Local verification
 
