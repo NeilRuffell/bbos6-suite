@@ -80,7 +80,9 @@ native; the popup is not a replacement for platform authorization.
 Also preserve native dialogs requiring text entry or list input until
 a matching shared input helper exists. Never alter deletion authorization,
 file security checks, or the selected music-folder allowlist merely to
-change a dialog's appearance.
+change a dialog's appearance. Popup sizes are set by the shared helper
+using intrinsic dp/sp layout dimensions; never add Music-specific scaling,
+pixel offsets, or compensating layout arithmetic.
 
 ## Playlist maintenance
 
