@@ -1315,24 +1315,19 @@ public final class MusicActivity extends Activity {
 
     private void askPlaylistName(String title, String original,
             Consumer<String> onName) {
-        EditText input = new EditText(this);
-        input.setSingleLine(true);
-        input.setInputType(InputType.TYPE_CLASS_TEXT
-                | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
-        input.setText(original);
-        input.setSelectAllOnFocus(true);
-        LinearLayout holder = new LinearLayout(this);
-        holder.setPadding(dp(20), dp(8), dp(20), 0);
-        holder.addView(input, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT));
-        new AlertDialog.Builder(this)
-                .setTitle(title)
-                .setView(holder)
-                .setNegativeButton("Cancel", null)
-                .setPositiveButton("Save",
-                        (dialog, which) -> onName.accept(input.getText().toString()))
-                .show();
+        showButtonPopup(Bbos6PopupButtonList.builder()
+                .title(title)
+                .textInput(original, "Playlist name")
+                .horizontalButtons()
+                .addButton("cancel", "Cancel")
+                .addButton("save", "Save")
+                .initiallySelected("cancel")
+                .onTextAction((actionId, text) -> {
+                    if ("save".equals(actionId)
+                            && !isFinishing() && !isDestroyed()) {
+                        onName.accept(text);
+                    }
+                }));
     }
 
     private void createPlaylist(List<LocalMusicSource.Song> initialSongs) {
