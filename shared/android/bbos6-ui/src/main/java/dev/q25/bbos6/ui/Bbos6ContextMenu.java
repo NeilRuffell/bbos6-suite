@@ -472,10 +472,17 @@ public final class Bbos6ContextMenu {
                 // invoke an action multiple times.
                 return true;
             }
+            if (key == KeyEvent.KEYCODE_ESCAPE) {
+                heldConfirmKey = KeyEvent.KEYCODE_UNKNOWN;
+                if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) {
+                    dismiss();
+                }
+                return true;
+            }
             if (event.getAction() == KeyEvent.ACTION_DOWN) {
                 heldConfirmKey = KeyEvent.KEYCODE_UNKNOWN;
             }
-            // Let Android handle Back/Escape and standard input/accessibility.
+            // Let Android handle Back and standard input/accessibility.
             return super.dispatchKeyEvent(event);
         }
     }
