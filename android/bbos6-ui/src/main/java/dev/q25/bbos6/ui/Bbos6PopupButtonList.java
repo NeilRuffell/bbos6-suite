@@ -443,7 +443,7 @@ public final class Bbos6PopupButtonList {
         /** Native EditText handles typing, selection, and IME by itself. */
         private void addTextInput(LinearLayout content,
                 String initialText, String hint) {
-            input = new EditText(activity);
+            input = new Bbos6TextField(activity);
             input.setSingleLine(true);
             input.setInputType(InputType.TYPE_CLASS_TEXT
                     | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
@@ -451,9 +451,13 @@ public final class Bbos6PopupButtonList {
             input.setHint(hint);
             input.setSelectAllOnFocus(true);
             input.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
+            input.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+            // Popup text entry and buttons share one intrinsic height. Override
+            // only this instance's default Bbos6TextField minimum (43dp).
+            input.setMinHeight(0);
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT);
+                    dp(activity, BUTTON_HEIGHT_DP));
             params.bottomMargin = dp(activity, 14);
             content.addView(input, params);
         }

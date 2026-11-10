@@ -35,6 +35,38 @@ selected by the project owner. The asset remains unmodified under `icons/`;
 its verified mapping is recorded in the canonical `icon-index.csv`. Other
 empty-state consumers do not receive that artwork automatically.
 
+### Reusable beveled text field
+
+`Bbos6TextField` is the single shared implementation of the Music search
+field's original BlackBerry-style **43dp light inset input face**. It extends
+Android `EditText` and preserves Android cursor/selection, text input, IME,
+clipboard, accessibility and focus handling. The shared style owns a rounded
+grey gradient rim, tightly graded grey-to-white inset, dark text, soft grey
+hint text, and horizontal padding. Applications own their text, validation,
+text-watchers, input type and confirmation logic.
+
+Example:
+
+```java
+Bbos6TextField field = new Bbos6TextField(context);
+field.setSingleLine(true);
+field.setHint("Playlist name");
+```
+
+The dark charcoal gradient search **panel** (`#4B4E53` to `#292C31`,
+with a `#5A5D63` top rule) is independent outer chrome, not part of the
+text field. Music retains its `MusicSearchBarView` as this outer panel, and
+uses `Bbos6TextField` inside it. The existing shared
+`Bbos6PopupButtonList` also uses the same field for its text-entry mode
+without showing the search panel. The popup owns a **30dp input height**
+equal to `BUTTON_HEIGHT_DP` (its buttons are also 30dp), overriding the
+field's standard 43dp minimum only for that popup input instance.
+The Music search field keeps its existing height.
+
+This extracts existing verified styling instead of creating a second
+visual approximation. It does not remove Android text-editing APIs: it
+removes the native **look** while keeping native **behavior**.
+
 ### Popup button list
 
 `Bbos6PopupButtonList` is a standalone modal dialog helper inspired by the
