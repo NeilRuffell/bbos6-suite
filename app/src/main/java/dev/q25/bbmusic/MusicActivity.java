@@ -61,6 +61,7 @@ import java.util.Set;
 public final class MusicActivity extends Activity {
     private static final String TAG = "BBMusic";
     private static final int ADD_FOLDER_REQUEST = 6102;
+    private static final int AUTHORIZE_DELETE_FOLDER_REQUEST = 6103;
     private static final String MUSIC_SETTINGS_PREFS = "bbmusic_settings";
     private static final String AUTO_REFRESH_PREF = "auto_refresh_on_launch";
     private static final int ROW_MENU = 0;
@@ -105,6 +106,9 @@ public final class MusicActivity extends Activity {
     private LocalMusicSource localSource;
     private MusicFolderBrowser folderBrowser;
     private MusicTrackPropertiesReader trackPropertiesReader;
+    private MusicTrackDeletion trackDeletion;
+    private DeleteRequest pendingDelete;
+    private boolean deletingTracks;
     private Dialog propertiesDialog;
     private Dialog contextMenuDialog;
     private int propertiesRequestSerial;
@@ -204,6 +208,19 @@ public final class MusicActivity extends Activity {
         }
     }
 
+    /** Snapshot of exactly the documents in the user-confirmed operation. */
+    private static final class DeleteRequest {
+        final Page page;
+        final List<LocalMusicSource.Song> songs;
+        final String description;
+
+        DeleteRequest(Page page, List<LocalMusicSource.Song> songs, String description) {
+            this.page = page;
+            this.songs = Collections.unmodifiableList(new ArrayList<>(songs));
+            this.description = description;
+        }
+    }
+
     private static final class Page {
         final String name;
         final List<MenuRow> rows;
@@ -251,6 +268,7 @@ public final class MusicActivity extends Activity {
         localSource = new LocalMusicSource(this);
         folderBrowser = new MusicFolderBrowser(this);
         trackPropertiesReader = new MusicTrackPropertiesReader(this);
+        trackDeletion = new MusicTrackDeletion(this);
         playback = new MusicPlaybackClient(this, new MusicPlaybackClient.Listener() {
             @Override public void onPlaybackChanged() {
                 updateNowPlayingHomeRow();
@@ -601,10 +619,11 @@ public final class MusicActivity extends Activity {
         if (!supportsRowLongPress(position)) return;
         if (hardware) list.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
         MenuRow row = visibleRows.get(position);
-        // Only playable tracks presently have context actions. Other eligible
-        // library entries retain their long-press gesture for future menus.
-        if (row.kind != ROW_SONG || row.song == null) return;
-        showTrackContextMenu(row);
+        // Folders have no delete action. Songs, artists, albums and genres
+        // share the same BBOS6 menu renderer and confirmation pipeline.
+        if (row.kind == ROW_SONG && row.song == null) return;
+        if (row.kind != ROW_SONG && row.kind != ROW_GROUP) return;
+        showMusicContextMenu(row);
     }
 
     /**
@@ -612,22 +631,37 @@ public final class MusicActivity extends Activity {
      * Keep the selected MenuRow so Properties resolves the touched track,
      * not whichever row is selected after the dialog has been dismissed.
      */
-    private void showTrackContextMenu(MenuRow row) {
+    private void showMusicContextMenu(MenuRow row) {
         final Page page = currentPage;
         if (contextMenuDialog != null) contextMenuDialog.dismiss();
         // Dismiss any pending metadata result from a previous long press.
         propertiesRequestSerial++;
-        contextMenuDialog = Bbos6ContextMenu.builder()
-                .addGroup(Bbos6ContextMenuItem.resource(
-                        "properties", "Properties",
-                        android.R.drawable.ic_menu_info_details))
-                .initiallySelected("properties")
-                .onAction(item -> {
-                    if (!"properties".equals(item.id())
-                            || isFinishing() || isDestroyed()
-                            || nowPlayingVisible || currentPage != page
-                            || !visibleRows.contains(row)) return;
-                    showTrackProperties(row);
+        Bbos6ContextMenu.Builder menu = Bbos6ContextMenu.builder();
+        if (row.kind == ROW_SONG) {
+            menu.addGroup(
+                    Bbos6ContextMenuItem.resource(
+                            "properties", "Properties",
+                            android.R.drawable.ic_menu_info_details),
+                    Bbos6ContextMenuItem.resource(
+                            "delete", "Delete",
+                            android.R.drawable.ic_menu_delete));
+            menu.initiallySelected("properties");
+        } else {
+            menu.addGroup(Bbos6ContextMenuItem.resource(
+                    "delete", "Delete",
+                    android.R.drawable.ic_menu_delete));
+            menu.initiallySelected("delete");
+        }
+        contextMenuDialog = menu.onAction(item -> {
+                    if (isFinishing() || isDestroyed() || nowPlayingVisible
+                            || currentPage != page || !visibleRows.contains(row)) {
+                        return;
+                    }
+                    if ("properties".equals(item.id()) && row.kind == ROW_SONG) {
+                        showTrackProperties(row);
+                    } else if ("delete".equals(item.id())) {
+                        confirmDelete(row);
+                    }
                 })
                 .show(this);
         Dialog shownMenu = contextMenuDialog;
@@ -1690,6 +1724,7 @@ public final class MusicActivity extends Activity {
         localSource.close();
         folderBrowser.close();
         trackPropertiesReader.close();
+        trackDeletion.close();
         super.onDestroy();
     }
 
