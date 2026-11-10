@@ -31,6 +31,7 @@ import android.widget.Toast;
 
 import dev.q25.bbos6.ui.Bbos6ContextMenu;
 import dev.q25.bbos6.ui.Bbos6ContextMenuItem;
+import dev.q25.bbos6.ui.Bbos6PopupButtonList;
 import dev.q25.bbos6.ui.Bbos6EmptyStateView;
 import dev.q25.bbos6.ui.Bbos6PropertiesPopup;
 
@@ -128,6 +129,7 @@ public final class MusicActivity extends Activity {
     private int deleteConfirmationSerial;
     private Dialog propertiesDialog;
     private Dialog contextMenuDialog;
+    private Dialog buttonConfirmationDialog;
     private int propertiesRequestSerial;
     private Map<String, List<Uri>> albumArtworkSources = Collections.emptyMap();
     private MusicPlaybackClient playback;
@@ -881,13 +883,39 @@ public final class MusicActivity extends Activity {
         }
     }
 
+    /**
+     * Central button-only confirmation renderer. The shared BBOS6 helper owns
+     * appearance and focus; the app retains confirmation text and operations.
+     * Cancel is selected first to avoid accidental destructive activation.
+     */
+    private void showButtonConfirmation(String title, String message,
+            String confirmLabel, Runnable onConfirm) {
+        if (buttonConfirmationDialog != null) {
+            buttonConfirmationDialog.dismiss();
+            buttonConfirmationDialog = null;
+        }
+        Dialog shown = Bbos6PopupButtonList.builder()
+                .title(title)
+                .message(message)
+                .addButton("cancel", "Cancel")
+                .addButton("confirm", confirmLabel)
+                .initiallySelected("cancel")
+                .onAction(actionId -> {
+                    if ("confirm".equals(actionId)
+                            && !isFinishing() && !isDestroyed()) {
+                        onConfirm.run();
+                    }
+                })
+                .show(this);
+        buttonConfirmationDialog = shown;
+        shown.setOnDismissListener(dialog -> {
+            if (buttonConfirmationDialog == shown) buttonConfirmationDialog = null;
+        });
+    }
+
     private void showDeleteConfirmation(DeleteRequest request, String message) {
-        new AlertDialog.Builder(this)
-                .setMessage(message)
-                .setNegativeButton("Cancel", null)
-                .setPositiveButton("Delete",
-                        (dialog, which) -> authorizeAndDelete(request))
-                .show();
+        showButtonConfirmation("Delete audio files?", message, "Delete",
+                () -> authorizeAndDelete(request));
     }
 
     /**
@@ -1347,22 +1375,17 @@ public final class MusicActivity extends Activity {
     }
 
     private void confirmPlaylistDelete(long id, String name) {
-        new AlertDialog.Builder(this)
-                .setTitle("Delete playlist?")
-                .setMessage("Delete \"" + name
-                        + "\"? The audio files will not be deleted.")
-                .setNegativeButton("Cancel", null)
-                .setPositiveButton("Delete", (dialog, which) ->
-                        playlists.delete(id, (removed, error) -> {
-                            if (error != null || !Boolean.TRUE.equals(removed)) {
-                                playlistFailure(error);
-                                return;
-                            }
-                            if (currentPage.playlistId == id) navigateBack();
-                            playlistNotice("Playlist deleted");
-                            playlistChanged();
-                        }))
-                .show();
+        showButtonConfirmation("Delete playlist?",
+                "Delete \"" + name + "\"? The audio files will not be deleted.",
+                "Delete", () -> playlists.delete(id, (removed, error) -> {
+                    if (error != null || !Boolean.TRUE.equals(removed)) {
+                        playlistFailure(error);
+                        return;
+                    }
+                    if (currentPage.playlistId == id) navigateBack();
+                    playlistNotice("Playlist deleted");
+                    playlistChanged();
+                }));
     }
 
     private void addSongsToPlaylist(long id, List<LocalMusicSource.Song> songs) {
@@ -1622,14 +1645,10 @@ public final class MusicActivity extends Activity {
     }
 
     private void confirmFullRescan() {
-        new AlertDialog.Builder(this)
-                .setTitle("Full rescan library?")
-                .setMessage("Recheck every audio file in your selected "
-                        + "music folders? This may take longer than Refresh library.")
-                .setNegativeButton("Cancel", null)
-                .setPositiveButton("Rescan",
-                        (dialog, which) -> startLocalScan(true, true, true))
-                .show();
+        showButtonConfirmation("Full rescan library?",
+                "Recheck every audio file in your selected "
+                        + "music folders? This may take longer than Refresh library.",
+                "Rescan", () -> startLocalScan(true, true, true));
     }
 
     /** Each configured SAF root appears in Folders, including revoked roots. */
@@ -1788,15 +1807,11 @@ public final class MusicActivity extends Activity {
 
     private void confirmFolderRemoval(MenuRow row) {
         if (row.folderTree == null) return;
-        new AlertDialog.Builder(this)
-                .setTitle("Remove music folder?")
-                .setMessage("Remove \"" + row.title
+        showButtonConfirmation("Remove music folder?",
+                "Remove \"" + row.title
                         + "\" from the music library?\n\n"
-                        + "The files on your device will not be deleted.")
-                .setNegativeButton("Cancel", null)
-                .setPositiveButton("Remove",
-                        (dialog, which) -> removeMusicFolder(row.folderTree))
-                .show();
+                        + "The files on your device will not be deleted.",
+                "Remove", () -> removeMusicFolder(row.folderTree));
     }
 
     private void removeMusicFolder(Uri tree) {
@@ -2610,6 +2625,10 @@ public final class MusicActivity extends Activity {
         if (propertiesDialog != null) {
             propertiesDialog.dismiss();
             propertiesDialog = null;
+        }
+        if (buttonConfirmationDialog != null) {
+            buttonConfirmationDialog.dismiss();
+            buttonConfirmationDialog = null;
         }
         // Finishing via root Back is a close, not background navigation.
         // Let the service retain the position before disconnecting.
