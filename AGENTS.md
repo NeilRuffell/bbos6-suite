@@ -121,6 +121,38 @@ The reusable, app-neutral library lives in
   popup implementation in an app.
 - Build this as a Gradle Android library project inside the consuming app.
 
+## Design philosophy: trackpad focus and visual selection
+
+A remembered selection is **state**, not proof that its control currently
+has keyboard/trackpad **focus**. BBOS6 custom controls must make those two
+concepts explicit:
+
+1. **One focus owner per active interaction area.** The input field owns
+   focus while editing. The button container owns focus while navigating
+   buttons. A parent screen must not visually claim focus for both.
+2. **Draw highlights only for the active focus owner.** In a composite widget,
+   the selected index can survive focus transfers; the blue selected
+   background appears only when its navigation owner has focus. Refresh
+   visuals on real focus changes, not just selection index changes.
+3. **Preserve native Android interactions.** Use Android EditText for editing,
+   DPAD/trackpad key dispatch for navigation, and real View focus transitions.
+   Do not intercept printable input or disable focus to conceal an overlay.
+4. **Prevent duplicate framework decoration at the policy level.** Apply
+   `Bbos6FocusPolicy` to custom-managed composite containers that already
+   render their own focus indicator; keep native leaf-control focus cues.
+   Never mask the default highlight with alpha, fake colors, extra drawables,
+   overlays, or pixel compensation.
+5. **Fix shared ownership, not symptoms on individual screens.** Changes to
+   a reusable popup/menu/selection component belong in `bbos6-shared`.
+   Consumers supply labels, initial actions, validation and business logic.
+6. **Test focus crossings both ways.** On Q25, verify touch, keyboard and
+   trackpad for text → button, button → text, menu opening/closing and
+   re-entry. Confirm no simultaneous blue selections, no whole-panel glow,
+   preserved selected index, and correct confirm/cancel behavior.
+
+These are reusable design rules, not a special case for the Music playlist
+dialog. Do not generalize them to unrelated Android-owned dialogs or controls.
+
 ## Private owner-maintained dependency
 
 This shared repository is deliberately **private**. The current workflow is
