@@ -443,7 +443,7 @@ public final class Bbos6PopupButtonList {
         /** Native EditText handles typing, selection, and IME by itself. */
         private void addTextInput(LinearLayout content,
                 String initialText, String hint) {
-            input = new EditText(activity);
+            input = new Bbos6TextField(activity);
             input.setSingleLine(true);
             input.setInputType(InputType.TYPE_CLASS_TEXT
                     | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
