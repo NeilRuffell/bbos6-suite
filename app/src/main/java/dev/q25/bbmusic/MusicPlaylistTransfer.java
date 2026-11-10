@@ -133,6 +133,30 @@ final class MusicPlaylistTransfer {
         });
     }
 
+    /** Validate portably representable entries before creating a file. */
+    void checkExport(List<MusicLibraryDatabase.PlaylistEntryRow> entries,
+            List<LocalMusicSource.Song> catalog, Callback<Boolean> callback) {
+        worker.execute(() -> {
+            Map<String, LocalMusicSource.Song> indexed = new HashMap<>();
+            for (LocalMusicSource.Song song : catalog) {
+                indexed.put(song.uri.toString(), song);
+            }
+            String error = null;
+            for (MusicLibraryDatabase.PlaylistEntryRow entry : entries) {
+                LocalMusicSource.Song song = indexed.get(entry.uri);
+                if (song == null || pathFor(song.uri) == null) {
+                    error = "Cannot export: playlist contains unavailable "
+                            + "or non-primary-storage tracks";
+                    break;
+                }
+            }
+            final String result = error;
+            main.post(() -> {
+                if (!closed) callback.onComplete(result == null, result);
+            });
+        });
+    }
+
     /** Do not silently write a partial playlist on unsupported document trees. */
     void write(Uri document, List<MusicLibraryDatabase.PlaylistEntryRow> entries,
             List<LocalMusicSource.Song> catalog, Callback<Integer> callback) {
