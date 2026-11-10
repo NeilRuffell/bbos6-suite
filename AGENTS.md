@@ -265,3 +265,12 @@ receives Music-calculated strings through `MusicPlayerTextView.setText`.
 Never move Music playback/ticker, media controls, seek policy, title/queue
 formatting, artwork permission checks or DPAD zone state into UI helpers.
 The old native chrome drawables remain available for pixel parity comparison.
+
+### Shared Now Playing bevels are canonical
+
+Only `bbos6-shared` may define the mode-header and seek-strip bevels.
+Never compensate for a panel's excessive glow by adding Music-only
+background overlays or changing the seekbar dimensions. The reference
+separators are 1dp; two-dimensional per-pixel reflection alpha is
+controlled by shared `Bbos6NowPlayingSurface`, with regression tests
+in `Bbos6NowPlayingBevelTest`.
