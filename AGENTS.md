@@ -64,8 +64,12 @@ Its **Add Playlist** row opens the canonical shared `Bbos6PopupButtonList`
 with the message "Please select how you would like to add a playlist:"
 and the two options **New Playlist** / **Import Playlist**. These invoke
 the existing app-specific create and SAF import methods; do not duplicate
-their logic or add new screen-specific popup renderers. Previous
-standalone Create/Import list entries remain absent.
+their logic or add new screen-specific popup renderers. Playlist creation
+and renaming share `askPlaylistName(...)`, which now uses the same popup
+with `.textInput(...)`, `.horizontalButtons()` and `.onTextAction(...)`.
+Cancel never writes; Save passes native EditText content to the existing
+Room validation and persistence path. Previous standalone Create/Import
+list entries remain absent.
 Changing this shared helper requires the standard shared-first PR and
 consumer-submodule workflow.
 
@@ -82,8 +86,9 @@ gradient within this app.
 
 Keep Android-owned SAF permission grant dialogs and document pickers
 native; the popup is not a replacement for platform authorization.
-Also preserve native dialogs requiring text entry or list input until
-a matching shared input helper exists. Never alter deletion authorization,
+For simple one-line text entry, use the existing shared popup's native
+`EditText` and horizontal buttons. Keep more complex input or list-selection
+dialogs native until suitable shared helpers exist. Never alter deletion authorization,
 file security checks, or the selected music-folder allowlist merely to
 change a dialog's appearance. Popup sizes are set by the shared helper
 using intrinsic dp/sp layout dimensions; never add Music-specific scaling,
