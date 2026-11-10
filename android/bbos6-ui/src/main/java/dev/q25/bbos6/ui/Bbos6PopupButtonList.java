@@ -14,6 +14,7 @@ import android.graphics.drawable.LayerDrawable;
 import android.os.Build;
 import android.text.SpannableString;
 import android.text.Spanned;
+import android.text.InputType;
 import android.text.TextUtils;
 import android.text.style.UnderlineSpan;
 import android.util.TypedValue;
@@ -28,6 +29,7 @@ import android.view.WindowInsets;
 import android.view.WindowManager;
 import android.view.WindowMetrics;
 import android.widget.FrameLayout;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -42,11 +44,11 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * Standalone BBOS6-inspired modal with a caption and vertical button stack.
+ * BBOS6-inspired modal with a caption, optional native text field and buttons.
  *
- * Based on a supplied BBOS6 reference: dark rounded rim, optional title icon,
- * beveled silver buttons, a blue selected button, rounded edges and a low
- * shadow. Only the selected blue face is shared with Bbos6ContextMenu.
+ * Based on supplied BBOS6 references: dark rounded rim, optional title icon,
+ * rounded silver buttons and a blue selected button. Popup button faces
+ * come from the shared renderer without artificial black shadows.
  * The caller supplies all labels, icons, IDs and actions. Nothing in this
  * helper opens an app screen or owns music, storage or other business logic.
  */
@@ -61,11 +63,17 @@ public final class Bbos6PopupButtonList {
     private static final int BUTTON_GAP_DP = 14;
     private static final int BUTTON_CORNER_DP = 4;
     private static final int ICON_SIZE_DP = 30;
+    private static final int INPUT_BUTTON_GAP_DP = 8;
 
     private Bbos6PopupButtonList() {}
 
     public interface OnActionListener {
         void onAction(String actionId);
+    }
+
+    /** Text is returned to the owning app; this helper never stores it. */
+    public interface OnTextActionListener {
+        void onAction(String actionId, String text);
     }
 
     public static Builder builder() {
@@ -101,6 +109,11 @@ public final class Bbos6PopupButtonList {
         private String initialSelectionId;
         private boolean dismissOnAction = true;
         private OnActionListener listener;
+        private OnTextActionListener textListener;
+        private boolean hasTextInput;
+        private String initialText = "";
+        private String inputHint;
+        private boolean horizontalButtons;
 
         /** Optional caption. Without it, only the button stack is shown. */
         public Builder title(String text) {
@@ -111,6 +124,20 @@ public final class Bbos6PopupButtonList {
         /** Optional detail or confirmation warning below the caption. */
         public Builder message(String text) {
             message = text == null || text.trim().isEmpty() ? null : text;
+            return this;
+        }
+
+        /** Optional single-line native Android text field. */
+        public Builder textInput(String initialValue, String hint) {
+            hasTextInput = true;
+            initialText = initialValue == null ? "" : initialValue;
+            inputHint = hint;
+            return this;
+        }
+
+        /** Use a horizontal row of buttons instead of the existing stack. */
+        public Builder horizontalButtons() {
+            horizontalButtons = true;
             return this;
         }
 
@@ -159,6 +186,12 @@ public final class Bbos6PopupButtonList {
             return this;
         }
 
+        /** Receives the text at the moment of button activation. */
+        public Builder onTextAction(OnTextActionListener callback) {
+            textListener = Objects.requireNonNull(callback, "callback");
+            return this;
+        }
+
         public Dialog show(Activity activity) {
             Objects.requireNonNull(activity, "activity");
             if (activity.isFinishing() || activity.isDestroyed()) {
@@ -167,7 +200,7 @@ public final class Bbos6PopupButtonList {
             if (actions.isEmpty()) {
                 throw new IllegalStateException("At least one button is required");
             }
-            if (listener == null) {
+            if (hasTextInput ? textListener == null : listener == null) {
                 throw new IllegalStateException("An action listener is required");
             }
             Set<String> ids = new HashSet<>();
@@ -179,7 +212,8 @@ public final class Bbos6PopupButtonList {
 
             PopupDialog dialog = new PopupDialog(activity, title, message,
                     iconResourceId, iconDrawable, new ArrayList<>(actions),
-                    initialSelectionId, dismissOnAction, listener);
+                    initialSelectionId, dismissOnAction, listener, textListener,
+                    hasTextInput, initialText, inputHint, horizontalButtons);
             dialog.show();
             return dialog;
         }
@@ -191,7 +225,11 @@ public final class Bbos6PopupButtonList {
         private final List<TextView> buttons = new ArrayList<>();
         private final Map<Character, Integer> shortcuts = new HashMap<>();
         private final OnActionListener listener;
+        private final OnTextActionListener textListener;
         private final boolean dismissOnAction;
+        private final boolean horizontalButtons;
+        private EditText input;
+        private FrameLayout panel;
         private final String initialSelectionId;
         private ScrollView scroll;
         private int selection = -1;
@@ -199,28 +237,34 @@ public final class Bbos6PopupButtonList {
 
         PopupDialog(Activity activity, String title, String message,
                 int titleIconResource, Drawable titleIcon, List<Action> actions,
-                String initialSelectionId,
-                boolean dismissOnAction, OnActionListener listener) {
+                String initialSelectionId, boolean dismissOnAction,
+                OnActionListener listener, OnTextActionListener textListener,
+                boolean hasTextInput, String initialText, String inputHint,
+                boolean horizontalButtons) {
             super(activity);
             this.activity = activity;
             this.actions = actions;
             this.initialSelectionId = initialSelectionId;
             this.dismissOnAction = dismissOnAction;
             this.listener = listener;
+            this.textListener = textListener;
+            this.horizontalButtons = horizontalButtons;
             requestWindowFeature(Window.FEATURE_NO_TITLE);
             setCancelable(true);
             setCanceledOnTouchOutside(false);
-            buildContent(title, message, titleIconResource, titleIcon);
+            buildContent(title, message, titleIconResource, titleIcon,
+                    hasTextInput, initialText, inputHint);
         }
 
         private void buildContent(String title, String message,
-                int iconResource, Drawable iconDrawable) {
+                int iconResource, Drawable iconDrawable,
+                boolean hasTextInput, String initialText, String inputHint) {
             int[] viewport = availableViewport(activity);
             // The viewport clamp only prevents overflow on narrower screens.
             int width = Math.min(dp(activity, PANEL_WIDTH_DP), viewport[0]);
             int maxHeight = viewport[1];
 
-            FrameLayout panel = new FrameLayout(activity);
+            panel = new FrameLayout(activity);
             panel.setBackground(panelBackground(activity));
             panel.setOutlineProvider(new ViewOutlineProvider() {
                 @Override public void getOutline(View view, Outline outline) {
@@ -252,9 +296,20 @@ public final class Bbos6PopupButtonList {
             if (message != null) {
                 addMessage(content, message);
             }
+            if (hasTextInput) {
+                addTextInput(content, initialText, inputHint);
+            }
             int buttonWidth = dp(activity, BUTTON_WIDTH_DP);
+            LinearLayout buttonParent = content;
+            if (horizontalButtons) {
+                buttonParent = new LinearLayout(activity);
+                buttonParent.setOrientation(LinearLayout.HORIZONTAL);
+                content.addView(buttonParent, new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT));
+            }
             for (int i = 0; i < actions.size(); i++) {
-                addButton(content, i, buttonWidth);
+                addButton(buttonParent, i, buttonWidth);
             }
 
             scroller.addView(content, new ScrollView.LayoutParams(
@@ -289,7 +344,15 @@ public final class Bbos6PopupButtonList {
                 if (shown != null) {
                     shown.setLayout(width, WindowManager.LayoutParams.WRAP_CONTENT);
                 }
-                panel.requestFocus();
+                if (input != null) {
+                    input.requestFocus();
+                    if (shown != null) {
+                        shown.setSoftInputMode(
+                                WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+                    }
+                } else {
+                    panel.requestFocus();
+                }
                 revealSelection();
             });
         }
@@ -371,6 +434,24 @@ public final class Bbos6PopupButtonList {
             content.addView(detail, params);
         }
 
+        /** Native EditText handles typing, selection, and IME by itself. */
+        private void addTextInput(LinearLayout content,
+                String initialText, String hint) {
+            input = new EditText(activity);
+            input.setSingleLine(true);
+            input.setInputType(InputType.TYPE_CLASS_TEXT
+                    | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+            input.setText(initialText);
+            input.setHint(hint);
+            input.setSelectAllOnFocus(true);
+            input.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT);
+            params.bottomMargin = dp(activity, 14);
+            content.addView(input, params);
+        }
+
         private void addButton(LinearLayout content, int index, int buttonWidth) {
             Action action = actions.get(index);
             TextView button = new TextView(activity);
@@ -405,10 +486,21 @@ public final class Bbos6PopupButtonList {
             }
             button.setText(styled);
             button.setAlpha(action.enabled ? 1f : 0.45f);
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                    buttonWidth, dp(activity, BUTTON_HEIGHT_DP));
-            params.gravity = Gravity.CENTER_HORIZONTAL;
-            if (index < actions.size() - 1) params.bottomMargin = dp(activity, BUTTON_GAP_DP);
+            LinearLayout.LayoutParams params;
+            if (horizontalButtons) {
+                params = new LinearLayout.LayoutParams(
+                        0, dp(activity, BUTTON_HEIGHT_DP), 1f);
+                if (index < actions.size() - 1) {
+                    params.rightMargin = dp(activity, INPUT_BUTTON_GAP_DP);
+                }
+            } else {
+                params = new LinearLayout.LayoutParams(
+                        buttonWidth, dp(activity, BUTTON_HEIGHT_DP));
+                params.gravity = Gravity.CENTER_HORIZONTAL;
+                if (index < actions.size() - 1) {
+                    params.bottomMargin = dp(activity, BUTTON_GAP_DP);
+                }
+            }
             content.addView(button, params);
             buttons.add(button);
         }
@@ -474,12 +566,47 @@ public final class Bbos6PopupButtonList {
             if (selection < 0 || selection >= actions.size()) return;
             Action action = actions.get(selection);
             if (!action.enabled) return;
+            String value = input == null ? null : input.getText().toString();
             if (dismissOnAction) dismiss();
-            listener.onAction(action.id);
+            if (input != null) {
+                textListener.onAction(action.id, value);
+            } else {
+                listener.onAction(action.id);
+            }
         }
 
         @Override public boolean dispatchKeyEvent(KeyEvent event) {
             int code = event.getKeyCode();
+            // In text mode, normal typing and caret keys belong to EditText.
+            // Down leaves the field for the popup buttons; Up returns to it.
+            if (input != null && input.hasFocus()) {
+                if (code == KeyEvent.KEYCODE_DPAD_DOWN) {
+                    if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                        input.clearFocus();
+                        panel.requestFocus();
+                        revealSelection();
+                    }
+                    return true;
+                }
+                if (code != KeyEvent.KEYCODE_ESCAPE) {
+                    return super.dispatchKeyEvent(event);
+                }
+            } else if (input != null && code == KeyEvent.KEYCODE_DPAD_UP
+                    && (horizontalButtons || selection == firstEnabled())) {
+                if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                    input.requestFocus();
+                }
+                return true;
+            }
+            if (horizontalButtons
+                    && (code == KeyEvent.KEYCODE_DPAD_LEFT
+                    || code == KeyEvent.KEYCODE_DPAD_RIGHT)) {
+                if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                    heldConfirm = KeyEvent.KEYCODE_UNKNOWN;
+                    moveSelection(code == KeyEvent.KEYCODE_DPAD_LEFT ? -1 : 1);
+                }
+                return true;
+            }
             if (code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_DPAD_DOWN) {
                 if (event.getAction() == KeyEvent.ACTION_DOWN) {
                     heldConfirm = KeyEvent.KEYCODE_UNKNOWN;

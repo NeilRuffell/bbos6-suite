@@ -87,6 +87,13 @@ The reusable, app-neutral library lives in
   the caller's existing warning text. Place confirmation actions and their
   effects in the app, not the shared component. For destructive actions,
   choose Cancel as the initially selected safe default.
+- Prefer extending `Bbos6PopupButtonList` with opt-in text-entry and
+  horizontal-button layouts rather than creating a second copy of the popup.
+  Use `.textInput(initialValue, hint)`, `.horizontalButtons()`, and
+  `.onTextAction((actionId, text) -> ...)` for simple single-line inputs.
+  Preserve existing vertical button popups and delegate all editing behavior
+  to Android's native `EditText`. Keep validation and actions in the caller.
+  Do not maintain a second popup renderer or screen-specific button styles.
 - Keep Android-owned system permission prompts and document pickers native.
   Complex input dialogs requiring an editable view are not button-only popups.
 - Size BBOS6 popup components using their own fixed, reference-grounded

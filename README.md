@@ -92,6 +92,46 @@ No new numbered original BBOS6 assets are introduced or mapped in this change.
 The screenshot informs approximate styling; exact historical theme values
 are not asserted. Do not duplicate this button renderer in consuming apps.
 
+### Optional text input and horizontal buttons
+
+Use the **same** `Bbos6PopupButtonList` for simple single-line entry dialogs
+with horizontal action buttons. There is no second popup renderer, duplicated
+panel/background or alternate button-gradient implementation.
+
+- `.textInput(initialValue, hint)` adds a native Android single-line `EditText`
+  beneath the optional title/message. Android owns the keyboard, text selection,
+  input method, cursor and editing; no custom text-field rendering is invented.
+- `.horizontalButtons()` lays out the same existing action buttons side by
+  side using `LinearLayout` weights, with no device-specific width arithmetic.
+  Vertical stacking remains the default; existing dialogs are unaffected.
+- `.onTextAction((actionId, text) -> ...)` returns the current field value
+  when a button is activated. Applications retain validation, cancellation and
+  persistence logic; the shared helper owns no data.
+- With the text field focused, letters and editing keys reach native `EditText`.
+  Trackpad **Down** moves into the button row, **Up** returns to the field, and
+  **Left/Right** changes button selection. Touch and Back still work normally.
+  Existing vertical mode retains Up/Down behavior.
+
+Example API (**not wired into any application yet**):
+
+```java
+Bbos6PopupButtonList.builder()
+        .title("New Playlist")
+        .textInput("", "Playlist name")
+        .addButton("save", "Save")
+        .addButton("cancel", "Cancel")
+        .horizontalButtons()
+        .initiallySelected("cancel")
+        .onTextAction((actionId, text) -> {
+            // Validate and save in the caller, never in this shared view.
+        })
+        .show(activity);
+```
+
+This optional mode reuses the existing popup and leaves its colors,
+button sizing and vertical layout unchanged. A new BBOS6 input-field asset
+has not been introduced or identified.
+
 ### Compact Bold 9900-inspired sizing
 
 Both `Bbos6PopupButtonList` and `Bbos6ContextMenu` use compact,
