@@ -79,8 +79,16 @@ The reusable, app-neutral library lives in
   subtle shadows, optional caller-owned title/icon and DPAD/trackpad
   activation. Do not add application actions or assume the reference
   screenshot's artwork is available as an original BBOS6 numbered asset.
-- The popup-button-list implementation is initially **unused by both apps**.
-  Keep app integration in separately approved consumer PRs.
+- Use `Bbos6PopupButtonList` for app-owned confirmations and simple
+  button-only choice popups. A title and optional `.message(...)` preserve
+  the caller's existing warning text. Place confirmation actions and their
+  effects in the app, not the shared component. For destructive actions,
+  choose Cancel as the initially selected safe default.
+- Keep Android-owned system permission prompts and document pickers native.
+  Complex input dialogs requiring an editable view are not button-only popups.
+- Introduce new helper behavior in a shared feature branch and advance the
+  consumer's pinned submodule in a separate feature PR; never duplicate the
+  popup implementation in an app.
 - Build this as a Gradle Android library project inside the consuming app.
 
 ## Private owner-maintained dependency
