@@ -132,6 +132,18 @@ This optional mode reuses the existing popup and leaves its colors,
 button sizing and vertical layout unchanged. A new BBOS6 input-field asset
 has not been introduced or identified.
 
+### Popup button highlight and native text focus
+
+The shared `Bbos6PopupButtonList` remembers the selected button even while
+a native text field is active. In text-entry popups the selected button
+receives its blue gradient **only when the popup's button-focus owner has
+focus**. When focus moves back into the text field all buttons return
+to silver; moving Down into the button row restores the previous selected
+button's blue face. The focus callback refreshes the existing shared
+button drawables and does not modify keyboard input, Android view focus,
+button selection, or application behavior. Button-only popups retain
+their previous initial selection presentation.
+
 ### Shared BBOS6 focus policy
 
 `Bbos6FocusPolicy.forManagedContainers(root)` is the canonical policy for
