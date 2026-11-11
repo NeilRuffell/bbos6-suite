@@ -1637,3 +1637,16 @@ list; invalidation clears only in-memory covers, and close cancels worker
 tasks. `MusicListView.kt` still protects recycled Compose rows using
 their original binding key. No metadata source, icon mapping, or SAF
 permissions changed. Build and Q25 artwork tests still required.
+
+### Kotlin SAF Music folder browser
+
+`MusicFolderBrowser.java` is now `MusicFolderBrowser.kt`. The native
+DocumentsProvider APIs, read-only single-thread querying, exact
+`MusicFolders.selectedTrees(context)` authorization checks before
+the query and before delivering results, hidden-directory/file-type
+filtering, folder-first case-insensitive sort, main-thread callbacks,
+error messages, and worker cleanup are preserved. `Listener` and
+`Entry` keep the existing Java caller ABI so the native MusicActivity
+can continue while its navigation controller is migrated. No SAF
+permissions or stored folders changed. Q25 Folders browsing, removal
+and grant revocation remain mandatory test cases.

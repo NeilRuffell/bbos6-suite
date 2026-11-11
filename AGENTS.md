@@ -363,3 +363,13 @@ compatible for the Kotlin list and Compose album header. Do not move
 the request binding key or stale-row check out of
 `MusicListView`. All cover lookups remain limited to authorized
 music file URIs passed by the app.
+
+### Kotlin SAF folder-browser boundary
+
+`MusicFolderBrowser.kt` replaces the Java file only. Its app-specific
+SAF authorization and lifecycle are not shared UI helpers. Never broaden
+DocumentsProvider access: each call must verify
+`MusicFolders.selectedTrees(context)` before querying and immediately
+before callback delivery. Original folder-first sort, hidden-directory
+and audio-candidate filter, and cancel-on-close semantics are required.
+Native UI rendering is a separate migration.
