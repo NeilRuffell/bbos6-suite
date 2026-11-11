@@ -32,6 +32,7 @@ import dev.q25.bbos6.ui.Bbos6ContextMenuItem
 import dev.q25.bbos6.ui.Bbos6PropertiesItem
 import dev.q25.bbos6.ui.Bbos6PropertiesPopup
 import dev.q25.bbos6.ui.Bbos6PopupButtonList
+import dev.q25.bbos6.ui.Bbos6FocusPolicy
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -187,9 +188,9 @@ object Bbos6PropertiesComposeBridge {
 }
 
 /**
- * Compatibility bridge for Java button-only and text-input popups.
- * Text input is the original Bbos6TextField hosted in Compose, preserving
- * native cursor, selection, keyboard and IME semantics.
+ * Compatibility bridge for existing Java button-only popups.
+ * Input popups stay native so their verified Android EditText/IME/DPAD
+ * behavior is never silently changed. No second popup design is maintained.
  */
 object Bbos6PopupButtonComposeBridge {
     @JvmStatic
@@ -203,11 +204,7 @@ object Bbos6PopupButtonComposeBridge {
         initialSelectionId: String?,
         horizontalButtons: Boolean,
         dismissOnAction: Boolean,
-        hasTextInput: Boolean,
-        initialText: String,
-        inputHint: String?,
-        listener: Bbos6PopupButtonList.OnActionListener?,
-        textListener: Bbos6PopupButtonList.OnTextActionListener?
+        listener: Bbos6PopupButtonList.OnActionListener
     ): Dialog {
         val viewport = availableViewport(activity)
         val width = min(
@@ -217,6 +214,10 @@ object Bbos6PopupButtonComposeBridge {
         val (dialog, content) = createComposeDialog(
             activity, dismissOnOutside = false, dimBehind = true
         )
+        // Apply the canonical policy to the actual Android ComposeView.
+        // Compose's own internal root is handled in Bbos6PopupButtonPanel.
+        // Never hide Android's default focus overlay with another drawable.
+        Bbos6FocusPolicy.forManagedContainers(content)
         content.setContent {
             val context = LocalContext.current
             val icon = remember(context, titleIconResource, titleDrawable) {
@@ -226,21 +227,16 @@ object Bbos6PopupButtonComposeBridge {
             }
             Bbos6PopupButtonPanel(
                 actions = buttons,
-                onAction = { id, value ->
+                onAction = { id, _ ->
                     if (dismissOnAction) dialog.dismiss()
-                    if (hasTextInput) textListener?.onAction(id, value.orEmpty())
-                    else listener?.onAction(id)
+                    listener.onAction(id)
                 },
                 onEscape = dialog::dismiss,
                 title = title,
                 message = message,
                 titleIcon = icon,
                 initialSelectionId = initialSelectionId,
-                horizontalButtons = horizontalButtons,
-                textInput = hasTextInput,
-                initialText = initialText,
-                inputHint = inputHint,
-                nativeTextInput = hasTextInput
+                horizontalButtons = horizontalButtons
             )
         }
         dialog.show()

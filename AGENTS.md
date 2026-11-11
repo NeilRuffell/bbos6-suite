@@ -261,24 +261,35 @@ into the bridge. Preserve Java Dialog return semantics, Q25 DPAD focus and
 Back/outside-touch behavior. Test both render paths before deleting legacy
 modal renderers.
 
-## Compose popup bridge and search-empty label
+## BBOS6 custom focus — strictly no Android default overlay
 
-Shared `Bbos6PopupButtonComposeBridge` handles button-only and
-text-input popups for AndroidX ComponentActivity callers. Text input
-is the original Android `Bbos6TextField` embedded via AndroidView,
-not a substitute editor. Keep `Bbos6PopupButtonList.PopupDialog` for
-plain Activity callers. Preserve callback and safe-default selection
-semantics.
+**NON-NEGOTIABLE:** Android's automatic light/default focus-highlight
+overlay is prohibited on *every* custom-managed BBOS6 panel, including
+ComposeView, AndroidComposeView, shared popup, grid, media-list and modal
+focus-owner containers. It obscures the canonical blue selection gradient.
+Use the existing shared `Bbos6FocusPolicy.forManagedContainers(root)`
+on Android ViewGroup focus owners (including Compose hosts and roots).
+Never "fix" an overlay with transparent layers, extra drawables,
+dim filters, background color matching, or per-screen hacks. Preserve
+native EditText and other leaf controls' real focus/typing behavior.
+One active interaction zone draws one BBOS6 selection; selected index
+alone is not actual focus. A focus-overlay recurrence blocks Q25
+acceptance and merging; validate focus changes in **both** directions.
 
-Shared `Bbos6SearchEmptyFeedbackView` owns the passive no-results
+## Current popup focus routing (Q25 regression and guard)
+
+`Bbos6PopupButtonList.Builder.show(Activity)` uses canonical shared
+Compose popup chrome for **button-only** dialogs when the Activity is
+a `ComponentActivity`. Any popup with `.textInput(...)` MUST use
+the original native `PopupDialog`, regardless of Activity type.
+The original native dialog owns DPAD/trackpad dispatch and uses
+`Bbos6FocusPolicy`; text input remains native `Bbos6TextField`.
+A prior Compose/AndroidView hybrid lost left/right navigation after
+leaving the field and drew the default focus overlay on the button
+group. That approach is **rejected** until it can provide proper
+native↔Compose focus transfer and pass device testing; do not route
+input dialogs to the Compose bridge speculatively. The original
+plain-Activity native fallback is also retained.
+
+Shared `Bbos6SearchEmptyFeedbackView` owns passive no-results
 appearance only; callers retain search filtering, visibility and focus.
-
-## Compose native-editor popup migration
-
-The canonical `Bbos6PopupButtonPanel` now embeds the **original**
-Android `Bbos6TextField` using `AndroidView` for the Java compatibility
-bridge. Android still owns selection, text input, cursor and IME. Use
-the shared panel for visual layout and buttons; no Music-only overlay.
-DPAD_DOWN enters buttons; DPAD_UP returns to native input; text is read
-directly on action invocation. Keep the original Java fallback for
-non-AndroidX Activity hosts.

@@ -215,16 +215,16 @@ Back. No app-specific business logic is moved.
 
 ## Shared Compose button-only popup and search feedback
 
-The public `Bbos6PopupButtonList.Builder.show(Activity)` continues
-to validate unique IDs, required callbacks and nonempty actions. For
-`ComponentActivity`, it maps action IDs, enabled state, selection,
-title/message, caller-provided icon, horizontal/vertical button sizing,
-text-input flag and current text into shared `Bbos6PopupButtonPanel`
-via `Bbos6PopupButtonComposeBridge`. Native Android `Dialog` still
-controls Back, 320dp panel width, dim 0.36 and the returned handle.
-For text input, the shared panel embeds the original native
-`Bbos6TextField` via `AndroidView`, preserving Android editing, cursor
-and IME. Platform-only Activities use the original native `PopupDialog`.
+The public `Bbos6PopupButtonList.Builder.show(Activity)` retains
+all original Java validation, IDs, and callbacks. For `ComponentActivity`
+**button-only dialogs**, the shared Compose panel renders action faces,
+title/message/icons, selections, and layout. Native `Dialog` still
+controls Back, width, 36% dim and returns its normal handle.
+**Any popup containing a native text field** is routed to the existing
+`Bbos6PopupButtonList.PopupDialog`, which already owns Android
+`EditText` focus, left/right DPAD navigation, input↔button transfer,
+callback text, and the shared BBOS6 focus policy. Native popup remains
+the fallback for plain `Activity` callers.
 
 The canonical `Bbos6SearchEmptyFeedback` and
 `Bbos6SearchEmptyFeedbackView` provide 15sp centered white empty-search
@@ -233,23 +233,27 @@ app-owned. No empty-state row participates in navigation. Both additions
 require Q25 build/interaction testing before a merge.
 
 
-## Shared Compose popup layout with native Android text entry
+## Q25 blocked Compose text-entry popup experiment
 
-For AndroidX `ComponentActivity`, `Bbos6PopupButtonList.Builder.show`
-now uses the canonical shared Compose panel for *both* button-only and
-text-input popups. Text input stays the original `Bbos6TextField` (native
-Android `EditText`) embedded via Compose `AndroidView`, not a new editor.
-Preserve its single-line mode, capitalization, initial select-all-on-focus,
-17sp text, 30dp height, rim, cursor, selection, clipboard and IME.
+A trial `AndroidView(Bbos6TextField)` inside the shared Compose popup
+failed Q25 parity: focusing the button row produced Android's lighter
+whole-panel default focus overlay, and the trackpad stopped moving
+between Cancel and Save after leaving the editor. The old native
+`PopupDialog` correctly handled both cases with
+`Bbos6FocusPolicy.forManagedContainers(panel)` and
+`dispatchKeyEvent` for DPAD/trackpad traversal. Therefore, revert the
+Java text-input route to the already tested native popup until a
+properly verified hybrid focus-owner bridge exists. The broken hybrid
+implementation has been removed rather than left active or copied
+into Music. Pure Kotlin-native Compose popup entry remains independent.
 
-Compose popup content retains the established horizontal centered
-content-sized Cancel/Save buttons, selection faces and one focus owner.
-Native input DPAD_DOWN moves focus to the button group, while DPAD_UP
-returns to the Android text field. All four action paths (button click,
-keyboard confirm, accelerator and touch) read live field text when invoked.
-Selected Cancel remains the safe default and never writes data.
-The original native dialog is unchanged for non-AndroidX Activities.
-
-Q25 review needed for Create/Rename Playlist typing, selection, input
-focus crossings, Save/Cancel, Back and soft keyboard behavior. No Music
-playlist persistence, permissions or other business logic modified.
+**Strict BBOS6 focus policy:** For custom-managed focus-owning ViewGroups,
+including the ComposeView and Compose's Android root, disable only the
+platform's `defaultFocusHighlightEnabled` with canonical
+`Bbos6FocusPolicy`. Never add a compensating overlay, transparent cover,
+new selection gradient, or suppress native EditText leaf focus.
+Selection color must track the *actual* button-focus owner; selected
+index alone cannot paint a highlight. The fallback retains all
+existing input actions, field selection, shortcuts, and dialog semantics.
+Device-test input↔buttons focus, DPAD left/right, touch, Cancel/Save and Back
+before merging.
