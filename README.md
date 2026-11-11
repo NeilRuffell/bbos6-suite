@@ -1599,3 +1599,29 @@ This batch is source-committed only. Compile and device validation
 must run before merge; verify Library↔Now Playing focus, list scroll
 position restore, search retention, Media3 controls, popup focus,
 cover art, trackpad and touch.
+
+## Kotlin library navigation controller with existing shared Compose rows
+
+`MusicListView.java` is converted to `MusicListView.kt`. It still
+extends Android `ListView` to retain the already device-tested
+physical trackpad navigation, focus, touch scroll/edge alignment and
+long-press detection, while the *actual row visuals and settings header*
+are rendered through shared Kotlin Compose components. Java
+`MusicActivity` retains the same `DataSource` and `RowData` model
+and all application navigation and click handlers. Native scrolling
+does not imply Java source; this owner is now Kotlin code.
+
+Original functions preserved: `notifyRowsChanged`,
+`refreshVisibleRows`, `refreshSelection`,
+`loadAlbumArtwork`, `clearArtworkCache`, `dispose`,
+`handleVerticalKey` and `canvasColor`. Original icon alpha
+bounds, artwork request-key guards, Q25 focus/selection, 68dp rows,
+1dp dividers, empty/section header behavior and accessibility text
+remain. The shared `Bbos6FocusPolicy` is applied to managed list
+containers to prohibit Android's light default focus overlay.
+
+Still pending complete app conversion: Java `MusicActivity` page
+controller, `MusicNowPlayingView` platform interaction owner, and
+the remaining Java playback/service/SAF/Room classes. This is a
+source-only unverified commit: test build, Q25 item selection,
+touch long press, artwork and library scroll position before merge.

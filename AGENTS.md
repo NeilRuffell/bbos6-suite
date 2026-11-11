@@ -337,3 +337,18 @@ and stable numeric constants (via `const val`), and pass existing
 Java unit tests before merging. The shell is only an intermediate
 step: do not claim full Kotlin/Compose completion until Activity,
 ListView, Now Playing and application domain/service Java are converted.
+
+### Kotlin library-list adapter
+
+`MusicListView.kt` replaces the old Java list controller. The underlying
+Android `ListView` remains intentionally native for Q25 trackpad/DPAD
+scroll, edge alignment, selection recovery and platform long-press
+timeouts; each row and section header is already Compose-backed.
+Keep the original `DataSource`, `RowData` Java ABI intact so
+`MusicActivity.java` can still drive menu/business logic until its own
+migration. The Kotlin list must preserve binding-key stale-image guards,
+no-art resource fallback, verified original icon alpha-trimming and
+artwork cache sharing with `MusicAlbumHeaderView`. No light Android
+default focus highlight may overlay the canonical BBOS6 blue row face.
+Never replace native selection with a blind Compose LazyColumn without
+first reproducing Q25 key and viewport-edge semantics.
