@@ -32,7 +32,7 @@ import dev.q25.bbos6.ui.compose.Bbos6NowPlayingTextAlignment
  * ImageViews retain the already-tested Q25 touch/DPAD gesture and image APIs.
  * This class does not own Media3 state or a service.
  */
-class MusicNowPlayingView(
+class MusicNowPlayingView internal constructor(
     context: Context,
     private val client: MusicPlaybackClient,
     private val metadataNavigation: MetadataNavigation
@@ -340,7 +340,7 @@ class MusicNowPlayingView(
             LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT
         )
 
-    private fun dp(value: Float): Int = MusicPlayerChrome.dp(context, value)
+    private fun dp(value: Int): Int = MusicPlayerChrome.dp(context, value.toFloat())
 
     fun render() {
         if (!active) return

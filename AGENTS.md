@@ -395,3 +395,13 @@ do not change DPAD/touch semantics, mode icon assets, progress math,
 click handlers or Media3 behavior while replacing layout wrappers.
 Protect the 1s ticker and async artwork generation callback across
 dispose, and preserve \`Bbos6FocusPolicy\` on the root.
+
+### Kotlin Now Playing constructor and dp interop
+
+`MusicNowPlayingView` exposes its existing Java constructor at the
+JVM level but declares it `internal` in Kotlin to avoid leaking the
+package-private Java `MusicPlaybackClient` as a public Kotlin API.
+Keep `dp(Int)` for existing integer dp constants/paddings, with
+conversion to the legacy `MusicPlayerChrome.dp(Context, Float)` so
+pixels remain rounded exactly as before. Do not introduce native
+focus overlays or change playback/DPAD handlers for compiler repairs.

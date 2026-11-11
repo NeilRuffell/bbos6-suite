@@ -1689,3 +1689,17 @@ trackpad zone traversal, paused artwork, and library return. Pure
 Kotlin+Compose completion still requires MusicActivity and remaining
 Music domain/service Java conversions; native Android platform
 controls can remain as APIs, not separate Java source screens.
+
+### Now Playing Kotlin compiler interoperability fix
+
+Owner's first Gradle build of the Kotlin `MusicNowPlayingView` failed in
+both variants because a public Kotlin constructor exposed the
+package-private Java `MusicPlaybackClient` type, and the Kotlin
+`dp(Float)` helper was called with Java-style `Int` arguments. The
+controller now uses an `internal constructor` (still callable from
+the existing Java Activity at JVM level) and a `dp(Int)` helper
+that converts to `Float` when calling `MusicPlayerChrome.dp`.
+No layout dimensions, focus ownership, media operations, or
+resource mappings changed. The Gradle 8.11.1 deprecation warning is
+unrelated to this compilation failure. A fresh Gradle/Q25 verification
+is required; no claims of test success.
