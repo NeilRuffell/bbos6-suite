@@ -292,3 +292,13 @@ use the canonical shared `Bbos6ContextMenuComposeBridge` and
 APIs. Do not add Music-specific UI dialogs or reimplement action
 callbacks. Keep original focus/activation/Back semantics; explicitly
 verify both modal types on Q25 before any merge.
+
+### Compose popup actions and empty search state
+
+For ComponentActivity, button-only popups use the shared
+`Bbos6PopupButtonComposeBridge`; popup text-input remains native
+`Bbos6TextField` through the same Java builder API. Do not move
+playlist validation or input methods into UI code.
+
+Only `Bbos6SearchEmptyFeedbackView` owns search no-results visuals;
+the existing Activity decides visibility and search/filter rules.

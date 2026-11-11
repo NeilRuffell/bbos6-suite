@@ -1506,3 +1506,29 @@ uses the supported `View.setViewTreeLifecycleOwner`,
 `View.setViewTreeViewModelStoreOwner` Kotlin extensions instead.
 Only shared bridge imports/owner setup changed; Music's modal callers and
 business logic are untouched. Build and Q25 behavior still require a retest.
+
+## Compose popup-button and empty-search presentation batch
+
+For Music's `ComponentActivity`, existing Java
+`Bbos6PopupButtonList.Builder.show(Activity)` now uses the canonical
+shared Compose popup panel **when no text input is requested**. This
+covers button-only playlists choices and confirmations. All original
+button IDs, initial selected ID, touch activation, DPAD/trackpad
+navigation, icon resources/drawables, title/message, horizontal button
+sizing, dimming, cancel/Back, callback timing and returned Android
+`Dialog` references remain app-owned through the shared Java bridge.
+
+**Playlist creation and rename input popups intentionally retain native
+`Bbos6TextField`/EditText**, so Q25 keyboard, cursor, selection,
+clipboard and IME behavior are not altered as a UI side effect.
+Platform-only Activity hosts also retain the native popup renderer.
+
+The standalone “No search results found” TextView has been replaced
+with the shared passive `Bbos6SearchEmptyFeedbackView`. Search
+filtering, ListView navigation, focus and the exact empty-result
+visibility conditions are unchanged.
+
+Pinned shared commit: `0d3eeb7097d50c8cedc6ef6b57567a8a17dc9645`.
+Unmerged until Gradle build and Q25 checks: button-only modal icon/title,
+action selection via keyboard and touch, disabled actions, Back,
+New/Rename Playlist native input, and empty searches on every library page.

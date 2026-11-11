@@ -25,7 +25,6 @@ import android.window.OnBackInvokedCallback;
 import android.window.OnBackInvokedDispatcher;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import dev.q25.bbos6.ui.Bbos6ContextMenu;
@@ -33,6 +32,7 @@ import dev.q25.bbos6.ui.Bbos6ContextMenuItem;
 import dev.q25.bbos6.ui.Bbos6PopupButtonList;
 import dev.q25.bbos6.ui.Bbos6TextField;
 import dev.q25.bbos6.ui.compose.Bbos6EmptyStateComposeView;
+import dev.q25.bbos6.ui.compose.Bbos6SearchEmptyFeedbackView;
 import dev.q25.bbos6.ui.Bbos6PropertiesPopup;
 
 import androidx.activity.ComponentActivity;
@@ -107,7 +107,7 @@ public final class MusicActivity extends ComponentActivity {
     private MusicAlbumHeaderView albumHeader;
     private Bbos6TextField searchInput;
     private MusicSearchBarView searchBar;
-    private TextView noSearchResults;
+    private Bbos6SearchEmptyFeedbackView noSearchResults;
     private Page rootPage;
     private Page settingsPage;
     private Page musicFoldersPage;
@@ -435,13 +435,8 @@ public final class MusicActivity extends ComponentActivity {
                 dp(MusicSearchBarView.heightDp())));
         // Empty search feedback is not a ListView row: it never receives
         // the row selector, participates in navigation, or adds a divider.
-        noSearchResults = new TextView(this);
-        noSearchResults.setText("No search results found");
-        noSearchResults.setTextSize(15);
-        noSearchResults.setTextColor(Color.WHITE);
-        noSearchResults.setGravity(Gravity.CENTER);
-        noSearchResults.setPadding(dp(16), dp(20), dp(16), dp(20));
-        noSearchResults.setFocusable(false);
+        noSearchResults = new Bbos6SearchEmptyFeedbackView(
+                this, "No search results found");
         noSearchResults.setVisibility(View.GONE);
         libraryShell.addView(noSearchResults, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
