@@ -508,3 +508,13 @@ disposable local test tracks on device.
 ## Kotlin Music scanner index contract
 
 LocalMusicSource.kt remains the only app-owned SAF scanner, restricted to currently selected read-authorized trees. Maintain the exact verified-audio-v3-album-tags: cache key, sorted length-prefix tree list, positive MediaExtractor audio verification, absent album as empty string, legacy Unknown Album verification, unchanged file fingerprint policy, 400-row deletion batching and Room delta transaction, serialized worker, request serial cancellation, and on-worker database close. Song and ScanSummary expose @JvmField for Java MusicActivity and related classes. Never scan device-wide MediaStore or clear database as a migration step.
+
+### Kotlin native player-chrome compatibility
+
+`MusicPlayerChrome.kt` replaces the last Java drawable utility without changing
+its native Android `Drawable` rendering algorithms. It retains the previous
+Java-callable static methods through `@JvmStatic`, and original constants
+through `const val`. Existing app and shared Compose Now Playing surfaces
+retain their ownership boundaries; do not add a second shared bevel renderer.
+Before merging, compile both app variants, check native seek/thumb/icon faces
+and separators on the Q25, and confirm Java `MusicActivity` interoperability.
