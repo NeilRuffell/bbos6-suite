@@ -858,3 +858,331 @@ class MusicActivity : ComponentActivity() {
         )
     }
 
+    private fun createPlaylist(initialSongs: List<LocalMusicSource.Song>?) {
+        askPlaylistName("Create playlist", "", Consumer { name ->
+            playlists.create(name) { id, error ->
+                if (error != null || id == null) {
+                    playlistFailure(error)
+                } else {
+                    playlistChanged()
+                    if (!initialSongs.isNullOrEmpty()) {
+                        addSongsToPlaylist(id, initialSongs)
+                    } else {
+                        playlistNotice("Playlist created")
+                    }
+                }
+            }
+        })
+    }
+
+    private fun renamePlaylist(id: Long) {
+        playlists.list { items, error ->
+            if (error != null || items == null) {
+                playlistFailure(error)
+                return@list
+            }
+            for (item in items) {
+                if (item.id != id) continue
+                askPlaylistName("Rename playlist", item.name, Consumer { name ->
+                    playlists.rename(id, name) { changed, failure ->
+                        if (failure != null || changed != true) {
+                            playlistFailure(failure)
+                        } else {
+                            if (currentPage.playlistId == id) currentPage.name = name.trim()
+                            playlistNotice("Playlist renamed")
+                            playlistChanged()
+                        }
+                    }
+                })
+                return@list
+            }
+            playlistFailure("Playlist no longer exists")
+        }
+    }
+
+    private fun confirmPlaylistDelete(id: Long, name: String) {
+        showButtonConfirmation(
+            "Delete playlist?",
+            "Delete \"$name\"? The audio files will not be deleted.",
+            "Delete",
+            Runnable {
+                playlists.delete(id) { removed, error ->
+                    if (error != null || removed != true) {
+                        playlistFailure(error)
+                    } else {
+                        if (currentPage.playlistId == id) navigateBack()
+                        playlistNotice("Playlist deleted")
+                        playlistChanged()
+                    }
+                }
+            }
+        )
+    }
+
+    private fun addSongsToPlaylist(id: Long, songs: List<LocalMusicSource.Song>?) {
+        if (songs.isNullOrEmpty()) {
+            playlistNotice("No songs to add")
+            return
+        }
+        playlists.add(id, ArrayList(songs)) { added, error ->
+            if (error != null || added != true) {
+                playlistFailure(error)
+            } else {
+                playlistNotice(
+                    MusicLibraryGroupPolicy.countLabel(songs.size, "song", "songs") +
+                        " added to playlist"
+                )
+                playlistChanged()
+            }
+        }
+    }
+
+    private fun choosePlaylist(selected: List<LocalMusicSource.Song>?) {
+        if (selected.isNullOrEmpty()) return
+        val songs = ArrayList(selected)
+        playlists.list { items, error ->
+            if (error != null || items == null) {
+                playlistFailure(error)
+                return@list
+            }
+            val choices = Array(items.size + 1) { index ->
+                if (index == items.size) "New playlist..." else items[index].name
+            }
+            AlertDialog.Builder(this)
+                .setTitle("Add to playlist")
+                .setItems(choices) { _, index ->
+                    if (index == items.size) createPlaylist(songs)
+                    else addSongsToPlaylist(items[index].id, songs)
+                }
+                .show()
+        }
+    }
+
+    private fun movePlaylistEntry(row: MenuRow, direction: Int) {
+        playlists.move(row.playlistId, row.playlistEntryId, direction) { moved, error ->
+            if (error != null) playlistFailure(error)
+            else if (moved != true) playlistNotice("Already at the end of the playlist")
+            refreshAllPlaylistPages()
+        }
+    }
+
+    private fun removePlaylistEntry(row: MenuRow) {
+        playlists.remove(row.playlistId, row.playlistEntryId) { removed, error ->
+            if (error != null || removed != true) {
+                playlistFailure(error)
+            } else {
+                playlistNotice("Removed from playlist (file preserved)")
+                playlistChanged()
+            }
+        }
+    }
+
+    private fun openPlaylistSongPicker(playlistId: Long) {
+        val songs = localSongs
+        if (songs == null) {
+            playlistNotice("Music library is loading")
+            return
+        }
+        val page = Page("Add songs", songRows(songs))
+        page.playlistPickerId = playlistId
+        navigateTo(page)
+    }
+
+    private fun playPlaylist(shuffle: Boolean) {
+        val queue = ArrayList<LocalMusicSource.Song>()
+        for (item in currentPage.rows) {
+            if (item.kind == ROW_SONG && item.song != null) queue.add(item.song)
+        }
+        if (queue.isEmpty()) {
+            playlistNotice("No available songs in playlist")
+            return
+        }
+        openNowPlaying()
+        playback.playSongs(
+            queue, if (shuffle) Random().nextInt(queue.size) else 0, shuffle
+        )
+    }
+
+    private fun showAddPlaylistPopup() {
+        showButtonPopup(
+            Bbos6PopupButtonList.builder()
+                .message("Please select how you would like to add a playlist:")
+                .addButton("new", "New Playlist")
+                .addButton("import", "Import Playlist")
+                .initiallySelected("new")
+                .onAction { actionId ->
+                    if (!isFinishing && !isDestroyed) {
+                        when (actionId) {
+                            "new" -> createPlaylist(emptyList())
+                            "import" -> pickPlaylistImport()
+                        }
+                    }
+                }
+        )
+    }
+
+    private fun activatePlaylistAction(row: MenuRow) {
+        when (row.playlistAction) {
+            "choose-add" -> showAddPlaylistPopup()
+            "create" -> createPlaylist(emptyList())
+            "import" -> pickPlaylistImport()
+            "play" -> playPlaylist(false)
+            "shuffle" -> playPlaylist(true)
+            "add" -> openPlaylistSongPicker(row.playlistId)
+            "rename" -> renamePlaylist(row.playlistId)
+            "export" -> pickPlaylistExport(row.playlistId)
+            "delete" -> confirmPlaylistDelete(row.playlistId, currentPage.name)
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun pickPlaylistImport() {
+        if (localSongs == null) {
+            playlistNotice("Load the music library before importing")
+            return
+        }
+        val picker = Intent(Intent.ACTION_OPEN_DOCUMENT)
+            .addCategory(Intent.CATEGORY_OPENABLE)
+            .setType("*/*")
+        picker.putExtra(Intent.EXTRA_LOCAL_ONLY, true)
+        try {
+            startActivityForResult(picker, IMPORT_PLAYLIST_REQUEST)
+        } catch (exception: RuntimeException) {
+            Log.w(TAG, "Playlist import picker unavailable", exception)
+            playlistFailure("Playlist file picker unavailable")
+        }
+    }
+
+    private fun playlistDocumentName(document: Uri): String {
+        try {
+            contentResolver.query(
+                document, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) return cursor.getString(0)
+            }
+        } catch (exception: RuntimeException) {
+            Log.w(TAG, "Cannot read playlist document name", exception)
+        }
+        return "Imported playlist.m3u8"
+    }
+
+    private fun readImportedPlaylist(document: Uri) {
+        val catalog = localSongs
+        if (catalog == null) {
+            playlistFailure("Music library is unavailable")
+            return
+        }
+        val filename = playlistDocumentName(document)
+        val lower = filename.lowercase(Locale.ROOT)
+        if (!lower.endsWith(".m3u8") && !lower.endsWith(".m3u")) {
+            playlistFailure("Select an M3U or M3U8 playlist file")
+            return
+        }
+        val name = filename.replaceFirst(Regex("(?i)\\.m3u8?$"), "").trim()
+        val snapshot = ArrayList(catalog)
+        playlistTransfer.read(document, snapshot) { imported, error ->
+            if (error != null || imported == null) {
+                playlistFailure(error)
+                return@read
+            }
+            playlists.importSongs(if (name.isEmpty()) "Imported playlist" else name, imported.songs) {
+                id, failure ->
+                if (failure != null || id == null) {
+                    playlistFailure(failure)
+                } else {
+                    playlistChanged()
+                    playlistNotice(
+                        "Imported " + imported.songs.size + " songs; " +
+                            imported.unmatched + " unmatched"
+                    )
+                }
+            }
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun pickPlaylistExport(id: Long) {
+        val catalog = localSongs
+        if (catalog == null) {
+            playlistFailure("Music library is unavailable")
+            return
+        }
+        val snapshot = ArrayList(catalog)
+        playlists.list { items, error ->
+            if (error != null || items == null) {
+                playlistFailure(error)
+                return@list
+            }
+            for (item in items) {
+                if (item.id != id) continue
+                val filename = item.name.replace(Regex("[/\\\\:*?\"<>|]"), "_") + ".m3u8"
+                playlists.entries(id) { entries, failure ->
+                    if (failure != null || entries == null) {
+                        playlistFailure(failure)
+                        return@entries
+                    }
+                    playlistTransfer.checkExport(entries, snapshot) { valid, reason ->
+                        if (reason != null || valid != true) {
+                            playlistFailure(reason)
+                        } else {
+                            val picker = Intent(Intent.ACTION_CREATE_DOCUMENT)
+                                .addCategory(Intent.CATEGORY_OPENABLE)
+                                .setType("audio/x-mpegurl")
+                            picker.putExtra(Intent.EXTRA_TITLE, filename)
+                            picker.putExtra(Intent.EXTRA_LOCAL_ONLY, true)
+                            try {
+                                exportingPlaylistId = id
+                                startActivityForResult(picker, EXPORT_PLAYLIST_REQUEST)
+                            } catch (exception: RuntimeException) {
+                                exportingPlaylistId = -1L
+                                Log.w(TAG, "Playlist export picker unavailable", exception)
+                                playlistFailure("Playlist export picker unavailable")
+                            }
+                        }
+                    }
+                }
+                return@list
+            }
+            playlistFailure("Playlist no longer exists")
+        }
+    }
+
+    private fun writeExportedPlaylist(id: Long, document: Uri) {
+        val catalog = localSongs
+        if (catalog == null) {
+            playlistFailure("Music library is unavailable")
+            return
+        }
+        val snapshot = ArrayList(catalog)
+        playlists.entries(id) { items, error ->
+            if (error != null || items == null) {
+                playlistFailure(error)
+                return@entries
+            }
+            playlistTransfer.write(document, items, snapshot) { count, failure ->
+                if (failure != null) playlistFailure(failure)
+                else playlistNotice("Exported " + count + " songs to M3U8")
+            }
+        }
+    }
+
+    private fun buildSettingsRows(): ArrayList<MenuRow> = MusicLibraryPageRows.settingsRows()
+
+    private fun autoRefreshEnabled(): Boolean =
+        getSharedPreferences(MUSIC_SETTINGS_PREFS, MODE_PRIVATE)
+            .getBoolean(AUTO_REFRESH_PREF, true)
+
+    private fun confirmFullRescan() {
+        showButtonConfirmation(
+            "Full rescan library?",
+            "Recheck every audio file in your selected " +
+                "music folders? This may take longer than Refresh library.",
+            "Rescan",
+            Runnable { startLocalScan(true, true, true) }
+        )
+    }
+
+    private fun openFolders() {
+        navigateTo(Page("Folders", MusicLibraryPageRows.folderRootRows(this)))
+    }
+
