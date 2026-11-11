@@ -536,3 +536,17 @@ destructive fallback migration or change the existing database filename.
 Verify an *upgrade in place* on a device with a populated catalog and real
 playlists, followed by cold restart, incremental refresh, full rescan,
 playlist ordering, and playback retention. No uninstall/data clearing.
+
+### Kotlin Activity catalog grouping increment
+
+The remaining `MusicActivity.java` incrementally delegates its app-specific
+artist/album/genre grouping, case-folded group keys, cover-association key,
+song search match and singular/plural row-label rules to
+`MusicLibraryGroupPolicy.kt`. Do not make a competing grouping implementation
+in the Activity or in the app-neutral shared BBOS6 UI module.
+The original Android Activity retains its existing adapter rows, current-page
+state, view focus, search editing, click and Back navigation. The policy keeps
+the original `Locale.ROOT` lowercasing, stable insertion-order grouping,
+case-insensitive group sorting, omission of untagged albums, and album-ID
+fallback. Verify Artists/Albums/Genres grouping and artwork, search,
+keyboard type-to-search and ListView DPAD scroll on Q25 before further porting.
