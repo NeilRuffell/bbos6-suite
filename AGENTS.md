@@ -583,3 +583,22 @@ selection, update timing and `list.refreshVisibleRows()` call. The Kotlin
 counter utility must never notify or reset ListView navigation itself.
 Verify artwork on Artists/Albums/Genres and tagless tracks, counts after
 refresh and the physical Q25 trackpad/scroll without a forced rescan.
+
+### Kotlin Activity library row presentation
+
+`MusicLibraryRowPolicy.kt` now owns the app-specific row description
+formerly built by `MusicActivity.rowPresentation()`: original verified
+menu-icon resource IDs, album art key/candidates, album track number,
+subtitle/count strings, duration, enabled/section-header flags and folder
+remove affordance. It is a **Music-only policy** that returns the existing
+`MusicListView.RowData`; it must not duplicate the shared BBOS6 Compose
+`Bbos6MediaListRow` renderer or native ListView event processing.
+The Activity still supplies its existing per-page album-header state,
+authorized artwork index, current loading/counter flags, playlist count
+and auto-refresh setting. Only query auto-refresh preferences for its
+existing settings row. Preserve all menu index/icon pairs as previously
+verified and indexed; do not remap original numbered BBOS6 assets.
+Native focus/trackpad navigation, search editing, album-art binding, list
+viewport and popup routing stay untouched. Run `MusicLibraryRowPolicyTest`
+and verify home labels/icons, artist/album/genre art, album track numbers,
+settings On/Off, playlists, folder subtitles, and Q25 touch/trackpad.
