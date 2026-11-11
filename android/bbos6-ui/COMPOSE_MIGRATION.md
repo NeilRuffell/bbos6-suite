@@ -264,3 +264,23 @@ the setters to Kotlin as `View.setViewTreeLifecycleOwner`,
 calls these supported methods on the ComposeView directly. No change to
 model translation, modal rendering, callbacks, focus, or data semantics.
 Recheck both compile variants and Q25 after this import-only API fix.
+
+## Shared Compose button-only popup and search feedback
+
+The public `Bbos6PopupButtonList.Builder.show(Activity)` continues to
+validate unique action IDs, callback presence and nonempty buttons as
+before. For `ComponentActivity` callers **without text input**, it
+maps action IDs, enabled flags, selection, message/title, supplied
+drawable/resource icon, horizontal/vertical sizing and callback semantics
+to the already shared `Bbos6PopupButtonPanel` through
+`Bbos6PopupButtonComposeBridge`. A normal Android Dialog still owns
+cancellation, Back, size, dim 0.36 and the returned handle. Native
+`PopupDialog` remains available for platform-only Activity callers
+and **all text-input dialogs**, preserving the real Android `EditText`
+and tested hardware-key and IME editing rules.
+
+The canonical `Bbos6SearchEmptyFeedback` and
+`Bbos6SearchEmptyFeedbackView` provide 15sp centered white empty-search
+text with 16dp/20dp padding. Visibility and search filtering remain
+app-owned. No empty-state row participates in navigation. Both additions
+require Q25 build/interaction testing before a merge.

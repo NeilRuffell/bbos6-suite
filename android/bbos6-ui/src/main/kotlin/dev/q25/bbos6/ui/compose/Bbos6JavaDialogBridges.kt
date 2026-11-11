@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.graphics.Insets
 import android.graphics.Rect
 import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.Drawable
 import android.os.Build
 import android.view.Gravity
 import android.view.Window
@@ -17,9 +18,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
@@ -28,6 +31,7 @@ import dev.q25.bbos6.ui.Bbos6ContextMenu
 import dev.q25.bbos6.ui.Bbos6ContextMenuItem
 import dev.q25.bbos6.ui.Bbos6PropertiesItem
 import dev.q25.bbos6.ui.Bbos6PropertiesPopup
+import dev.q25.bbos6.ui.Bbos6PopupButtonList
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -59,6 +63,7 @@ private fun createComposeDialog(
         setGravity(Gravity.CENTER)
         if (dimBehind) {
             addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+            setDimAmount(0.36f)
         } else {
             clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
         }
@@ -174,6 +179,60 @@ object Bbos6PropertiesComposeBridge {
             Box(Modifier.fillMaxWidth().heightIn(max = height)) {
                 Bbos6PropertiesPanel(items, Modifier.fillMaxWidth())
             }
+        }
+        dialog.show()
+        dialog.window?.setLayout(width, WindowManager.LayoutParams.WRAP_CONTENT)
+        return dialog
+    }
+}
+
+/**
+ * Compatibility bridge for existing Java button-only popups.
+ * Input popups stay native so their verified Android EditText/IME/DPAD
+ * behavior is never silently changed. No second popup design is maintained.
+ */
+object Bbos6PopupButtonComposeBridge {
+    @JvmStatic
+    fun show(
+        activity: ComponentActivity,
+        buttons: List<Bbos6PopupAction>,
+        title: String?,
+        message: String?,
+        titleIconResource: Int,
+        titleDrawable: Drawable?,
+        initialSelectionId: String?,
+        horizontalButtons: Boolean,
+        dismissOnAction: Boolean,
+        listener: Bbos6PopupButtonList.OnActionListener
+    ): Dialog {
+        val viewport = availableViewport(activity)
+        val width = min(
+            viewport.first,
+            (320f * activity.resources.displayMetrics.density).roundToInt()
+        ).coerceAtLeast(1)
+        val (dialog, content) = createComposeDialog(
+            activity, dismissOnOutside = false, dimBehind = true
+        )
+        content.setContent {
+            val context = LocalContext.current
+            val icon = remember(context, titleIconResource, titleDrawable) {
+                val drawable = titleDrawable
+                    ?: titleIconResource.takeIf { it != 0 }?.let(context::getDrawable)
+                drawable?.let(::Bbos6NativeDrawablePainter)
+            }
+            Bbos6PopupButtonPanel(
+                actions = buttons,
+                onAction = { id, _ ->
+                    if (dismissOnAction) dialog.dismiss()
+                    listener.onAction(id)
+                },
+                onEscape = dialog::dismiss,
+                title = title,
+                message = message,
+                titleIcon = icon,
+                initialSelectionId = initialSelectionId,
+                horizontalButtons = horizontalButtons
+            )
         }
         dialog.show()
         dialog.window?.setLayout(width, WindowManager.LayoutParams.WRAP_CONTENT)

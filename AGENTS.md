@@ -260,3 +260,15 @@ Never move caller action IDs, commands, item formatting or storage logic
 into the bridge. Preserve Java Dialog return semantics, Q25 DPAD focus and
 Back/outside-touch behavior. Test both render paths before deleting legacy
 modal renderers.
+
+## Compose popup bridge and search-empty label
+
+Shared `Bbos6PopupButtonComposeBridge` is the only transitional
+button-only popup adapter for AndroidX ComponentActivity callers.
+Keep native `Bbos6PopupButtonList.PopupDialog` for native EditText
+dialogs and platform Activity callers until their keyboard/IME parity
+can be verified. Do not change popup action callback or safe-default
+selection semantics.
+
+Shared `Bbos6SearchEmptyFeedbackView` owns the passive no-results
+appearance only; callers retain search filtering, visibility and focus.
