@@ -1650,3 +1650,16 @@ error messages, and worker cleanup are preserved. `Listener` and
 can continue while its navigation controller is migrated. No SAF
 permissions or stored folders changed. Q25 Folders browsing, removal
 and grant revocation remain mandatory test cases.
+
+### Kotlin Now Playing artwork and generic fallback
+
+`MusicArtworkLoader.java` and
+`MusicCoverPlaceholderDrawable.java` now have Kotlin implementations
+with unchanged Java class names/constructor APIs. The artwork loader
+retains single-thread embedded-picture extraction, existing 600px
+downsample limit, release/error logging, main-thread callbacks and
+generation-based stale-track filtering; it does not alter source
+selection or playback. The generic placeholder keeps its exact
+previous paint colors and note geometry. Original numbered BBOS6
+assets remain untouched. On-device cover switching and fallback
+render tests still required.

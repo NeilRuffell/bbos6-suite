@@ -373,3 +373,13 @@ DocumentsProvider access: each call must verify
 before callback delivery. Original folder-first sort, hidden-directory
 and audio-candidate filter, and cancel-on-close semantics are required.
 Native UI rendering is a separate migration.
+
+### Kotlin Now Playing art dependencies
+
+`MusicArtworkLoader.kt` retains the original one-track
+`MediaMetadataRetriever` generation guard and 600px thumbnail
+limit, keeping the existing Java-caller SAM listener.
+`MusicCoverPlaceholderDrawable.kt` preserves generic no-art paint
+geometry, not an original numbered BBOS6 asset. Do not change
+`MusicNowPlayingView` artwork request ordering, callback stale-URI
+key check or loader shutdown while converting it to Kotlin/Compose.
