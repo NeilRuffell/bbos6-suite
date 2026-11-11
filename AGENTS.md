@@ -417,3 +417,7 @@ MusicPlaybackClient.kt owns Media3 UI-side session connection and still uses the
 ### Retained playback Kotlin port
 
 `MusicPlaybackRetention.kt` retains its `bbmusic_playback`/`queue_v1` serialized JSON schema and exact SAF-tree authorization, including no automatic switch when the current track is no longer authorized. Keep `@JvmStatic` and `Saved` field JVM ABI for the Java service and Kotlin client. Never rewrite stored queues, drop metadata, change Stop-clear semantics, or loosen `DocumentsContract` validation during Kotlin/Compose migrations. Verify pause/relaunch, background Media3, deliberate Stop, deletion of queued tracks, and permission revocation on Q25.
+
+### Kotlin confirm-key and Properties adapters
+
+TrackpadPressHandler.kt keeps proven Q25 native event dispatch and state. Do not draw or suppress focus in this app handler; shared Bbos6FocusPolicy owns focus appearance. MusicTrackPropertiesReader.kt must verify selected-tree grants before a DocumentsProvider query and again before callback, on main thread. Preserve native metadata omissions; never invent creation dates or absolute paths; reuse the canonical Bbos6PropertiesItem. No UI copies.

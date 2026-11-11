@@ -1715,3 +1715,7 @@ MusicPlaybackClient.java is now MusicPlaybackClient.kt. It preserves Java calls,
 ### Kotlin retained playback state (unchanged queue_v1)
 
 MusicPlaybackRetention.java is now MusicPlaybackRetention.kt. Preference file `bbmusic_playback` and all existing `queue_v1`, index, position_ms, shuffle, repeat, URI/title/artist/album JSON fields retain exactly the same names. Java static APIs remain via `@JvmStatic`; `Saved` retains its Java-readable fields using `@JvmField`. Only exact live authorized SAF tree documents restore, and if the saved current track no longer qualifies, restore clears the queue rather than switching songs. Durable stop/clear, position checkpoint, and deleted-queue index recovery are retained. No Room, signing, or saved-data migration. Build plus Q25 pause/relaunch/Stop/delete test required.
+
+### Kotlin trackpad confirm and Properties adapters
+
+TrackpadPressHandler.java and MusicTrackPropertiesReader.java are now Kotlin. The confirm-key handler preserves the native KeyEvent DPAD_CENTER/Enter/Numpad Enter codes, press-once/hold-once/release contract, Android long-press timeout, and cancellation. The read-only SAF Properties adapter still queries only authorized document URIs off the UI thread, revalidates tree grants before delivery, suppresses synthetic Unknown Artist, and never invents a creation date or filesystem path. Both retain the same Java caller interfaces. This batch is source-only until the next Q25 build; no shared UI helper changed.
