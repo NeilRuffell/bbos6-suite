@@ -618,3 +618,23 @@ branch must never mutate that list. The settings row names/order are part
 of existing routing, not a shared BBOS6 style component. Regression tests:
 `MusicLibraryPageRowsTest`, plus Q25 typing from home and nested pages,
 search reset/Back position, settings, Artists/Albums/Genres and empty lists.
+
+### Kotlin Activity SAF folder-row projection
+
+`MusicLibraryPageRows.kt` now projects folder-root, Settings > Music
+Folders, and already enumerated folder contents into `MenuRow` objects.
+The underlying `MusicFolders` grant/allowlist logic, Android SAF
+`MusicFolderBrowser` worker/query, and `MusicActivity` row-refresh,
+selection, Back stack and deletion/folder-removal flow are unchanged.
+Preserve saved-vs-authorized distinction: revoked roots remain in Folders
+as unavailable and in Settings with an "Access unavailable - " prefix;
+invisible directories are omitted *only* from the Folders root menu,
+not the Settings management list. Render only audio candidates returned by
+the existing worker and associate indexed songs only when `sourceTree`
+equals the opened page's tree; unindexed files remain unplayable entries.
+A folder with no returned entries displays "Empty folder"; a folder whose
+browser callback has not arrived returns no projected rows (the Activity
+already displays its "Loading folder..." row). Do not move permission
+checks into the UI layer or introduce extra SAF queries. Device-test
+existing folders, nested folders, unindexed audio, empty folders and
+Settings > Music Folders without uninstalling or changing grants.
