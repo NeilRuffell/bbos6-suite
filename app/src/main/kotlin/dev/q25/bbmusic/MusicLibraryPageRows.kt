@@ -139,6 +139,17 @@ internal object MusicLibraryPageRows {
     }
 
     /**
+     * Only catalog-verified files may appear in folder rows. The same document
+     * URI must not produce more than one row.
+     */
+    @JvmStatic
+    fun shouldRenderBrowserFile(
+        uri: String,
+        indexedUris: Set<String>,
+        displayedUris: Set<String>
+    ): Boolean = uri in indexedUris && uri !in displayedUris
+
+    /**
      * View-only representation of one already-authorized SAF folder response.
      * Does not enumerate SAF, grant permissions or change the selected tree.
      */
@@ -157,6 +168,7 @@ internal object MusicLibraryPageRows {
                 }
             }
         }
+        val displayedUris = HashSet<String>()
         for (entry in entries) {
             if (entry.directory) {
                 rows.add(
@@ -165,14 +177,23 @@ internal object MusicLibraryPageRows {
                     )
                 )
             } else {
-                rows.add(
-                    MusicActivityModels.MenuRow.browserFile(
-                        entry.name, indexed[entry.uri.toString()]
+                val uri = entry.uri.toString()
+                if (shouldRenderBrowserFile(uri, indexed.keys, displayedUris)) {
+                    rows.add(
+                        MusicActivityModels.MenuRow.browserFile(entry.name, indexed.getValue(uri))
                     )
-                )
+                    displayedUris.add(uri)
+                }
             }
         }
-        if (rows.isEmpty()) rows.add(MusicActivityModels.MenuRow.message("Empty folder"))
+        if (rows.isEmpty()) {
+            val message = if (localSongs == null && entries.any { !it.directory }) {
+                "Reading selected music folders..."
+            } else {
+                "Empty folder"
+            }
+            rows.add(MusicActivityModels.MenuRow.message(message))
+        }
         return rows
     }
 
