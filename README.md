@@ -10,7 +10,7 @@ This is the **canonical shared dependency** of
 | --- | --- |
 | `icons/<number>.png` | Unmodified original numbered BBOS6 assets |
 | `icon-index.csv` | Only authoritative identification / resource mapping |
-| `android/bbos6-ui/` | Kotlin/Compose UI components, native Android compatibility helpers and tests |
+| `android/bbos6-ui/` | Kotlin-only sources for Compose UI, native Android control compatibility and tests |
 | [`android/bbos6-ui/COMPONENT_CATALOG.md`](android/bbos6-ui/COMPONENT_CATALOG.md) | New-app integration, reusable APIs, focus ownership and migration gaps |
 | `AGENTS.md` | Required AI / contributor workflow |
 | `tools/validate_icon_index.py` | Basic index consistency check |
