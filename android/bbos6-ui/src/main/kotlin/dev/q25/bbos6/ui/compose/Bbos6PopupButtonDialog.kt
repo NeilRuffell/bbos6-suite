@@ -1,6 +1,11 @@
 package dev.q25.bbos6.ui.compose
 
 import android.view.KeyEvent as AndroidKeyEvent
+import android.text.InputType
+import android.util.TypedValue
+import android.view.Gravity
+import androidx.compose.ui.viewinterop.AndroidView
+import dev.q25.bbos6.ui.Bbos6TextField
 import android.view.WindowManager
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -117,7 +122,8 @@ fun Bbos6PopupButtonPanel(
     horizontalButtons: Boolean = false,
     textInput: Boolean = false,
     initialText: String = "",
-    inputHint: String? = null
+    inputHint: String? = null,
+    nativeTextInput: Boolean = false
 ) {
     require(actions.isNotEmpty()) { "At least one button is required" }
     require(actions.all { it.id.isNotBlank() && it.label.isNotBlank() }) {
@@ -136,6 +142,13 @@ fun Bbos6PopupButtonPanel(
     var text by remember(initialText) {
         mutableStateOf(TextFieldValue(initialText, selection = TextRange(0, initialText.length)))
     }
+    // Java consumers retain the actual Android EditText, not a second editor.
+    var nativeField by remember { mutableStateOf<Bbos6TextField?>(null) }
+    fun currentValue(): String? = when {
+        !textInput -> null
+        nativeTextInput -> nativeField?.text?.toString() ?: initialText
+        else -> text.text
+    }
     val shortcuts = remember(actions) { Bbos6PopupNavigation.shortcuts(actions) }
     val shortcutOffsets = remember(shortcuts) {
         shortcuts.values.associate { (index, offset) -> index to offset }
@@ -144,13 +157,16 @@ fun Bbos6PopupButtonPanel(
     val inputFocus = remember { FocusRequester() }
     val configuration = LocalConfiguration.current
 
-    LaunchedEffect(textInput) {
-        if (textInput) inputFocus.requestFocus() else buttonsFocus.requestFocus()
+    LaunchedEffect(textInput, nativeTextInput, nativeField) {
+        if (textInput) {
+            if (nativeTextInput) nativeField?.requestFocus()
+            else inputFocus.requestFocus()
+        } else buttonsFocus.requestFocus()
     }
 
     fun activate() {
         actions.getOrNull(selected)?.takeIf { it.enabled }?.let { action ->
-            onAction(action.id, if (textInput) text.text else null)
+            onAction(action.id, currentValue())
         }
     }
 
@@ -171,7 +187,10 @@ fun Bbos6PopupButtonPanel(
                 val down = event.action == AndroidKeyEvent.ACTION_DOWN
                 if (textInput && fieldFocused) {
                     if (code == AndroidKeyEvent.KEYCODE_DPAD_DOWN) {
-                        if (down) buttonsFocus.requestFocus()
+                        if (down) {
+                            if (nativeTextInput) nativeField?.clearFocus()
+                            buttonsFocus.requestFocus()
+                        }
                         true
                     } else if (code == AndroidKeyEvent.KEYCODE_ESCAPE) {
                         if (!down && !event.isCanceled) onEscape()
@@ -179,7 +198,10 @@ fun Bbos6PopupButtonPanel(
                     } else false
                 } else if (textInput && code == AndroidKeyEvent.KEYCODE_DPAD_UP &&
                     (horizontalButtons || selected == Bbos6PopupNavigation.initial(actions, null))) {
-                    if (down) inputFocus.requestFocus()
+                    if (down) {
+                        if (nativeTextInput) nativeField?.requestFocus()
+                        else inputFocus.requestFocus()
+                    }
                     true
                 } else if (
                     if (horizontalButtons)
@@ -224,7 +246,7 @@ fun Bbos6PopupButtonPanel(
                             heldConfirm = AndroidKeyEvent.KEYCODE_UNKNOWN
                             if (invoke) {
                                 selected = accelerator
-                                onAction(actions[accelerator].id, if (textInput) text.text else null)
+                                onAction(actions[accelerator].id, currentValue())
                             }
                         }
                         true
@@ -288,17 +310,50 @@ fun Bbos6PopupButtonPanel(
                 )
             }
             if (textInput) {
-                Bbos6TextField(
-                    value = text, onValueChange = { text = it },
-                    modifier = Modifier.fillMaxWidth().height(30.dp)
-                        .padding(bottom = 0.dp),
-                    minimumHeight = 30.dp, hint = inputHint,
-                    focusRequester = inputFocus,
-                    onInputFocusChanged = { fieldFocused = it },
-                    keyboardOptions = KeyboardOptions(
-                        capitalization = KeyboardCapitalization.Sentences
+                if (nativeTextInput) {
+                    // Original verified EditText, now inside Compose chrome.
+                    AndroidView(
+                        factory = { context ->
+                            Bbos6TextField(context).apply {
+                                setSingleLine(true)
+                                inputType = InputType.TYPE_CLASS_TEXT or
+                                    InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+                                setText(initialText)
+                                hint = inputHint
+                                setSelectAllOnFocus(true)
+                                setTextSize(TypedValue.COMPLEX_UNIT_SP, 17f)
+                                gravity = Gravity.START or Gravity.CENTER_VERTICAL
+                                setMinHeight(0)
+                                minimumHeight = 0
+                                setOnFocusChangeListener { _, focused ->
+                                    fieldFocused = focused
+                                }
+                                setOnKeyListener { _, keyCode, event ->
+                                    if (keyCode == AndroidKeyEvent.KEYCODE_DPAD_DOWN) {
+                                        if (event.action == AndroidKeyEvent.ACTION_DOWN) {
+                                            clearFocus()
+                                            buttonsFocus.requestFocus()
+                                        }
+                                        true
+                                    } else false
+                                }
+                                nativeField = this
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth().height(30.dp)
                     )
-                )
+                } else {
+                    Bbos6TextField(
+                        value = text, onValueChange = { text = it },
+                        modifier = Modifier.fillMaxWidth().height(30.dp),
+                        minimumHeight = 30.dp, hint = inputHint,
+                        focusRequester = inputFocus,
+                        onInputFocusChanged = { fieldFocused = it },
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Sentences
+                        )
+                    )
+                }
                 Spacer(Modifier.height(14.dp))
             }
             if (horizontalButtons) {
@@ -317,7 +372,7 @@ fun Bbos6PopupButtonPanel(
                                 selected = index
                                 buttonsFocus.requestFocus()
                             }, onInvoke = {
-                                onAction(action.id, if (textInput) text.text else null)
+                                onAction(action.id, currentValue())
                             })
                     }
                 }
@@ -330,7 +385,7 @@ fun Bbos6PopupButtonPanel(
                             selected = index
                             buttonsFocus.requestFocus()
                         }, onInvoke = {
-                            onAction(action.id, if (textInput) text.text else null)
+                            onAction(action.id, currentValue())
                         })
                 }
             }

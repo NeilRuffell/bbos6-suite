@@ -187,9 +187,9 @@ object Bbos6PropertiesComposeBridge {
 }
 
 /**
- * Compatibility bridge for existing Java button-only popups.
- * Input popups stay native so their verified Android EditText/IME/DPAD
- * behavior is never silently changed. No second popup design is maintained.
+ * Compatibility bridge for Java button-only and text-input popups.
+ * Text input is the original Bbos6TextField hosted in Compose, preserving
+ * native cursor, selection, keyboard and IME semantics.
  */
 object Bbos6PopupButtonComposeBridge {
     @JvmStatic
@@ -203,7 +203,11 @@ object Bbos6PopupButtonComposeBridge {
         initialSelectionId: String?,
         horizontalButtons: Boolean,
         dismissOnAction: Boolean,
-        listener: Bbos6PopupButtonList.OnActionListener
+        hasTextInput: Boolean,
+        initialText: String,
+        inputHint: String?,
+        listener: Bbos6PopupButtonList.OnActionListener?,
+        textListener: Bbos6PopupButtonList.OnTextActionListener?
     ): Dialog {
         val viewport = availableViewport(activity)
         val width = min(
@@ -222,16 +226,21 @@ object Bbos6PopupButtonComposeBridge {
             }
             Bbos6PopupButtonPanel(
                 actions = buttons,
-                onAction = { id, _ ->
+                onAction = { id, value ->
                     if (dismissOnAction) dialog.dismiss()
-                    listener.onAction(id)
+                    if (hasTextInput) textListener?.onAction(id, value.orEmpty())
+                    else listener?.onAction(id)
                 },
                 onEscape = dialog::dismiss,
                 title = title,
                 message = message,
                 titleIcon = icon,
                 initialSelectionId = initialSelectionId,
-                horizontalButtons = horizontalButtons
+                horizontalButtons = horizontalButtons,
+                textInput = hasTextInput,
+                initialText = initialText,
+                inputHint = inputHint,
+                nativeTextInput = hasTextInput
             )
         }
         dialog.show()

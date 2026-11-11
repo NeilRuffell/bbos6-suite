@@ -272,3 +272,13 @@ selection semantics.
 
 Shared `Bbos6SearchEmptyFeedbackView` owns the passive no-results
 appearance only; callers retain search filtering, visibility and focus.
+
+## Compose native-editor popup migration
+
+The canonical `Bbos6PopupButtonPanel` now embeds the **original**
+Android `Bbos6TextField` using `AndroidView` for the Java compatibility
+bridge. Android still owns selection, text input, cursor and IME. Use
+the shared panel for visual layout and buttons; no Music-only overlay.
+DPAD_DOWN enters buttons; DPAD_UP returns to native input; text is read
+directly on action invocation. Keep the original Java fallback for
+non-AndroidX Activity hosts.

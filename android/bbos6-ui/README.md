@@ -232,3 +232,25 @@ The canonical `Bbos6SearchEmptyFeedback` and
 text with 16dp/20dp padding. Visibility and search filtering remain
 app-owned. No empty-state row participates in navigation. Both additions
 require Q25 build/interaction testing before a merge.
+
+
+## Shared Compose popup layout with native Android text entry
+
+For AndroidX `ComponentActivity`, `Bbos6PopupButtonList.Builder.show`
+now uses the canonical shared Compose panel for *both* button-only and
+text-input popups. Text input stays the original `Bbos6TextField` (native
+Android `EditText`) embedded via Compose `AndroidView`, not a new editor.
+Preserve its single-line mode, capitalization, initial select-all-on-focus,
+17sp text, 30dp height, rim, cursor, selection, clipboard and IME.
+
+Compose popup content retains the established horizontal centered
+content-sized Cancel/Save buttons, selection faces and one focus owner.
+Native input DPAD_DOWN moves focus to the button group, while DPAD_UP
+returns to the Android text field. All four action paths (button click,
+keyboard confirm, accelerator and touch) read live field text when invoked.
+Selected Cancel remains the safe default and never writes data.
+The original native dialog is unchanged for non-AndroidX Activities.
+
+Q25 review needed for Create/Rename Playlist typing, selection, input
+focus crossings, Save/Cancel, Back and soft keyboard behavior. No Music
+playlist persistence, permissions or other business logic modified.

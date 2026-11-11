@@ -212,10 +212,10 @@ public final class Bbos6PopupButtonList {
                 }
             }
 
-            // Java API remains canonical. Button-only dialogs use the
-            // shared Compose panel for lifecycle-capable Activities.
-            // Text-entry dialogs remain the verified native EditText host.
-            if (!hasTextInput && activity instanceof ComponentActivity) {
+            // Java API remains canonical. Compose hosts all popup chrome
+            // for ComponentActivity; native Bbos6TextField is embedded when
+            // editing text. Plain Activity keeps its original fallback.
+            if (activity instanceof ComponentActivity) {
                 ArrayList<Bbos6PopupAction> sharedActions =
                         new ArrayList<>(actions.size());
                 for (Action action : actions) {
@@ -226,7 +226,8 @@ public final class Bbos6PopupButtonList {
                         (ComponentActivity) activity, sharedActions,
                         title, message, iconResourceId, iconDrawable,
                         initialSelectionId, horizontalButtons,
-                        dismissOnAction, listener);
+                        dismissOnAction, hasTextInput, initialText, inputHint,
+                        listener, textListener);
             }
 
             PopupDialog dialog = new PopupDialog(activity, title, message,
