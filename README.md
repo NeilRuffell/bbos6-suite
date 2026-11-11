@@ -1707,3 +1707,7 @@ is required; no claims of test success.
 ### Kotlin persisted selected-folder SAF policy
 
 MusicFolders.java is now MusicFolders.kt, with @JvmStatic preserving the Java caller API. This preserves SharedPreferences keys bbmusic_selected_folders and tree_uris, sorted saved URIs, intersected live read grants for scanning, live write permissions, and display-only primary: stripping. Deleting a selection commits allowlist removal first and then releases OS URI grants, without deleting files. Existing Java unit tests for displayLocation remain in place. Source-only: build and Q25 SAF testing required.
+
+### Kotlin Media3 playback client
+
+MusicPlaybackClient.java is now MusicPlaybackClient.kt. It preserves Java calls, Media3 session connection, a bounded single retry, pending queue precedence, content URI validation, paused queue restoration, native Play/Pause/Stop, shuffle/repeat, backwards deleted-track removal, retained queue filtering, and disconnect ownership. MusicPlaybackRetention persistence and the Media3 service are unchanged. Build and Q25 test before merge.

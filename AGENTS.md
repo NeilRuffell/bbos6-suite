@@ -409,3 +409,7 @@ focus overlays or change playback/DPAD handlers for compiler repairs.
 ### Kotlin selected-folder authorization
 
 MusicFolders.kt owns the same persisted SAF allowlist and all permission checks. Keep bbmusic_selected_folders/tree_uris unchanged. Never expand folder access or change grant handling when migrating Java. Remove an allowance BEFORE OS permission release, not files. Keep @JvmStatic until all Java callers are migrated.
+
+### Kotlin Media3 client
+
+MusicPlaybackClient.kt owns Media3 UI-side session connection and still uses the native MediaController. Preserve one bounded retry, current user-selected pending queue over old restoration, SAF content URI restriction, Stop clearing system playback resumption without discarding the in-app item, and deletion reconciliation. Keep the Kotlin class Java-callable while MusicActivity remains Java. Do not change persistent saved queue formats.
