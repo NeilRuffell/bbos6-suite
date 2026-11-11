@@ -50,6 +50,9 @@ fun Bbos6PropertiesPanel(
     items: List<Bbos6PropertyRow>,
     modifier: Modifier = Modifier
 ) {
+    // Apply focus policy to the actual AndroidComposeView after mount,
+    // including read-only vertically scrollable properties panels.
+    Bbos6ManagedFocusEffect()
     val shape = RoundedCornerShape(10.dp)
     Box(
         modifier = modifier

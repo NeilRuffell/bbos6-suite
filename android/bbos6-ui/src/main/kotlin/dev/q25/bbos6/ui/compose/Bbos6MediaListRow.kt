@@ -153,8 +153,14 @@ fun Bbos6MediaListRow(
         if (showRemoveAction) {
             Box(
                 modifier = Modifier
-                    .padding(start = 4.dp, end = 10.dp)
-                    .size(width = 76.dp, height = 36.dp)
+                    .padding(
+                        start = Bbos6MediaListTouchGeometry.ACTION_START_GAP_DP.dp,
+                        end = Bbos6MediaListTouchGeometry.ACTION_END_GAP_DP.dp
+                    )
+                    .size(
+                        width = Bbos6MediaListTouchGeometry.ACTION_WIDTH_DP.dp,
+                        height = Bbos6MediaListTouchGeometry.ACTION_HEIGHT_DP.dp
+                    )
                     .clip(RoundedCornerShape(4.dp))
                     .background(removeFace)
                     .border(1.dp, Color(0xFF5A5D63), RoundedCornerShape(4.dp))

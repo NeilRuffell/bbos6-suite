@@ -257,3 +257,27 @@ index alone cannot paint a highlight. The fallback retains all
 existing input actions, field selection, shortcuts, and dialog semantics.
 Device-test input↔buttons focus, DPAD left/right, touch, Cancel/Save and Back
 before merging.
+
+## Q25 touch-row and Properties focus regressions
+
+A native ListView row containing an AbstractComposeView can have its
+ACTION_DOWN consumed by the inner Compose owner, even when the outer
+view is not clickable. Added the neutral
+`Bbos6MediaListRowTouchHost` to let the native list receive all
+ordinary row tapping, long pressing, scrolling and trackpad movement
+while delegating touches *starting on* the optional trailing action
+to Compose. `Bbos6MediaListTouchGeometry` provides the one canonical
+76dp x 36dp action size and 10dp end inset, shared with the painted row.
+A platform-independent JUnit test checks hitbox boundaries and density.
+
+The shared Java-to-Compose dialog host now applies
+`Bbos6FocusPolicy` to its ComposeView. The shared
+`Bbos6ManagedFocusEffect` applies it again to the actual mounted
+AndroidComposeView, for context, Properties and action dialogs.
+`Bbos6PropertiesPanel` also applies the effect for direct Kotlin
+Compose callers. This disables native platform default/light focus
+decoration at the source, without changing panel palette, modal dim
+state, UI focusability, or native EditText leaf behavior.
+
+No Android platform focus overlays or compensating layers permitted.
+Build and Q25 tap/long-press/Properties parity tests are required.

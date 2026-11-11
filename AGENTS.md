@@ -293,3 +293,25 @@ plain-Activity native fallback is also retained.
 
 Shared `Bbos6SearchEmptyFeedbackView` owns passive no-results
 appearance only; callers retain search filtering, visibility and focus.
+
+## Compose media row native-list touch ownership
+
+The canonical `Bbos6MediaListRow` is paint-only except for its optional
+trailing action. In an Android ListView, its `AndroidComposeView` may
+consume ACTION_DOWN even when the wrapper is set non-clickable. Always
+host it using shared `Bbos6MediaListRowTouchHost`, which passes ordinary
+row gestures back to native ListView and forwards only a touch *starting*
+within the real trailing-action hitbox to Compose. The hitbox and painted
+button MUST share `Bbos6MediaListTouchGeometry` dimensions. Never fix
+a list tap by moving action/selection handlers onto a particular screen.
+DPAD/trackpad, selection, long press and scrolling remain list-owned.
+
+## Compose modal root focus policy
+
+All BBOS6 Java-to-Compose dialog bridges apply
+`Bbos6FocusPolicy.forManagedContainers` to their outer ComposeView
+and `Bbos6ManagedFocusEffect` to their mounted AndroidComposeView root.
+Read-only `Bbos6PropertiesPanel` applies the same effect when hosted
+directly by a Kotlin caller. The entire light/default Android focus
+highlight is strictly prohibited on BBOS6-managed modal containers.
+Never obscure it with an extra draw layer or disable native leaf editing.

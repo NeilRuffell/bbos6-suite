@@ -58,6 +58,9 @@ private fun createComposeDialog(
         isFocusableInTouchMode = true
         setBackgroundColor(Color.TRANSPARENT)
     }
+    // Disable Android's native focus wash at the outer ComposeView host.
+    // The inner AndroidComposeView is handled after composition is attached.
+    Bbos6FocusPolicy.forManagedContainers(content)
     dialog.setContentView(content)
     dialog.window?.apply {
         setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
@@ -147,6 +150,7 @@ object Bbos6ContextMenuComposeBridge {
             activity, dismissOnOutside = true, dimBehind = false
         )
         content.setContent {
+            Bbos6ManagedFocusEffect()
             Bbos6ContextMenuGrid(
                 groups = groups,
                 columns = columns,
@@ -176,6 +180,7 @@ object Bbos6PropertiesComposeBridge {
             activity, dismissOnOutside = false, dimBehind = false
         )
         content.setContent {
+            Bbos6ManagedFocusEffect()
             val height = with(LocalDensity.current) { maxHeight.toDp() }
             Box(Modifier.fillMaxWidth().heightIn(max = height)) {
                 Bbos6PropertiesPanel(items, Modifier.fillMaxWidth())
@@ -214,11 +219,8 @@ object Bbos6PopupButtonComposeBridge {
         val (dialog, content) = createComposeDialog(
             activity, dismissOnOutside = false, dimBehind = true
         )
-        // Apply the canonical policy to the actual Android ComposeView.
-        // Compose's own internal root is handled in Bbos6PopupButtonPanel.
-        // Never hide Android's default focus overlay with another drawable.
-        Bbos6FocusPolicy.forManagedContainers(content)
         content.setContent {
+            Bbos6ManagedFocusEffect()
             val context = LocalContext.current
             val icon = remember(context, titleIconResource, titleDrawable) {
                 val drawable = titleDrawable
