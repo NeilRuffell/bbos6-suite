@@ -1301,13 +1301,7 @@ public final class MusicActivity extends ComponentActivity {
 
     /** Each settings section uses a shared, non-selectable header row. */
     private ArrayList<MenuRow> buildSettingsRows() {
-        ArrayList<MenuRow> rows = new ArrayList<>();
-        rows.add(MenuRow.settingsHeader("Music library"));
-        rows.add(MenuRow.setting("Music Folders"));
-        rows.add(MenuRow.setting("Refresh library"));
-        rows.add(MenuRow.setting("Full rescan"));
-        rows.add(MenuRow.setting("Auto refresh on launch"));
-        return rows;
+        return MusicLibraryPageRows.settingsRows();
     }
 
     private boolean autoRefreshEnabled() {
@@ -1953,23 +1947,11 @@ public final class MusicActivity extends ComponentActivity {
     }
 
     private List<MenuRow> songRows(List<LocalMusicSource.Song> songs) {
-        ArrayList<MenuRow> rows = new ArrayList<>(songs.size());
-        for (LocalMusicSource.Song song : songs) rows.add(MenuRow.song(song));
-        if (rows.isEmpty()) rows.add(MenuRow.message("No local music found"));
-        return rows;
+        return MusicLibraryPageRows.songRows(songs);
     }
 
     private List<MenuRow> groupedRows(int category) {
-        // Grouping keys, insertion order and alphabetical sorting are app-owned
-        // Kotlin policies; row creation/navigation remains in this Activity.
-        List<MusicLibraryGroupPolicy.Group> groups =
-                MusicLibraryGroupPolicy.groups(localSongs, category);
-        ArrayList<MenuRow> rows = new ArrayList<>(groups.size());
-        for (MusicLibraryGroupPolicy.Group group : groups) {
-            rows.add(MenuRow.group(group.label, category, group.songs));
-        }
-        if (rows.isEmpty()) rows.add(MenuRow.message("No local music found"));
-        return rows;
+        return MusicLibraryPageRows.groupedRows(localSongs, category);
     }
 
     private void navigateTo(Page next) {
@@ -2094,34 +2076,8 @@ public final class MusicActivity extends ComponentActivity {
     private void updateSearchResults() {
         if (!searchOpen) return;
         String term = searchInput.getText().toString().trim().toLowerCase(Locale.ROOT);
-        if (term.isEmpty()) {
-            visibleRows = currentPage.rows;
-        } else {
-            ArrayList<MenuRow> matches = new ArrayList<>();
-            if (currentPage == rootPage) {
-                // Typing on the main menu searches the full selected-folder
-                // catalog, not merely the seven menu item labels.
-                if (localSongs != null) {
-                    for (LocalMusicSource.Song song : localSongs) {
-                        if (MusicLibraryGroupPolicy.songMatches(song, term)) matches.add(MenuRow.song(song));
-                    }
-                }
-                if (localSongs == null && loading) {
-                    matches.add(MenuRow.message("Reading selected music folders..."));
-                }
-            } else {
-                // Within Artists, Albums, Genres or a song list, narrow only
-                // the current page. The original Page.rows stay unchanged.
-                for (MenuRow row : currentPage.rows) {
-                    if (row.kind == ROW_MESSAGE || row.kind == ROW_SETTINGS_HEADER) continue;
-                    if (row.title.toLowerCase(Locale.ROOT).contains(term)
-                            || (row.kind == ROW_SONG && MusicLibraryGroupPolicy.songMatches(row.song, term))) {
-                        matches.add(row);
-                    }
-                }
-            }
-            visibleRows = matches;
-        }
+        visibleRows = MusicLibraryPageRows.searchRows(
+                term, currentPage == rootPage, currentPage.rows, localSongs, loading);
         noSearchResults.setVisibility(!term.isEmpty() && visibleRows.isEmpty()
                 ? View.VISIBLE : View.GONE);
         list.notifyRowsChanged();
