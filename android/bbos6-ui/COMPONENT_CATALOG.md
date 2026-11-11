@@ -111,18 +111,21 @@ The imports below reference concrete API signatures in the shared
 Compose package:
 
 ```kotlin
+import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import dev.q25.bbos6.ui.compose.Bbos6SectionHeader
 import dev.q25.bbos6.ui.compose.Bbos6EmptyState
 
 @Composable
 fun EmptyResults() {
-    Bbos6SectionHeader(title = "Library")
-    Bbos6EmptyState(
-        heading = "No items",
-        description = "Nothing to display",
-        artwork = null
-    )
+    Column {
+        Bbos6SectionHeader(title = "Library")
+        Bbos6EmptyState(
+            heading = "No items",
+            description = "Nothing to display",
+            artwork = null
+        )
+    }
 }
 ```
 
