@@ -321,3 +321,19 @@ Application playlist validation and callbacks stay in Music.
 
 `Bbos6SearchEmptyFeedbackView` remains the shared passive search
 no-results face; Music retains filter and visibility logic.
+
+### App-level Compose shell and Kotlin policies
+
+The outer Library/Now Playing host is `MusicAppShellView` (Kotlin
+Compose), not the old native safeViewport FrameLayout. It retains
+exact original native screen instances via AndroidView during gradual
+migration. Show-after-attach callbacks are mandatory before requesting
+player/list focus. Do not manually reparent those views in MusicActivity;
+ask the shared shell host to swap them. Apply the canonical
+`Bbos6FocusPolicy` to managed ViewGroup focus owners, never overlay
+extra default-focus mitigation. Music policy classes converted to Kotlin
+must preserve original Java static entry points (via `@JvmStatic`)
+and stable numeric constants (via `const val`), and pass existing
+Java unit tests before merging. The shell is only an intermediate
+step: do not claim full Kotlin/Compose completion until Activity,
+ListView, Now Playing and application domain/service Java are converted.

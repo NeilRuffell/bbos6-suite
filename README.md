@@ -1556,3 +1556,46 @@ Current shared submodule: `d08c1ac95432fe116ba7c5a0bf5e560f9b5a3e29`.
 Retest Create and Rename Playlist: move down from native EditText to
 buttons; trackpad left/right moves selected Cancel/Save; DPAD_UP returns
 to input; no light overlay; touch, keyboard, Cancel, Save and Back.
+
+## Kotlin Compose application shell and app policy migration
+
+Music's top-level screen container is now `MusicAppShellView.kt`
+(`AbstractComposeView` + `AndroidView`). Compose owns the active
+Library-versus-Now-Playing surface, black canvas, system-window inset
+root and Android-view attachment sequencing. The same native
+`libraryShell` and `MusicNowPlayingView` instances are retained,
+so ListView scrolling, adapter selection, search input, artwork
+caches and Media3 focus zones are not rebuilt. The native ListView
+and input components remain transitional; this is **not** a
+claim that MusicActivity/navigation and all native subviews are
+fully converted.
+
+`MusicActivity` now asks the Kotlin host to show a screen rather
+than reparenting the Java FrameLayout directly. The Compose host
+runs the caller's focus restoration only *after* the corresponding
+native screen is actually attached. The canonical shared
+`Bbos6FocusPolicy` disables Android's automatic default
+focus decoration on managed container nodes; native EditText
+leaf focus remains untouched.
+
+Pure independent policy classes moved from Java to Kotlin without
+changing Java callers or persisted identifiers:
+`MusicAlbumTag`, `MusicDeletedQueueIndex`,
+`TrackpadPressState`, `MusicDocumentPath`,
+`MusicFilePolicy`, `MediaSeekPolicy`,
+`MusicFileChangeDetector`, `MusicPlaylistPaths`. JVM static
+entry points are retained with `@JvmStatic`, and constant
+fields with `const val`. No changes to actual player session,
+Room database schema, SAF grants, application ID or signing identity.
+
+**Still required for full pure Kotlin+Compose application:** replace
+`MusicActivity.java` navigation/data orchestration, the native
+`MusicListView.java` row/recycling/DPAD owner, the
+`MusicNowPlayingView.java` layout/input owner, and the remaining
+Java music domain/services. Convert in isolated testable batches;
+never delete proven navigation or media behavior without Q25 parity.
+
+This batch is source-committed only. Compile and device validation
+must run before merge; verify Library↔Now Playing focus, list scroll
+position restore, search retention, Media3 controls, popup focus,
+cover art, trackpad and touch.

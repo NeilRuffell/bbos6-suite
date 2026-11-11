@@ -134,7 +134,7 @@ public final class MusicActivity extends ComponentActivity {
     private int propertiesRequestSerial;
     private Map<String, List<Uri>> albumArtworkSources = Collections.emptyMap();
     private MusicPlaybackClient playback;
-    private FrameLayout safeViewport;
+    private MusicAppShellView appShell;
     private MusicNowPlayingView nowPlaying;
     private boolean nowPlayingVisible;
     private int savedListPosition;
@@ -388,11 +388,6 @@ public final class MusicActivity extends ComponentActivity {
         // The ListView itself retains its unmodified scroll/focus behavior.
         // On edge-to-edge Android versions, this keeps rows and their selected
         // backgrounds beneath the visible status bar without fixed offsets.
-        safeViewport = new FrameLayout(this);
-        safeViewport.setBackgroundColor(list.canvasColor());
-        safeViewport.setFitsSystemWindows(true);
-        safeViewport.setClipChildren(true);
-        safeViewport.setClipToPadding(true);
         // Persistent shell: showing a search bar never rebuilds the list,
         // its adapter, artwork cache, or focus/trackpad machinery.
         libraryShell = new LinearLayout(this);
@@ -455,10 +450,11 @@ public final class MusicActivity extends ComponentActivity {
                 ViewGroup.LayoutParams.MATCH_PARENT));
         libraryShell.addView(listViewport, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
-        safeViewport.addView(libraryShell, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT));
-        setContentView(safeViewport);
+        // Kotlin/Compose now owns the persistent application screen host.
+        // Native library list and input remain children until separately
+        // verified Compose replacements are ready for Q25.
+        appShell = new MusicAppShellView(this, libraryShell);
+        setContentView(appShell);
 
         // Keep native list navigation in charge: no custom scroll amounts.
         list.post(() -> {
@@ -1944,7 +1940,6 @@ public final class MusicActivity extends ComponentActivity {
         savedListPosition = list.getSelectedItemPosition();
         View selectedRow = list.getSelectedView();
         savedListTop = selectedRow == null ? 0 : selectedRow.getTop();
-        safeViewport.removeView(libraryShell);
         nowPlaying = new MusicNowPlayingView(this, playback,
                 new MusicNowPlayingView.MetadataNavigation() {
                     @Override public CharSequence albumFor(MediaItem item) {
@@ -1968,13 +1963,17 @@ public final class MusicActivity extends ComponentActivity {
                         openCurrentTrackGroup(2);
                     }
                 });
-        safeViewport.addView(nowPlaying, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT));
         nowPlayingVisible = true;
         ensureBackCallback();
-        nowPlaying.requestFocus();
-        nowPlaying.render();
+        final MusicNowPlayingView shown = nowPlaying;
+        appShell.showNowPlaying(shown, () -> {
+            // Focus only after Compose has attached the Android player
+            // into its host, not before the screen swap is applied.
+            if (nowPlayingVisible && nowPlaying == shown) {
+                shown.requestFocus();
+                shown.render();
+            }
+        });
     }
 
     private void closeNowPlaying() {
@@ -1985,22 +1984,21 @@ public final class MusicActivity extends ComponentActivity {
         if (!nowPlayingVisible) return;
         nowPlayingVisible = false;
         if (nowPlaying != null) {
-            safeViewport.removeView(nowPlaying);
             nowPlaying.dispose();
             nowPlaying = null;
         }
-        safeViewport.addView(libraryShell, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT));
+        appShell.showLibrary(() -> {
+            if (restoreListPosition) {
+                list.post(() -> {
+                    if (nowPlayingVisible || isFinishing() || isDestroyed()) return;
+                    list.requestFocus();
+                    list.setSelectionFromTop(
+                            Math.max(0, savedListPosition), savedListTop);
+                    list.refreshSelection();
+                });
+            }
+        });
         if (backStack.isEmpty() && !searchOpen) unregisterNestedBack();
-        if (restoreListPosition) {
-            list.post(() -> {
-                if (nowPlayingVisible || isFinishing() || isDestroyed()) return;
-                list.requestFocus();
-                list.setSelectionFromTop(Math.max(0, savedListPosition), savedListTop);
-                list.refreshSelection();
-            });
-        }
     }
 
     /**
