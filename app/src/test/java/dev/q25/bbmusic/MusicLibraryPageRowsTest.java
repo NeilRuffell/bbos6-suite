@@ -70,4 +70,18 @@ public final class MusicLibraryPageRowsTest {
         assertEquals(MusicActivityModels.ROW_MESSAGE, loading.get(0).kind);
         assertFalse(loading == root);
     }
+    @Test public void browserRowsPreserveLoadingAndEmptyFolderSemantics() {
+        MusicActivityModels.Page page =
+                new MusicActivityModels.Page("Folder", new ArrayList<>());
+        // A folder still loading has no content rows yet.
+        assertTrue(MusicLibraryPageRows.browserRows(page, null).isEmpty());
+        page.browserEntries = Collections.emptyList();
+        List<MenuRow> empty = MusicLibraryPageRows.browserRows(
+                page, Collections.emptyList());
+        assertEquals(1, empty.size());
+        assertEquals(MusicActivityModels.ROW_MESSAGE, empty.get(0).kind);
+        assertEquals("Empty folder", empty.get(0).title);
+        assertTrue(page.rows.isEmpty());
+    }
+
 }
