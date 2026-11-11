@@ -295,10 +295,10 @@ verify both modal types on Q25 before any merge.
 
 ### Compose popup actions and empty search state
 
-For ComponentActivity, button-only popups use the shared
-`Bbos6PopupButtonComposeBridge`; popup text-input remains native
-`Bbos6TextField` through the same Java builder API. Do not move
-playlist validation or input methods into UI code.
+For ComponentActivity, all popups use the shared
+`Bbos6PopupButtonComposeBridge`; text-input mode embeds the canonical
+native `Bbos6TextField` in the shared Compose layout. Do not move
+playlist validation, input editing or callbacks into UI code.
 
 Only `Bbos6SearchEmptyFeedbackView` owns search no-results visuals;
 the existing Activity decides visibility and search/filter rules.

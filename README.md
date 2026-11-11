@@ -1511,24 +1511,24 @@ business logic are untouched. Build and Q25 behavior still require a retest.
 
 For Music's `ComponentActivity`, existing Java
 `Bbos6PopupButtonList.Builder.show(Activity)` now uses the canonical
-shared Compose popup panel **when no text input is requested**. This
-covers button-only playlists choices and confirmations. All original
+shared Compose popup panel for button-only playlist choices and
+confirmations, as well as text-input playlist dialogs. All original
 button IDs, initial selected ID, touch activation, DPAD/trackpad
 navigation, icon resources/drawables, title/message, horizontal button
 sizing, dimming, cancel/Back, callback timing and returned Android
 `Dialog` references remain app-owned through the shared Java bridge.
 
-**Playlist creation and rename input popups intentionally retain native
-`Bbos6TextField`/EditText**, so Q25 keyboard, cursor, selection,
-clipboard and IME behavior are not altered as a UI side effect.
-Platform-only Activity hosts also retain the native popup renderer.
+**Playlist Create/Rename popups also use the Compose panel**, with
+the *same native* `Bbos6TextField` embedded via `AndroidView`.
+The Android editor retains keyboard, cursor, selection, clipboard and
+IME behavior. Platform-only Activity hosts retain native popup layout.
 
 The standalone “No search results found” TextView has been replaced
 with the shared passive `Bbos6SearchEmptyFeedbackView`. Search
 filtering, ListView navigation, focus and the exact empty-result
 visibility conditions are unchanged.
 
-Pinned shared commit: `0d3eeb7097d50c8cedc6ef6b57567a8a17dc9645`.
+Earlier shared popup batch: `0d3eeb7097d50c8cedc6ef6b57567a8a17dc9645`.
 Unmerged until Gradle build and Q25 checks: button-only modal icon/title,
 action selection via keyboard and touch, disabled actions, Back,
 New/Rename Playlist native input, and empty searches on every library page.
@@ -1550,7 +1550,7 @@ delivers a snapshot of current native text when Save is activated.
 Music's `askPlaylistName()`, validation, Room callbacks, and playlist
 writes are unchanged. Non-AndroidX callers keep the prior native popup.
 
-Pin: `51279dabc4aa94ea7212f058c975eae3d8dbc0b6`.
+Current pin: `5560331571c74c882428f1c9d833686e177aa712`.
 Not yet built/tested on Q25: verify Create/Rename Playlist, entering and
 deleting text, physical keyboard, left/right cursor movement, select-all,
 DPAD input/button roundtrip, touch Cancel/Save and Back before merging.
