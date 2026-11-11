@@ -240,3 +240,12 @@ existing Android View containers. All new empty-state visuals remain in the
 `Bbos6EmptyState` Composable, never in a Music-only widget. Preserve the
 Java-callable content/artwork methods and the non-focusable, non-clickable
 contract so list selection/navigation stays exclusively app-owned.
+
+## Compose Now Playing control-face ownership
+
+The only new Now Playing control visuals are shared
+`Bbos6NowPlayingControlSelection`, `Bbos6NowPlayingSeekRail`, and
+`Bbos6NowPlayingArtwork`. Consuming applications own selection/focus,
+transport action callbacks, native SeekBar interaction and all artwork
+loading. Keep the already Q25-verified 1dp mode/seek separators and
+nonlinear 2D bevel fades intact when changing these subcomponents.

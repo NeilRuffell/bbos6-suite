@@ -199,3 +199,30 @@ New `Bbos6NowPlayingBevelTest` protects the intensity functions.
 No new Music-specific graphics or changes to native SeekBar, button
 semantics, focus, Media3 or navigation. Q25 screenshot parity is required
 before calling the fix visually verified or merging.
+
+## Q25 Now Playing interactive visual migration batch
+
+The app-neutral shared `Bbos6NowPlayingControlSelection` now renders
+highlight faces **behind** the original interactive Repeat/Shuffle and
+four transport ImageViews. MODE highlights reuse `bbos6MediaListSelectionFace`
+and preserve 1dp header top/bottom edges; TRANSPORT highlights use its
+original distinct 11-stop blue gradient. Both stay transparent unless
+their existing Android host owns focus.
+
+`Bbos6NowPlayingSeekRail` renders the full-width 3dp rail and its
+completed white progress in the same unpadded coordinate system,
+independent of native thumb padding and offset. A passive
+`Bbos6NowPlayingSeekRailView` is placed behind the unchanged native
+SeekBar, which still owns touch, focus and seek calculations. The shared
+helper accepts the guard, rail height, maximum and position from callers;
+it does not use Media3. `Bbos6NowPlayingRailTest` checks the normalized
+fraction endpoints.
+
+`Bbos6NowPlayingArtwork` draws caller-provided original art using
+FIT_CENTER and 6dp inset. The consuming Music app still owns the media
+art loader, original no-art resource and asynchronous stale-key guard.
+
+All changes are presentation-only; preserve the already Q25-verified
+panel backgrounds, title/clock labels, playback actions, transport glyphs,
+trackpad focus zones, seek thumb geometry and app data.
+A release APK and Q25 parity test are mandatory before merging.

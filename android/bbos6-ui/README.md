@@ -176,3 +176,13 @@ glow. Their per-pixel nonlinear alpha gradients and horizontal falloff are
 implemented in `Bbos6NowPlayingSurface.kt` with pure alpha functions
 covered by `Bbos6NowPlayingBevelTest`. This matches the previous native
 MusicPlayerChrome formulas and the verified 2513.png / 2486.png references.
+
+### Compose Now Playing controls, rail and artwork
+
+`Bbos6NowPlayingControlSelection` provides independent focus-only
+mode and transport backgrounds. `Bbos6NowPlayingSeekRail` draws the
+full-range progress rail without taking ownership of the native SeekBar
+thumb or its touch/edit semantics. `Bbos6NowPlayingArtwork` displays
+caller-provided cover painters with original FIT_CENTER scaling. Passive
+Android bridge views are supplied for gradual conversion of existing
+Now Playing layouts. No app-specific media or metadata logic lives here.
