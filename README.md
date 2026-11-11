@@ -1824,3 +1824,7 @@ confirmed single-track deletion, cancellation, grouped deletion,
 read-only/unavailable document rejection, playlist/queue
 reconciliation, and interrupted-Activity completion using
 disposable test files only.
+
+## Optional platform MediaBrowser adapter is Kotlin
+
+`SymfoniumSource.java` has been migrated to `SymfoniumSource.kt` without changing its optional, unconnected role in the current native Music application. All external media operations still use ordinary Android `MediaBrowser` and `MediaController` public APIs, with the existing connection lifecycle, one-shot paged subscriptions, subscription cleanup, controller callbacks and transport requests. Neither source imports a player library, copies another app's catalog nor changes BB Music's Media3 playback engine, SAF permissions, stored library or UI. Java source was deleted. Source-only conversion; compile and Q25 smoke test required.

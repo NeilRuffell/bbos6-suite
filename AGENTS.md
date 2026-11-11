@@ -496,3 +496,7 @@ executor; closing the Activity stops UI callbacks without cancelling
 confirmed persistence changes. Keep Java `Listener`, `Result`
 field ABI until MusicActivity migration. Validate only with
 disposable local test tracks on device.
+
+## Kotlin optional MediaBrowser integration
+
+`SymfoniumSource.kt` is an optional standalone platform `MediaBrowser`/`MediaController` adapter and is not part of BB Music's local Media3 authority or the shared BBOS6 UI. Preserve the public Android API boundary, callback contracts, page options, one-shot subscription release, disconnect cleanup and requests-not-confirmation semantics. Do not add undocumented external-app scraping, access to private data, or UI-specific playback logic here. It is currently not referenced by the active MusicActivity.
