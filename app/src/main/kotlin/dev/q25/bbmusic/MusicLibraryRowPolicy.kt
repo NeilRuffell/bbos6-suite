@@ -103,9 +103,11 @@ internal object MusicLibraryRowPolicy {
             MusicActivityModels.ROW_BROWSER_UNAVAILABLE -> "Access unavailable"
             MusicActivityModels.ROW_BROWSER_FILE -> "Not in music library"
             MusicActivityModels.ROW_SETTING ->
-                if (row.title == "Auto refresh on launch")
+                if (row.title == "Auto refresh on launch") {
                     if (autoRefreshOnLaunch) "On" else "Off"
-                else childCountLabel(row, localSongCount, loading, categoryCounts, playlistCount)
+                } else {
+                    childCountLabel(row, localSongCount, loading, categoryCounts, playlistCount)
+                }
             else -> childCountLabel(row, localSongCount, loading, categoryCounts, playlistCount)
         }
         val duration = if (
