@@ -550,3 +550,19 @@ the original `Locale.ROOT` lowercasing, stable insertion-order grouping,
 case-insensitive group sorting, omission of untagged albums, and album-ID
 fallback. Verify Artists/Albums/Genres grouping and artwork, search,
 keyboard type-to-search and ListView DPAD scroll on Q25 before further porting.
+
+### Kotlin Activity row/page model boundary
+
+`MusicActivityModels.kt` now owns the row-kind integer IDs, immutable
+menu-row factory models, mutable page state, and immutable file-deletion
+snapshot previously nested in `MusicActivity.java`. This is an app-specific
+model, **not** a shared BBOS6 UI helper. Java callers import its nested
+`MenuRow`, `Page` and `DeleteRequest` and still access original row
+fields through `@JvmField`, use original static factories through
+`@JvmStatic`, and use the original two-/three-argument `Page` constructors.
+Empty-state title/message must remain nullable: `setEmptyState(null, null, 0)`
+is how existing pages clear their state. Row IDs and all default sentinels
+(including -1 playlist IDs) are unchanged. The Activity retains all
+navigation, list focus/scroll, deletion authorization and playback methods.
+Run `MusicActivityModelsTest` and verify root entries, playlists, empty
+states, search/Back, Q25 touch and trackpad before merging.
