@@ -203,7 +203,7 @@ object Bbos6ContextMenu {
                 }
                 if (groupIndex + 1 < groups.size) addSeparator(body)
             }
-            scroller.addView(body, ScrollView.LayoutParams(
+            scroller.addView(body, FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
             ))
             panel.addView(scroller, FrameLayout.LayoutParams(
