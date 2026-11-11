@@ -249,7 +249,7 @@ object Bbos6PopupButtonList {
                     gravity = Gravity.CENTER_HORIZONTAL
                 }
                 horizontal.addView(
-                    buttonParent, HorizontalScrollView.LayoutParams(
+                    buttonParent, FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.WRAP_CONTENT,
                         ViewGroup.LayoutParams.WRAP_CONTENT
                     )
@@ -260,7 +260,7 @@ object Bbos6PopupButtonList {
             }
             for (index in actions.indices) addButton(buttonParent, index, buttonWidth)
 
-            scroller.addView(content, ScrollView.LayoutParams(
+            scroller.addView(content, FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
             ))
             panel.addView(scroller, FrameLayout.LayoutParams(
