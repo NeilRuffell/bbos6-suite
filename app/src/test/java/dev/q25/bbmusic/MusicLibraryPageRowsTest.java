@@ -72,6 +72,7 @@ public final class MusicLibraryPageRowsTest {
         assertEquals(MusicActivityModels.ROW_MESSAGE, loading.get(0).kind);
         assertFalse(loading == root);
     }
+
     @Test public void folderBrowserExcludesUnverifiedCandidatesAndRepeatedDocumentUris() {
         Set<String> indexed = new HashSet<>();
         indexed.add("content://music/real.mp3");
@@ -88,7 +89,7 @@ public final class MusicLibraryPageRowsTest {
                 "content://music/sidecar.mp3", indexed, displayed));
     }
 
-        @Test public void browserRowsPreserveLoadingAndEmptyFolderSemantics() {
+    @Test public void browserRowsPreserveLoadingAndEmptyFolderSemantics() {
         MusicActivityModels.Page page =
                 new MusicActivityModels.Page("Folder", new ArrayList<>());
         // A folder still loading has no content rows yet.
