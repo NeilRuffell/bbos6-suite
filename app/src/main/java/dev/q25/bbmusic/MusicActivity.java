@@ -139,16 +139,6 @@ public final class MusicActivity extends ComponentActivity {
     private final ArrayDeque<Page> backStack = new ArrayDeque<>();
     private Page currentPage;
     private OnBackInvokedCallback nestedBackCallback;
-    // Artist/genre representative: alphabetical first album title, with
-    // deterministic tie-breaking for identical album names.
-    private static final Comparator<LocalMusicSource.Song> FIRST_ALBUM =
-            Comparator.comparing((LocalMusicSource.Song song) -> song.album,
-                    String.CASE_INSENSITIVE_ORDER)
-                    .thenComparing(song -> song.album)
-                    .thenComparing(song -> song.artist, String.CASE_INSENSITIVE_ORDER)
-                    .thenComparing(song -> song.artist)
-                    .thenComparing(song -> song.uri.toString());
-
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
@@ -308,7 +298,7 @@ public final class MusicActivity extends ComponentActivity {
         String trackNumber = albumTrack
                 ? (row.song.trackNumber > 0
                 ? Integer.toString(row.song.trackNumber) : "--") : null;
-        String albumKey = hasArtwork ? albumKeyForRow(row) : null;
+        String albumKey = hasArtwork ? MusicLibraryGroupPolicy.albumKeyForRow(row) : null;
         List<Uri> candidates = albumKey == null
                 ? null : albumArtworkSources.get(albumKey);
         boolean albumFallback = row.kind == ROW_GROUP && row.groupCategory == 2;
@@ -373,51 +363,10 @@ public final class MusicActivity extends ComponentActivity {
         }
     }
 
-    private String albumKeyForRow(MenuRow row) {
-        if (row.kind == ROW_SONG) return MusicLibraryGroupPolicy.artworkAlbumKey(row.song);
-        if (row.kind != ROW_GROUP || row.songs == null || row.songs.isEmpty()) {
-            return null;
-        }
-        if (row.groupCategory == 2) {
-            // The album entry always displays its own album art.
-            return MusicLibraryGroupPolicy.artworkAlbumKey(row.songs.get(0));
-        }
-        // Artists and genres take the artwork of their first alphabetical
-        // album. Missing art on that album never selects a later album.
-        return MusicLibraryGroupPolicy.artworkAlbumKey(Collections.min(row.songs, FIRST_ALBUM));
-    }
-
-    /**
-     * Index artwork candidates from the selected-folder scan only.
-     * All songs in an album share one cover. If its first track has no
-     * embedded image, the loader tries the remaining tracks OF THAT ALBUM.
-     */
+    /** Album candidate lookup is app-specific Kotlin policy; the Activity
+     * retains the indexed song snapshot and all asynchronous art binding. */
     private void updateAlbumArtworkSources() {
-        if (localSongs == null || localSongs.isEmpty()) {
-            albumArtworkSources = Collections.emptyMap();
-            return;
-        }
-        Map<String, ArrayList<LocalMusicSource.Song>> byAlbum = new LinkedHashMap<>();
-        for (LocalMusicSource.Song song : localSongs) {
-            String albumKey = MusicLibraryGroupPolicy.artworkAlbumKey(song);
-            byAlbum.computeIfAbsent(albumKey, unused -> new ArrayList<>()).add(song);
-        }
-        Map<String, List<Uri>> indexed = new LinkedHashMap<>();
-        Comparator<LocalMusicSource.Song> trackOrder =
-                Comparator.comparingInt((LocalMusicSource.Song song) ->
-                        song.trackNumber > 0 ? song.trackNumber : Integer.MAX_VALUE)
-                        .thenComparing(song -> song.title, String.CASE_INSENSITIVE_ORDER)
-                        .thenComparing(song -> song.uri.toString());
-        for (Map.Entry<String, ArrayList<LocalMusicSource.Song>> album
-                : byAlbum.entrySet()) {
-            album.getValue().sort(trackOrder);
-            ArrayList<Uri> uris = new ArrayList<>();
-            for (LocalMusicSource.Song song : album.getValue()) {
-                uris.add(song.uri);
-            }
-            indexed.put(album.getKey(), Collections.unmodifiableList(uris));
-        }
-        albumArtworkSources = indexed;
+        albumArtworkSources = MusicLibraryGroupPolicy.indexAlbumArtworkSources(localSongs);
     }
 
     private String childCountLabel(MenuRow row) {
@@ -443,17 +392,8 @@ public final class MusicActivity extends ComponentActivity {
 
     private void updateLocalCategoryCounts() {
         if (localSongs == null) return;
-        localCategoryCounts[0] = localSongs.size();
-        for (int category = 1; category <= 3; category++) {
-            Set<String> keys = new HashSet<>();
-            for (LocalMusicSource.Song song : localSongs) {
-                if (category == 2 && !MusicAlbumTag.present(song.album)) continue;
-                keys.add(MusicLibraryGroupPolicy.groupKey(song, category));
-            }
-            localCategoryCounts[category] = keys.size();
-        }
-        // No notifyDataSetChanged(): a count update must not reset focus
-        // or the scroll position of the user's selected row.
+        MusicLibraryGroupPolicy.fillCategoryCounts(localSongs, localCategoryCounts);
+        // No notifyDataSetChanged(): preserve native focus and scroll position.
         list.refreshVisibleRows();
     }
 
@@ -2142,7 +2082,7 @@ public final class MusicActivity extends ComponentActivity {
             return;
         }
         LocalMusicSource.Song first = album.songs.get(0);
-        String key = albumKeyForRow(album);
+        String key = MusicLibraryGroupPolicy.albumKeyForRow(album);
         List<Uri> candidates = key == null ? null : albumArtworkSources.get(key);
         albumHeader.bind(album.title, first.artist, first.genre,
                 album.songs.size(), key == null ? null : "album:" + key, candidates);
