@@ -352,3 +352,14 @@ artwork cache sharing with `MusicAlbumHeaderView`. No light Android
 default focus highlight may overlay the canonical BBOS6 blue row face.
 Never replace native selection with a blind Compose LazyColumn without
 first reproducing Q25 key and viewport-edge semantics.
+
+### Kotlin embedded-art thumbnail loader
+
+`MusicListArtworkLoader.kt` owns the same authorized SAF-content,
+160px downsample, 12 MiB LRU, generation cancellation, two-thread
+executor and main-thread callback semantics as the retired Java
+implementation. Its `fun interface Listener` remains Java-SAM
+compatible for the Kotlin list and Compose album header. Do not move
+the request binding key or stale-row check out of
+`MusicListView`. All cover lookups remain limited to authorized
+music file URIs passed by the app.

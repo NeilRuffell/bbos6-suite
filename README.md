@@ -1625,3 +1625,15 @@ controller, `MusicNowPlayingView` platform interaction owner, and
 the remaining Java playback/service/SAF/Room classes. This is a
 source-only unverified commit: test build, Q25 item selection,
 touch long press, artwork and library scroll position before merge.
+
+### Kotlin library artwork loader
+
+`MusicListArtworkLoader.java` is now `MusicListArtworkLoader.kt`,
+retaining the same Java-callable `Listener.onLoaded(Bitmap?)` API,
+album-keyed 12 MiB LRU cache, two-thread worker, 160px sampled cover
+bound, SAF `content:` restriction, main-thread callback dispatch and
+generation guard. Duplicate concurrent requests still share a callback
+list; invalidation clears only in-memory covers, and close cancels worker
+tasks. `MusicListView.kt` still protects recycled Compose rows using
+their original binding key. No metadata source, icon mapping, or SAF
+permissions changed. Build and Q25 artwork tests still required.
