@@ -638,3 +638,30 @@ already displays its "Loading folder..." row). Do not move permission
 checks into the UI layer or introduce extra SAF queries. Device-test
 existing folders, nested folders, unindexed audio, empty folders and
 Settings > Music Folders without uninstalling or changing grants.
+
+### Final Kotlin Activity conversion
+
+`MusicActivity.kt` replaces the last production Java controller
+`MusicActivity.java`. It owns the same Android `ComponentActivity`
+lifecycle, Q25 confirm-key long press and physical type-to-search,
+Android SAF folder selection and optional deletion write permission,
+playlist CRUD and SAF M3U8 import/export, media-session Now Playing
+navigation, page/Back-stack restoration and native ListView focus.
+It continues to delegate models, catalog grouping/search, presentation
+rows and folder projection to existing app-owned Kotlin helpers.
+Canonical BBOS6 visual and focus behavior remains in the existing
+`bbos6-shared` Compose helpers and native ListView infrastructure.
+Do not create a parallel Java Activity implementation or change the
+manifest component name, application ID, signing identity, selected-tree
+allowlist, Room version-3 schema, or Media3 queue retention format.
+
+Build with `gradle :bbos6-ui:testDebugUnitTest :app:testDebugUnitTest
+:app:assembleRelease` and **install in place** using the original Q25
+ADB serial; never uninstall/clear user data. Device regression:
+root icons and counts; type-to-search (Shift/ALT, Backspace, selection
+restore); Artist/Album/Genre pages and artwork; folder navigation and
+permission persistence; playlist create/rename/move/delete and M3U8
+import/export; authorized file delete and Cancel; Now Playing seek,
+transport, Stop, metadata links, Back and retained paused playback.
+This all-at-once Activity conversion cannot be considered build- or
+device-verified until the owner reports Gradle and Q25 results.
