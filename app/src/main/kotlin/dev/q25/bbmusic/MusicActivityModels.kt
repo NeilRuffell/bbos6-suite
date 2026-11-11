@@ -149,7 +149,7 @@ internal object MusicActivityModels {
         @JvmField var selected: Int = 0
         @JvmField var selectedTop: Int = 0
 
-        fun setEmptyState(title: String, message: String?, afterRows: Int) {
+        fun setEmptyState(title: String?, message: String?, afterRows: Int) {
             emptyTitle = title
             emptyMessage = message
             emptyAfterRows = afterRows
