@@ -629,14 +629,20 @@ selection, Back stack and deletion/folder-removal flow are unchanged.
 Preserve saved-vs-authorized distinction: revoked roots remain in Folders
 as unavailable and in Settings with an "Access unavailable - " prefix;
 invisible directories are omitted *only* from the Folders root menu,
-not the Settings management list. Render only audio candidates returned by
-the existing worker and associate indexed songs only when `sourceTree`
-equals the opened page's tree; unindexed files remain unplayable entries.
-A folder with no returned entries displays "Empty folder"; a folder whose
-browser callback has not arrived returns no projected rows (the Activity
-already displays its "Loading folder..." row). Do not move permission
-checks into the UI layer or introduce extra SAF queries. Device-test
-existing folders, nested folders, unindexed audio, empty folders and
+not the Settings management list. Render directory rows returned by
+the existing worker, but render file rows only when the document URI is in
+the verified indexed catalog and `sourceTree` equals the opened page's tree.
+Unindexed or unsupported audio candidates are hidden, not shown as
+unplayable duplicates; suppress repeated file rows with the same URI.
+A folder with no visible directories or indexed songs displays "Empty folder"
+once the catalog is available. If the catalog is still loading and the
+worker found audio candidates but no directories, display
+"Reading selected music folders..." instead. A folder whose browser
+callback has not arrived returns no projected rows (the Activity already
+displays its "Loading folder..." row). Newly added files require a library
+refresh before they appear. Do not move permission checks into the UI
+layer or introduce extra SAF queries. Device-test existing folders, nested
+folders, unindexed audio, repeated provider URI rows, empty folders and
 Settings > Music Folders without uninstalling or changing grants.
 
 ### Final Kotlin Activity conversion
