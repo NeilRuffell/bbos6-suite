@@ -7,20 +7,20 @@ presentation. The source of truth is
 uses its pinned `assets/bbos6` Git submodule. Do not copy helper source
 or original numbered assets into applications.
 
-**State at shared `master` commit `8a056bd`:** the module contains
-25 Kotlin source files (Compose surfaces, models, adapters and internal
-navigation helpers) **and 11 Java source files** (legacy Views, dialog
-APIs, models, styling/focus compatibility). It is a Kotlin + Compose /
-native Android interoperability library, **not a Kotlin-only or
-Compose-only library**. The listed Compose entry points exist in source;
-that does not establish full device parity for every integration.
+**Current feature-branch state:** all UI module source and test files are
+now **Kotlin (46 `.kt`, zero `.java`)**. Eleven original Java production
+implementations and four Java tests were translated to Kotlin while
+preserving their JVM-callable methods and native Q25 focus behavior.
+The library is **Kotlin-only at the source level**, but remains an
+intentional **Compose + native Android View hybrid** until every interactive
+Compose alternative passes hardware parity. The newly translated code
+still requires a consumer build and Q25 verification before merging.
 
 ## Pick a component
 
-Import the Compose APIs from `dev.q25.bbos6.ui.compose`. Items marked
-*View host* are for a surrounding native Android View layout. Items
-marked *legacy native* retain their Java implementation and can still be
-called from Kotlin.
+Import the Compose APIs from `dev.q25.bbos6.ui.compose`. Items marked *View host* are for a surrounding native Android View layout.
+Items marked *native Kotlin* use Android View behavior implemented in Kotlin,
+not Java. Their public methods remain callable from Java for existing callers.
 
 | Need | Shared API | What the caller still owns |
 | --- | --- | --- |
@@ -33,13 +33,13 @@ called from Kotlin.
 | Search panel face | `Bbos6SearchChrome()` | Input field, typing, filtering and results |
 | Empty search feedback | `Bbos6SearchEmptyFeedback(message)` or `Bbos6SearchEmptyFeedbackView` | Show/hide and focus |
 | Edit field | `Bbos6TextField(value, onValueChange, ...)` | Validation, input state and focus policy integration |
-| Native editable field | `dev.q25.bbos6.ui.Bbos6TextField` (*legacy native*) | IME options, watchers, hint and input type |
+| Native editable field | `dev.q25.bbos6.ui.Bbos6TextField` (*native Kotlin*) | IME options, watchers, hint and input type |
 | Context action grid | `Bbos6ContextMenuDialog` / `Bbos6ContextMenuGrid` | `Bbos6ContextAction` IDs, icons, actions |
-| Context menu for native Activity | `dev.q25.bbos6.ui.Bbos6ContextMenu` (*legacy API with Compose bridge*) | Action IDs and callbacks |
+| Context menu for native Activity | `dev.q25.bbos6.ui.Bbos6ContextMenu` (*Kotlin API with Compose bridge*) | Action IDs and callbacks |
 | Confirmation / choice buttons | `Bbos6PopupButtonDialog` / `Bbos6PopupButtonPanel` | `Bbos6PopupAction` IDs, confirmation effects |
 | Native dialog / text-entry popup | `dev.q25.bbos6.ui.Bbos6PopupButtonList` (*legacy native API*) | Input validation and callbacks |
 | Read-only Properties | `Bbos6PropertiesDialog` / `Bbos6PropertiesPanel` | `Bbos6PropertyRow` content, metadata lookups |
-| Properties from native Activity | `dev.q25.bbos6.ui.Bbos6PropertiesPopup` (*legacy API with Compose bridge*) | Row content |
+| Properties from native Activity | `dev.q25.bbos6.ui.Bbos6PropertiesPopup` (*Kotlin API with Compose bridge*) | Row content |
 | Metadata label | `Bbos6MetadataPlate(text, textSizeSp, highlighted)` | Track/selection state, activation |
 | Now Playing chrome | `Bbos6NowPlayingSurface(panel)` / `Bbos6NowPlayingSurfaceView` | Media3, state, input and child controls |
 | Now Playing labels | `Bbos6NowPlayingText(...)` | Queue position, clock formatting |
@@ -198,9 +198,10 @@ in its own PR. Do not merge either PR without explicit approval.
 
 ## Known work before calling the bucket complete
 
-1. **Java compatibility classes remain**: 11 in the shared UI module.
-   Some Compose equivalents exist, but Java native focus/input fallbacks
-   are still intentionally used for Q25 parity.
+1. **No Java source remains** in the shared UI module. Some native Android
+   View/dialog behavior is deliberately still in Kotlin for the proven
+   Q25 input, focus and popup flows; only move it fully into Compose when
+   touch/keyboard/trackpad parity is verified.
 2. **Drop-in list/controller absent**: shared Compose media rows are
    presentation primitives; Music's native list/adapter/navigation
    policy is not yet an app-neutral helper.
@@ -209,14 +210,15 @@ in its own PR. Do not merge either PR without explicit approval.
    separately tested shared gitlink, so library changes are not
    automatic across apps.
 4. **Per-component integration tests and examples**: the shared
-   module has Kotlin and Java unit tests, but an independent example
+   module has Kotlin unit tests (including migrated former Java tests),
+   but an independent example
    app and complete Q25 parity suite for every Compose dialog/input
    path are not established by this repository audit.
-5. **Documentation migration**: older README/migration notes contain
-   historical statements like "pure Java" or "unmerged." Treat those
-   as historical checkpoints; this catalogue describes the currently
-   inspected `master` API inventory. Keep it updated with every
-   new/retired exported component.
+5. **Documentation migration**: older migration notes contain historical
+   references to Java and interim device results. This catalogue reflects
+   the current Kotlin-only **feature branch**; it does **not** imply that
+   these changes are in `master` or that Q25 verification has passed.
+   Update the catalogue with each new/retired shared API.
 
 Related: [COMPOSE_MIGRATION.md](COMPOSE_MIGRATION.md),
 [CONTEXT_MENU.md](CONTEXT_MENU.md),
