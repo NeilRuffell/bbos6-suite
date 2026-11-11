@@ -1318,25 +1318,7 @@ public final class MusicActivity extends ComponentActivity {
 
     /** Each configured SAF root appears in Folders, including revoked roots. */
     private void openFolders() {
-        ArrayList<MenuRow> rows = new ArrayList<>();
-        Set<String> authorized = new HashSet<>();
-        for (Uri tree : MusicFolders.selectedTrees(this)) {
-            authorized.add(tree.toString());
-        }
-        List<Uri> saved = MusicFolders.savedTrees(this);
-        for (Uri tree : saved) {
-            String name = MusicFolders.displayName(this, tree);
-            if (!MusicFilePolicy.isVisibleDirectory(name)) continue;
-            if (authorized.contains(tree.toString())) {
-                rows.add(MenuRow.browserRoot(name, tree,
-                        MusicFolders.documentId(tree)));
-            } else {
-                rows.add(MenuRow.browserUnavailable(name));
-            }
-        }
-        if (rows.isEmpty()) rows.add(MenuRow.message(
-                saved.isEmpty() ? "No folders selected" : "No visible folders"));
-        navigateTo(new Page("Folders", rows));
+        navigateTo(new Page("Folders", MusicLibraryPageRows.folderRootRows(this)));
     }
 
     /** Open exactly one directory beneath a persisted, authorized SAF tree. */
@@ -1365,27 +1347,7 @@ public final class MusicActivity extends ComponentActivity {
 
     /** Folder structure is read directly from SAF; playback uses the index. */
     private List<MenuRow> browserRows(Page page) {
-        ArrayList<MenuRow> rows = new ArrayList<>();
-        if (page.browserEntries == null) return rows;
-        Map<String, LocalMusicSource.Song> indexed = new HashMap<>();
-        if (localSongs != null) {
-            for (LocalMusicSource.Song song : localSongs) {
-                if (song.sourceTree.equals(page.browserTree)) {
-                    indexed.put(song.uri.toString(), song);
-                }
-            }
-        }
-        for (MusicFolderBrowser.Entry entry : page.browserEntries) {
-            if (entry.directory) {
-                rows.add(MenuRow.browserDirectory(entry.name,
-                        page.browserTree, entry.documentId));
-            } else {
-                rows.add(MenuRow.browserFile(entry.name,
-                        indexed.get(entry.uri.toString())));
-            }
-        }
-        if (rows.isEmpty()) rows.add(MenuRow.message("Empty folder"));
-        return rows;
+        return MusicLibraryPageRows.browserRows(page, localSongs);
     }
 
     /** Shared ListView stays mounted and retains selection/scroll on updates. */
@@ -1427,22 +1389,7 @@ public final class MusicActivity extends ComponentActivity {
 
     /** Folder management is a nested page; only saved SAF trees are listed. */
     private ArrayList<MenuRow> buildMusicFolderRows() {
-        ArrayList<MenuRow> rows = new ArrayList<>();
-        rows.add(MenuRow.setting("Add folders"));
-        Set<String> authorized = new HashSet<>();
-        for (Uri tree : MusicFolders.selectedTrees(this)) {
-            authorized.add(tree.toString());
-        }
-        for (Uri tree : MusicFolders.savedTrees(this)) {
-            String location = MusicFolders.displayLocation(
-                    MusicFolders.documentId(tree));
-            if (!authorized.contains(tree.toString())) {
-                location = "Access unavailable - " + location;
-            }
-            rows.add(MenuRow.folder(MusicFolders.displayName(this, tree),
-                    location, tree));
-        }
-        return rows;
+        return MusicLibraryPageRows.musicFolderSettingsRows(this);
     }
 
     /** Refresh the existing submenu in place after an add or remove. */
