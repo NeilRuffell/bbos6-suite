@@ -101,7 +101,7 @@ object Bbos6PropertiesPopup {
         }
         for (item in snapshot) addItem(activity, content, item)
         scroll.addView(
-            content, ScrollView.LayoutParams(
+            content, FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
             )
         )
