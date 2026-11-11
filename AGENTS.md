@@ -249,3 +249,14 @@ The only new Now Playing control visuals are shared
 transport action callbacks, native SeekBar interaction and all artwork
 loading. Keep the already Q25-verified 1dp mode/seek separators and
 nonlinear 2D bevel fades intact when changing these subcomponents.
+
+## Transitional Java modal API to Compose bridge
+
+`Bbos6ContextMenu.Builder.show(Activity)` and
+`Bbos6PropertiesPopup.show(Activity, List)` now select shared Compose
+presentations for AndroidX ComponentActivity hosts, while maintaining
+the native implementation as a compatibility fallback for plain Activity.
+Never move caller action IDs, commands, item formatting or storage logic
+into the bridge. Preserve Java Dialog return semantics, Q25 DPAD focus and
+Back/outside-touch behavior. Test both render paths before deleting legacy
+modal renderers.

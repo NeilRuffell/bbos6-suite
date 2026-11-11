@@ -226,3 +226,27 @@ All changes are presentation-only; preserve the already Q25-verified
 panel backgrounds, title/clock labels, playback actions, transport glyphs,
 trackpad focus zones, seek thumb geometry and app data.
 A release APK and Q25 parity test are mandatory before merging.
+
+## Java legacy modal consumers now use shared Compose panels
+
+The canonical `Bbos6ContextMenu.Builder.show(Activity)` and
+`Bbos6PropertiesPopup.show(Activity, List)` retain their existing Java
+signature, input models, validation and native `Dialog` return type.
+When the host is an AndroidX `ComponentActivity`, shared
+`Bbos6ContextMenuComposeBridge` and `Bbos6PropertiesComposeBridge`
+convert legacy immutable models to the existing Compose
+`Bbos6ContextMenuGrid` and `Bbos6PropertiesPanel`.
+
+Native Android `Dialog` still owns window gravity, Back/outside dismissal,
+state and return handle. Existing app action IDs, enabled flags, icons,
+initial selection, callback timing, focus and navigation are preserved by
+the bridge. Context menus remain undimmed and outside-dismissible;
+Properties are undimmed, read-only and outside-touch persistent. Compose
+tree owners are installed from the caller's ComponentActivity. Activities
+without AndroidX lifecycle support continue using the old native dialogs,
+so BB UI and other legacy hosts are not silently switched.
+
+New unit tests assert the Java-to-Compose model mapping for both modals.
+Q25 tests must verify menu keyboard/trackpad highlight and scrolling,
+context long press, action routing/dismissal, properties values/scroll and
+Back. No app-specific business logic is moved.

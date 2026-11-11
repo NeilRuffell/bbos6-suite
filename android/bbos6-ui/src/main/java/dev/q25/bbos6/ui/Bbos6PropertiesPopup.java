@@ -2,6 +2,9 @@ package dev.q25.bbos6.ui;
 
 import android.app.Activity;
 import android.app.Dialog;
+
+import androidx.activity.ComponentActivity;
+import dev.q25.bbos6.ui.compose.Bbos6PropertiesComposeBridge;
 import android.graphics.Color;
 import android.graphics.Insets;
 import android.graphics.Outline;
@@ -107,6 +110,13 @@ public final class Bbos6PropertiesPopup {
         final List<Bbos6PropertiesItem> snapshot = new ArrayList<>(items);
         for (Bbos6PropertiesItem item : snapshot) {
             Objects.requireNonNull(item, "item");
+        }
+
+        // Shared Compose panel for AndroidX lifecycle owners; preserve the
+        // native implementation for platform-only Activity integrations.
+        if (activity instanceof ComponentActivity) {
+            return Bbos6PropertiesComposeBridge.show(
+                    (ComponentActivity) activity, snapshot);
         }
 
         int[] viewport = availableViewport(activity);
