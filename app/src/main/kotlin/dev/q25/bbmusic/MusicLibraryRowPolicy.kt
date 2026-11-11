@@ -112,7 +112,7 @@ internal object MusicLibraryRowPolicy {
         }
         val duration = if (
             row.kind == MusicActivityModels.ROW_SONG && row.song!!.durationMs > 0L
-        ) MediaSeekPolicy.formatTime(row.song.durationMs) else null
+        ) MediaSeekPolicy.formatTime(row.song!!.durationMs) else null
 
         return MusicListView.RowData(
             row.title,
