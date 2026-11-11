@@ -254,3 +254,310 @@ class MusicActivity : ComponentActivity() {
         albumArtworkSources = MusicLibraryGroupPolicy.indexAlbumArtworkSources(localSongs)
     }
 
+    private fun updateLocalCategoryCounts() {
+        val songs = localSongs ?: return
+        MusicLibraryGroupPolicy.fillCategoryCounts(songs, localCategoryCounts)
+        list.refreshVisibleRows()
+    }
+
+    private fun activateSelected() {
+        if (nowPlayingVisible) nowPlaying?.activate()
+        else activate(list.selectedItemPosition)
+    }
+
+    private fun supportsRowLongPress(position: Int): Boolean {
+        if (nowPlayingVisible || position !in visibleRows.indices) return false
+        val row = visibleRows[position]
+        if (!rowPresentation(row).enabled || currentPage.playlistPickerId >= 0L) return false
+        return when (row.kind) {
+            ROW_SONG -> row.song != null
+            ROW_GROUP -> row.groupCategory in 1..3
+            ROW_PLAYLIST, ROW_PLAYLIST_MISSING,
+            ROW_FOLDER, ROW_BROWSER_ROOT, ROW_BROWSER_DIRECTORY -> true
+            else -> false
+        }
+    }
+
+    private fun supportsSelectedLongPress(): Boolean =
+        supportsRowLongPress(list.selectedItemPosition)
+
+    private fun longPressSelected() {
+        longPressRow(list.selectedItemPosition, true)
+    }
+
+    private fun longPressRow(position: Int, hardware: Boolean) {
+        if (!supportsRowLongPress(position)) return
+        if (hardware) list.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+        val row = visibleRows[position]
+        if (row.kind == ROW_SONG && row.song == null) return
+        if (row.kind != ROW_SONG && row.kind != ROW_GROUP &&
+            row.kind != ROW_PLAYLIST && row.kind != ROW_PLAYLIST_MISSING) return
+        showMusicContextMenu(row)
+    }
+
+    private fun showMusicContextMenu(row: MenuRow) {
+        val page = currentPage
+        contextMenuDialog?.dismiss()
+        propertiesRequestSerial++
+        val menu = Bbos6ContextMenu.builder()
+        when (row.kind) {
+            ROW_PLAYLIST -> {
+                menu.addGroup(
+                    Bbos6ContextMenuItem.resource(
+                        "playlist-rename", "Rename playlist", android.R.drawable.ic_menu_edit
+                    ),
+                    Bbos6ContextMenuItem.resource(
+                        "playlist-delete", "Delete playlist", android.R.drawable.ic_menu_delete
+                    )
+                )
+                menu.initiallySelected("playlist-rename")
+            }
+            ROW_PLAYLIST_MISSING -> {
+                menu.addGroup(
+                    Bbos6ContextMenuItem.resource("move-up", "Move up", android.R.drawable.arrow_up_float),
+                    Bbos6ContextMenuItem.resource("move-down", "Move down", android.R.drawable.arrow_down_float),
+                    Bbos6ContextMenuItem.resource(
+                        "remove-from-playlist", "Remove from playlist",
+                        android.R.drawable.ic_menu_close_clear_cancel
+                    )
+                )
+                menu.initiallySelected("remove-from-playlist")
+            }
+            ROW_SONG -> {
+                menu.addGroup(
+                    Bbos6ContextMenuItem.resource(
+                        "properties", "Properties", android.R.drawable.ic_menu_info_details
+                    ),
+                    Bbos6ContextMenuItem.resource(
+                        "add-to-playlist", "Add to playlist", android.R.drawable.ic_menu_add
+                    )
+                )
+                if (row.playlistEntryId >= 0L) {
+                    menu.addGroup(
+                        Bbos6ContextMenuItem.resource(
+                            "move-up", "Move up", android.R.drawable.arrow_up_float
+                        ),
+                        Bbos6ContextMenuItem.resource(
+                            "move-down", "Move down", android.R.drawable.arrow_down_float
+                        ),
+                        Bbos6ContextMenuItem.resource(
+                            "remove-from-playlist", "Remove from playlist",
+                            android.R.drawable.ic_menu_close_clear_cancel
+                        )
+                    )
+                }
+                menu.addGroup(
+                    Bbos6ContextMenuItem.resource(
+                        "delete", "Delete audio file", android.R.drawable.ic_menu_delete
+                    )
+                )
+                menu.initiallySelected("properties")
+            }
+            else -> {
+                menu.addGroup(
+                    Bbos6ContextMenuItem.resource(
+                        "add-to-playlist", "Add to playlist", android.R.drawable.ic_menu_add
+                    ),
+                    Bbos6ContextMenuItem.resource(
+                        "delete", "Delete audio files", android.R.drawable.ic_menu_delete
+                    )
+                )
+                menu.initiallySelected("add-to-playlist")
+            }
+        }
+        contextMenuDialog = menu.onAction { item ->
+            if (isFinishing || isDestroyed || nowPlayingVisible ||
+                currentPage !== page || !visibleRows.contains(row)) return@onAction
+            when (item.id()) {
+                "properties" -> if (row.kind == ROW_SONG) showTrackProperties(row)
+                "add-to-playlist" ->
+                    choosePlaylist(if (row.kind == ROW_SONG) listOf(row.song!!) else row.songs!!)
+                "move-up" -> movePlaylistEntry(row, -1)
+                "move-down" -> movePlaylistEntry(row, 1)
+                "remove-from-playlist" -> removePlaylistEntry(row)
+                "playlist-rename" -> renamePlaylist(row.playlistId)
+                "playlist-delete" -> confirmPlaylistDelete(row.playlistId, row.title)
+                "delete" -> if (row.kind == ROW_SONG || row.kind == ROW_GROUP) confirmDelete(row)
+            }
+        }.show(this)
+        val shownMenu = contextMenuDialog
+        shownMenu?.setOnDismissListener {
+            if (contextMenuDialog === shownMenu) contextMenuDialog = null
+        }
+    }
+
+    private fun confirmDelete(row: MenuRow) {
+        if (deletingTracks || pendingDelete != null) {
+            Toast.makeText(this, "A deletion is already in progress", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val snapshot = localSongs
+        if (loading || snapshot == null) {
+            Toast.makeText(this, "Finish loading the library first", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val authorizedSongs = HashMap<String, LocalMusicSource.Song>()
+        for (song in snapshot) authorizedSongs[song.uri.toString()] = song
+        val selected = LinkedHashMap<String, LocalMusicSource.Song>()
+        if (row.kind == ROW_SONG && row.song != null) {
+            val song = authorizedSongs[row.song.uri.toString()]
+            if (song != null) selected[song.uri.toString()] = song
+        } else if (row.kind == ROW_GROUP && row.songs != null &&
+            row.groupCategory in 1..3) {
+            for (member in row.songs) {
+                val song = authorizedSongs[member.uri.toString()]
+                if (song != null) selected[song.uri.toString()] = song
+            }
+        }
+        if (selected.isEmpty()) {
+            Toast.makeText(this, "No indexed tracks to delete", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val description = if (row.kind == ROW_SONG) {
+            "track \"" + row.title + "\""
+        } else {
+            val type = when (row.groupCategory) {
+                1 -> "artist"
+                2 -> "album"
+                else -> "genre"
+            }
+            type + " \"" + row.title + "\""
+        }
+        val request = DeleteRequest(currentPage, ArrayList(selected.values), description)
+        val confirmation = ++deleteConfirmationSerial
+        if (row.kind == ROW_SONG) {
+            trackDeletion.loadDisplayName(request.songs[0]) { filename ->
+                if (confirmation != deleteConfirmationSerial || isFinishing || isDestroyed ||
+                    nowPlayingVisible || currentPage !== request.page ||
+                    !visibleRows.contains(row)) return@loadDisplayName
+                showDeleteConfirmation(
+                    request,
+                    "Are you sure you want to delete " +
+                        (filename ?: "this track") + " permanently from storage?"
+                )
+            }
+        } else {
+            val count = request.songs.size
+            showDeleteConfirmation(
+                request, "Are you sure you want to delete all $count" +
+                    (if (count == 1) " song" else " songs") +
+                    " from $description permanently from storage?"
+            )
+        }
+    }
+
+    private fun showButtonPopup(popup: Bbos6PopupButtonList.Builder) {
+        buttonPopupDialog?.dismiss()
+        buttonPopupDialog = null
+        val shown = popup.show(this)
+        buttonPopupDialog = shown
+        shown.setOnDismissListener {
+            if (buttonPopupDialog === shown) buttonPopupDialog = null
+        }
+    }
+
+    private fun showButtonConfirmation(
+        title: String, message: String, confirmLabel: String, onConfirm: Runnable
+    ) {
+        showButtonPopup(
+            Bbos6PopupButtonList.builder()
+                .title(title)
+                .message(message)
+                .addButton("cancel", "Cancel")
+                .addButton("confirm", confirmLabel)
+                .initiallySelected("cancel")
+                .onAction { actionId ->
+                    if (actionId == "confirm" && !isFinishing && !isDestroyed) {
+                        onConfirm.run()
+                    }
+                }
+        )
+    }
+
+    private fun showDeleteConfirmation(request: DeleteRequest, message: String) {
+        showButtonConfirmation(
+            "Delete audio files?", message, "Delete", Runnable { authorizeAndDelete(request) }
+        )
+    }
+
+    private fun authorizeAndDelete(request: DeleteRequest) {
+        if (isFinishing || isDestroyed || deletingTracks || nowPlayingVisible ||
+            currentPage !== request.page) return
+        val authorized = MusicFolders.selectedTrees(this)
+        for (song in request.songs) {
+            if (!authorized.contains(song.sourceTree)) {
+                Toast.makeText(this, "Music folder access was removed", Toast.LENGTH_LONG).show()
+                pendingDelete = null
+                return
+            }
+            if (!MusicFolders.hasWriteGrant(this, song.sourceTree)) {
+                pendingDelete = request
+                launchDeleteFolderPicker(song.sourceTree)
+                return
+            }
+        }
+        pendingDelete = null
+        beginDelete(request)
+    }
+
+    private fun launchDeleteFolderPicker(tree: Uri) {
+        val picker = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
+                Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+            putExtra(Intent.EXTRA_LOCAL_ONLY, true)
+        }
+        try {
+            picker.putExtra(
+                DocumentsContract.EXTRA_INITIAL_URI,
+                DocumentsContract.buildDocumentUriUsingTree(
+                    tree, DocumentsContract.getTreeDocumentId(tree)
+                )
+            )
+            Toast.makeText(
+                this, "Select the same music folder to allow deletion", Toast.LENGTH_LONG
+            ).show()
+            @Suppress("DEPRECATION")
+            startActivityForResult(picker, AUTHORIZE_DELETE_FOLDER_REQUEST)
+        } catch (exception: RuntimeException) {
+            pendingDelete = null
+            Log.w(TAG, "Cannot request Android write access", exception)
+            Toast.makeText(this, "Android folder picker unavailable", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun onDeleteFolderAuthorization(resultCode: Int, data: Intent?) {
+        val request = pendingDelete
+        pendingDelete = null
+        val chosen = data?.data
+        if (request == null || resultCode != RESULT_OK || chosen == null) return
+        var needed: Uri? = null
+        for (song in request.songs) {
+            if (!MusicFolders.hasWriteGrant(this, song.sourceTree)) {
+                needed = song.sourceTree
+                break
+            }
+        }
+        if (needed == null || needed != chosen) {
+            Toast.makeText(this, "Select the original music folder", Toast.LENGTH_LONG).show()
+            return
+        }
+        val granted = data.flags and (
+            Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        )
+        if (granted and Intent.FLAG_GRANT_WRITE_URI_PERMISSION == 0) {
+            Toast.makeText(this, "Write access was not granted", Toast.LENGTH_LONG).show()
+            return
+        }
+        try {
+            contentResolver.takePersistableUriPermission(chosen, granted)
+            if (!MusicFolders.hasWriteGrant(this, chosen)) {
+                throw SecurityException("Missing persisted write grant")
+            }
+            authorizeAndDelete(request)
+        } catch (exception: RuntimeException) {
+            Log.w(TAG, "Unable to retain selected folder write access", exception)
+            Toast.makeText(this, "Unable to authorize deletion", Toast.LENGTH_LONG).show()
+        }
+    }
+
