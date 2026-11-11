@@ -65,6 +65,23 @@ etc.) belong to the consuming app, not to the shared renderer.
 The reusable, app-neutral library lives in
 [`android/bbos6-ui/`](android/bbos6-ui/).
 
+**Mandatory first stop for any new BBOS6 application:** read
+[`android/bbos6-ui/COMPONENT_CATALOG.md`](android/bbos6-ui/COMPONENT_CATALOG.md)
+before adding UI, deciding where a helper belongs, or duplicating a
+component. It is the cross-repository "bucket": public Kotlin/Compose
+surfaces, native compatibility APIs, actual dependency setup, app-owned
+responsibilities and known gaps. New reusable behavior must be added at
+this shared module level; never copy `MusicListView` or other app-specific
+code into a second application and call it shared. If generic native
+ListView/trackpad behavior is needed by multiple apps, first design and
+Q25-verify a **new shared** controller API, then update consumers via
+separate pinned-gitlink PRs.
+
+The library is **mixed Kotlin/Compose and native Java** until parity
+is established; the completed Kotlin Music application does not imply
+the legacy shared Java APIs have been removed. Revisit the component
+catalogue when adding, replacing, or retiring any shared API.
+
 - `Bbos6ContextMenu` and `Bbos6PropertiesPopup` implement common visuals.
 - Other shared BBOS6 UI changes belong in this library, rather than a
   page-specific visual fork.
@@ -328,3 +345,26 @@ Read-only `Bbos6PropertiesPanel` applies the same effect when hosted
 directly by a Kotlin caller. The entire light/default Android focus
 highlight is strictly prohibited on BBOS6-managed modal containers.
 Never obscure it with an extra draw layer or disable native leaf editing.
+
+## Kotlin-only shared module — current feature-branch migration
+
+All 11 original Java implementation files and all four Java tests from
+`android/bbos6-ui/src/` have been translated to Kotlin. **Do not add new
+`.java` sources to this module.** Maintain the existing JVM-callable
+factory and dialog methods for existing consumers until callers are
+explicitly migrated. Some Android-native View/input/dialog primitives
+remain intentionally implemented in Kotlin to preserve verified Q25
+focus, keyboard and touch behavior; Kotlin-only does **not** imply
+Compose-only. All new app-neutral visuals belong in shared Compose
+components. Port the native implementation only when the replacement
+passes actual Q25 interaction tests.
+
+A shared Gradle `verifyKotlinOnly` preBuild gate protects this source
+boundary. Before advancing a consumer gitlink, run shared unit tests and
+then `bb-music`'s unit/release build. Install the same release APK in-place
+on Q25 and test context grid long-press, Properties, Cancel/Confirm,
+playlist text-entry/keyboard navigation, ListView tapping/scrolling and
+artwork/navigation. No Java source, compatibility fork or per-screen
+copy may be reintroduced to fix a regression; correct the common Kotlin
+helper instead. This branch and its new focus-sensitive code are unverified
+until a device test is reported.

@@ -1,4 +1,6 @@
-# BBOS6 shared assets and native UI library
+# BBOS6 shared assets and reusable Kotlin/Compose + native Android UI
+
+**Start here for future applications:** [BBOS6 component catalogue](android/bbos6-ui/COMPONENT_CATALOG.md). It lists the actual reusable APIs, Kotlin/Compose examples, Git submodule + Gradle integration, caller responsibilities, and unfinished compatibility work. This is the canonical "component bucket"; do not copy UI code into app repositories.
 
 This is the **canonical shared dependency** of
 [`bb-music`](https://github.com/NeilRuffell/bb-music) and
@@ -8,12 +10,13 @@ This is the **canonical shared dependency** of
 | --- | --- |
 | `icons/<number>.png` | Unmodified original numbered BBOS6 assets |
 | `icon-index.csv` | Only authoritative identification / resource mapping |
-| `android/bbos6-ui/` | Reusable Android Java widgets and tests |
+| `android/bbos6-ui/` | Kotlin-only sources for Compose UI, native Android control compatibility and tests |
+| [`android/bbos6-ui/COMPONENT_CATALOG.md`](android/bbos6-ui/COMPONENT_CATALOG.md) | New-app integration, reusable APIs, focus ownership and migration gaps |
 | `AGENTS.md` | Required AI / contributor workflow |
 | `tools/validate_icon_index.py` | Basic index consistency check |
 
-The shared library contains the BBOS6 context menu, read-only Properties
-popup, and the app-neutral `Bbos6EmptyStateView`. App-specific actions,
+The shared library contains shared Compose surfaces, a BBOS6 context menu, read-only Properties
+popup, and app-neutral empty-state helpers. App-specific actions,
 messages, selection/visibility conditions and data loading never live here.
 
 ### Empty-state presentation

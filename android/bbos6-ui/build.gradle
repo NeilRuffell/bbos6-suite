@@ -36,3 +36,26 @@ dependencies {
     implementation 'androidx.activity:activity:1.10.1'
     testImplementation 'junit:junit:4.13.2'
 }
+
+
+/**
+ * Keep reusable BBOS6 UI source and tests Kotlin-only. This deliberately
+ * checks src/ rather than generated build/ files so Android/Compose tooling
+ * may still generate Java bytecode or stubs as needed.
+ */
+tasks.register('verifyKotlinOnly') {
+    group = 'verification'
+    description = 'Reject maintained Java source in the shared BBOS6 UI module'
+    doLast {
+        def javaFiles = fileTree('src').matching { include '**/*.java' }.files
+        if (!javaFiles.isEmpty()) {
+            throw new GradleException(
+                'Shared BBOS6 UI must not contain Java source: ' +
+                javaFiles.collect { it.path }.join(', ')
+            )
+        }
+    }
+}
+tasks.named('preBuild') {
+    dependsOn tasks.named('verifyKotlinOnly')
+}
