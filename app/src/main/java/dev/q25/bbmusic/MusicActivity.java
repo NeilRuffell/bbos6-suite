@@ -289,105 +289,21 @@ public final class MusicActivity extends ComponentActivity {
     }
 
     private MusicListView.RowData rowPresentation(MenuRow row) {
-        // The BBOS6 album detail page has its cover in the album header.
-        // Its tracks show the tagged track number instead of repeated art.
-        boolean albumTrack = currentPage.albumGroup != null
-                && row.kind == ROW_SONG;
-        boolean hasArtwork = !albumTrack
-                && (row.kind == ROW_GROUP || row.kind == ROW_SONG);
-        String trackNumber = albumTrack
-                ? (row.song.trackNumber > 0
-                ? Integer.toString(row.song.trackNumber) : "--") : null;
-        String albumKey = hasArtwork ? MusicLibraryGroupPolicy.albumKeyForRow(row) : null;
-        List<Uri> candidates = albumKey == null
-                ? null : albumArtworkSources.get(albumKey);
-        boolean albumFallback = row.kind == ROW_GROUP && row.groupCategory == 2;
-        // BBOS6 Songs: the artist occupies the second line and the tagged
-        // duration sits at the far right of the title line. Existing menu
-        // counts and folder locations keep their original subtitle policies.
-        String subtitle = row.kind == ROW_SONG ? row.song.artist
-                : row.kind == ROW_PLAYLIST
-                        ? MusicLibraryGroupPolicy.countLabel(row.groupCategory, "Song", "Songs")
-                : row.kind == ROW_PLAYLIST_MISSING ? "Track unavailable"
-                : row.kind == ROW_FOLDER ? row.folderLocation
-                : row.kind == ROW_BROWSER_ROOT
-                        ? MusicFolders.displayLocation(row.folderLocation)
-                : row.kind == ROW_BROWSER_DIRECTORY ? "Folder"
-                : row.kind == ROW_BROWSER_UNAVAILABLE ? "Access unavailable"
-                : row.kind == ROW_BROWSER_FILE ? "Not in music library"
-                : row.kind == ROW_SETTING && "Auto refresh on launch".equals(row.title)
-                        ? (autoRefreshEnabled() ? "On" : "Off")
-                        : childCountLabel(row);
-        String duration = row.kind == ROW_SONG && row.song.durationMs > 0L
-                ? MediaSeekPolicy.formatTime(row.song.durationMs) : null;
-        return new MusicListView.RowData(
-                row.title, subtitle,
-                row.kind != ROW_MESSAGE && row.kind != ROW_SETTINGS_HEADER
-                        && row.kind != ROW_BROWSER_FILE
-                        && row.kind != ROW_BROWSER_UNAVAILABLE,
-                hasArtwork, albumFallback,
-                menuIconForRow(row), trackNumber, duration,
-                albumKey == null ? null : "album:" + albumKey,
-                candidates, row.kind == ROW_FOLDER,
-                row.kind == ROW_SETTINGS_HEADER);
-    }
-
-    /**
-     * Original BBOS6 menu icons identified from supplied screenshots.
-     * The source PNGs remain in /assets/bbos6/icons/ and are reused as-is.
-     * Settings uses the verified BBOS6 Options wrench icon (3412.png).
-     */
-    private static int menuIconForRow(MenuRow row) {
-        if (row.kind == ROW_NOW_PLAYING) {
-            return R.drawable.bbos6_menu_now_playing; // 341.png
-        }
-        // All configured folder roots and recursively browsed directories
-        // share the same verified original BBOS6 112.png icon, including
-        // unavailable roots and removable Settings > Music Folders entries.
-        if (row.kind == ROW_FOLDER || row.kind == ROW_BROWSER_ROOT
-                || row.kind == ROW_BROWSER_DIRECTORY
-                || row.kind == ROW_BROWSER_UNAVAILABLE) {
-            return R.drawable.bbos6_menu_folders; // 112.png
-        }
-        if (row.kind != ROW_MENU) return 0;
-        switch (row.menuIndex) {
-            case 0: return R.drawable.bbos6_menu_all_songs;      // 350.png
-            case 1: return R.drawable.bbos6_menu_artists;        // 345.png
-            case 2: return R.drawable.bbos6_menu_albums;         // 351.png
-            case 3: return R.drawable.bbos6_menu_genres;         // 348.png
-            case 4: return R.drawable.bbos6_menu_playlists;      // 337.png
-            case 5: return R.drawable.bbos6_menu_shuffle_songs; // 339.png
-            case 6: return R.drawable.bbos6_menu_settings;      // 3412.png
-            case MENU_FOLDERS: return R.drawable.bbos6_menu_folders; // 112.png
-            default: return 0;
-        }
+        // Preserve the native ListView source and existing live Activity state.
+        // Shared BBOS6 Compose rows remain the only visual implementation.
+        return MusicLibraryRowPolicy.presentation(
+                row, currentPage.albumGroup != null, albumArtworkSources,
+                localSongs == null ? null : localSongs.size(),
+                loading, localCategoryCounts, playlistCount,
+                row.kind == ROW_SETTING
+                        && "Auto refresh on launch".equals(row.title)
+                        && autoRefreshEnabled());
     }
 
     /** Album candidate lookup is app-specific Kotlin policy; the Activity
      * retains the indexed song snapshot and all asynchronous art binding. */
     private void updateAlbumArtworkSources() {
         albumArtworkSources = MusicLibraryGroupPolicy.indexAlbumArtworkSources(localSongs);
-    }
-
-    private String childCountLabel(MenuRow row) {
-        if (row.kind == ROW_GROUP) {
-            return MusicLibraryGroupPolicy.countLabel(row.songs.size(), "Song", "Songs");
-        }
-        if (row.kind != ROW_MENU) return null;
-        if (row.menuIndex < 4) {
-            if (localSongs == null) return loading ? "Loading..." : "Unavailable";
-            int count = row.menuIndex == 0
-                    ? localSongs.size() : localCategoryCounts[row.menuIndex];
-            return row.menuIndex == 0
-                    ? MusicLibraryGroupPolicy.countLabel(count, "Song", "Songs")
-                    : MusicLibraryGroupPolicy.countLabel(count, "Item", "Items");
-        }
-        if (row.menuIndex == 4) {
-            return MusicLibraryGroupPolicy.countLabel(playlistCount, "Item", "Items");
-        }
-        if (row.menuIndex == MENU_FOLDERS) return null;
-        // Shuffle Songs and Settings have no child-count subtitle.
-        return null;
     }
 
     private void updateLocalCategoryCounts() {
