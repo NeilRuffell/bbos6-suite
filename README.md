@@ -1711,3 +1711,7 @@ MusicFolders.java is now MusicFolders.kt, with @JvmStatic preserving the Java ca
 ### Kotlin Media3 playback client
 
 MusicPlaybackClient.java is now MusicPlaybackClient.kt. It preserves Java calls, Media3 session connection, a bounded single retry, pending queue precedence, content URI validation, paused queue restoration, native Play/Pause/Stop, shuffle/repeat, backwards deleted-track removal, retained queue filtering, and disconnect ownership. MusicPlaybackRetention persistence and the Media3 service are unchanged. Build and Q25 test before merge.
+
+### Kotlin retained playback state (unchanged queue_v1)
+
+MusicPlaybackRetention.java is now MusicPlaybackRetention.kt. Preference file `bbmusic_playback` and all existing `queue_v1`, index, position_ms, shuffle, repeat, URI/title/artist/album JSON fields retain exactly the same names. Java static APIs remain via `@JvmStatic`; `Saved` retains its Java-readable fields using `@JvmField`. Only exact live authorized SAF tree documents restore, and if the saved current track no longer qualifies, restore clears the queue rather than switching songs. Durable stop/clear, position checkpoint, and deleted-queue index recovery are retained. No Room, signing, or saved-data migration. Build plus Q25 pause/relaunch/Stop/delete test required.

@@ -413,3 +413,7 @@ MusicFolders.kt owns the same persisted SAF allowlist and all permission checks.
 ### Kotlin Media3 client
 
 MusicPlaybackClient.kt owns Media3 UI-side session connection and still uses the native MediaController. Preserve one bounded retry, current user-selected pending queue over old restoration, SAF content URI restriction, Stop clearing system playback resumption without discarding the in-app item, and deletion reconciliation. Keep the Kotlin class Java-callable while MusicActivity remains Java. Do not change persistent saved queue formats.
+
+### Retained playback Kotlin port
+
+`MusicPlaybackRetention.kt` retains its `bbmusic_playback`/`queue_v1` serialized JSON schema and exact SAF-tree authorization, including no automatic switch when the current track is no longer authorized. Keep `@JvmStatic` and `Saved` field JVM ABI for the Java service and Kotlin client. Never rewrite stored queues, drop metadata, change Stop-clear semantics, or loosen `DocumentsContract` validation during Kotlin/Compose migrations. Verify pause/relaunch, background Media3, deliberate Stop, deletion of queued tracks, and permission revocation on Q25.
