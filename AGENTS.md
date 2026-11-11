@@ -500,3 +500,7 @@ disposable local test tracks on device.
 ## Kotlin optional MediaBrowser integration
 
 `SymfoniumSource.kt` is an optional standalone platform `MediaBrowser`/`MediaController` adapter and is not part of BB Music's local Media3 authority or the shared BBOS6 UI. Preserve the public Android API boundary, callback contracts, page options, one-shot subscription release, disconnect cleanup and requests-not-confirmation semantics. Do not add undocumented external-app scraping, access to private data, or UI-specific playback logic here. It is currently not referenced by the active MusicActivity.
+
+## Kotlin native Media3 service
+
+`MusicPlaybackService.kt` is the only MediaLibraryService (same manifest identity). Preserve the `MediaLibrarySession.Callback` media-browse and `onPlaybackResumption` contracts, the saved authorized queue, single-item metadata preview for system resumption, full queue only on actual play, five-second position checkpoint, Stop-IDLE clearing persisted state, Home background playback versus Recents removal pause, and Activity-independent deletion pruning. Retain @JvmStatic pruneDeletedDocuments for remaining Java callers. Do not change service exportability, signing, saved state or session ID. Device-test Bluetooth/system media buttons and resumption before merge.
