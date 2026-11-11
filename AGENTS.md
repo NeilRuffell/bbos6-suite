@@ -518,3 +518,16 @@ through `const val`. Existing app and shared Compose Now Playing surfaces
 retain their ownership boundaries; do not add a second shared bevel renderer.
 Before merging, compile both app variants, check native seek/thumb/icon faces
 and separators on the Q25, and confirm Java `MusicActivity` interoperability.
+
+### Kotlin Room database boundary
+
+`MusicLibraryDatabase.kt` retains the exact version-3 SQLite schema, file
+`bbmusic_library.db`, entity/column/index/foreign-key names, SQL statements,
+and original non-destructive v1→v2 and v2→v3 migrations. Entity, projection
+and playlist-row fields use `@JvmField` so remaining Java app code keeps
+direct field access, and `open(Context)` remains Java-callable via
+`@JvmStatic`. The Kotlin Room compiler is run with `kapt`; do not enable
+destructive fallback migration or change the existing database filename.
+Verify an *upgrade in place* on a device with a populated catalog and real
+playlists, followed by cold restart, incremental refresh, full rescan,
+playlist ordering, and playback retention. No uninstall/data clearing.
