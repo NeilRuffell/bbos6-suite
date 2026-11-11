@@ -1759,3 +1759,22 @@ Only gestures beginning inside the visible Remove button remain
 Compose-owned. Disabled rows have no click listener. Current shared
 submodule pin: `31d8d025d7218f098d2928b44e7655fcc144542c`. No focus/color/playback changes.
 Build and Q25 test required.
+
+## Kotlin-native player chrome compatibility cleanup
+
+Q25 owner verified native list touch activation and Properties focus
+corrections at Music `0dbbabf` / shared `31d8d02`.
+Reference audit across all Music main-source Java/Kotlin files and
+existing app tests found no uses of
+`HalfRadialGradientDrawable.java` or `MediaChromeDivider.java`;
+both obsolete Java-only paint helpers were deleted, rather than
+maintaining unnecessary Kotlin replacements.
+
+`MusicSelectionGradient.java` was still used by
+`MusicPlayerChrome.java` to draw the old native seek thumb. It is
+now `MusicSelectionGradient.kt`, retaining its exact 11-stop light
+and 3-stop dark colors, native TOP_BOTTOM orientation, square corners
+and Java-callable static factory methods. Compose selection faces
+continue to use their canonical `bbos6-shared` components.
+No asset index, screen, playback, focus or storage behavior changed.
+The next Gradle build and Q25 Now Playing test must confirm parity.

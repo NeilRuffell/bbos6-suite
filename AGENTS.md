@@ -455,3 +455,14 @@ pressed state. Keep Compose pointer routing only for explicit
 trailing Remove. The shared helper owns generic gesture policy;
 Music owns data and action callbacks. No custom timeout, focus overlay
 or per-screen handler allowed.
+
+## Native player compatibility classes
+
+`HalfRadialGradientDrawable` and `MediaChromeDivider` were verified
+unused and deleted. Do not resurrect legacy unused rendering code
+while migrating Java to Kotlin. The remaining
+`MusicSelectionGradient.kt` is a Kotlin compatibility adapter used by
+native `MusicPlayerChrome`; its exact blue gradient stops and
+`@JvmStatic` factories preserve the established Android drawable
+contract until the native player chrome is fully retired in favor of
+canonical shared Compose components. No new maintained palette copies.
