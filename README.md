@@ -1832,3 +1832,7 @@ disposable test files only.
 ## Media3 Kotlin playback service
 
 `MusicPlaybackService.java` has been converted to `MusicPlaybackService.kt` while retaining its manifest class name, ExoPlayer single-authority service, `MediaLibrarySession`, Android-system-media-button queue resumption, cached `bbmusic-recent-queue`, approved SAF URI restoration, single-item metadata-only notification preview, exact 5-second checkpoint, deliberate Stop clearing playback resumption, Recents versus Home differences, noisy-audio detection, background confirmed deletion pruning and saved-state format. The static Java-facing `pruneDeletedDocuments(Context, Set<String>)` remains available via `@JvmStatic`. Media3 service callback signatures match the published Kotlin callback definitions. No Room/SAF/persistence schema or BBOS6 assets changed. Source-committed only, not yet compiled or Q25-tested; verify Android system controls, resumption, Stop and cleanup before merge.
+
+### Kotlin service override compatibility (MediaLibraryService)
+
+`MusicPlaybackService.onTaskRemoved` must override `onTaskRemoved(rootIntent: Intent?)`: Android's `Service` Java API exposes a platform-nullable Intent to the Kotlin compiler. Its implementation does not read the Intent; nullable override preserves Recents-dismiss pause/checkpoint and stopSelf behavior. A non-null `Intent` parameter fails debug and release Kotlin compilation with `overrides nothing`. No playback state, data, or service identity changes.

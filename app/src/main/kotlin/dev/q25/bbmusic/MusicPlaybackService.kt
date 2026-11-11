@@ -231,7 +231,7 @@ class MusicPlaybackService : MediaLibraryService() {
         return session
     }
 
-    override fun onTaskRemoved(rootIntent: Intent) {
+    override fun onTaskRemoved(rootIntent: Intent?) {
         val current = player
         if (current?.currentMediaItem != null) {
             current.pause()
