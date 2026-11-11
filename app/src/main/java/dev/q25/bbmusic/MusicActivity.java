@@ -313,12 +313,6 @@ public final class MusicActivity extends ComponentActivity {
         }
     }
 
-    private static final class Group {
-        final String label;
-        final ArrayList<LocalMusicSource.Song> songs = new ArrayList<>();
-        Group(String label) { this.label = label; }
-    }
-
     // Artist/genre representative: alphabetical first album title, with
     // deterministic tie-breaking for identical album names.
     private static final Comparator<LocalMusicSource.Song> FIRST_ALBUM =
@@ -497,7 +491,7 @@ public final class MusicActivity extends ComponentActivity {
         // counts and folder locations keep their original subtitle policies.
         String subtitle = row.kind == ROW_SONG ? row.song.artist
                 : row.kind == ROW_PLAYLIST
-                        ? countLabel(row.groupCategory, "Song", "Songs")
+                        ? MusicLibraryGroupPolicy.countLabel(row.groupCategory, "Song", "Songs")
                 : row.kind == ROW_PLAYLIST_MISSING ? "Track unavailable"
                 : row.kind == ROW_FOLDER ? row.folderLocation
                 : row.kind == ROW_BROWSER_ROOT
@@ -554,26 +548,17 @@ public final class MusicActivity extends ComponentActivity {
     }
 
     private String albumKeyForRow(MenuRow row) {
-        if (row.kind == ROW_SONG) return artworkAlbumKey(row.song);
+        if (row.kind == ROW_SONG) return MusicLibraryGroupPolicy.artworkAlbumKey(row.song);
         if (row.kind != ROW_GROUP || row.songs == null || row.songs.isEmpty()) {
             return null;
         }
         if (row.groupCategory == 2) {
             // The album entry always displays its own album art.
-            return artworkAlbumKey(row.songs.get(0));
+            return MusicLibraryGroupPolicy.artworkAlbumKey(row.songs.get(0));
         }
         // Artists and genres take the artwork of their first alphabetical
         // album. Missing art on that album never selects a later album.
-        return artworkAlbumKey(Collections.min(row.songs, FIRST_ALBUM));
-    }
-
-    private static String artworkAlbumKey(LocalMusicSource.Song song) {
-        // No album tag means no verified album association. Such tracks must
-        // not borrow a different untagged song's embedded image.
-        if (!MusicAlbumTag.present(song.album)) {
-            return "untagged:" + song.uri;
-        }
-        return groupKey(song, 2);
+        return MusicLibraryGroupPolicy.artworkAlbumKey(Collections.min(row.songs, FIRST_ALBUM));
     }
 
     /**
@@ -588,7 +573,7 @@ public final class MusicActivity extends ComponentActivity {
         }
         Map<String, ArrayList<LocalMusicSource.Song>> byAlbum = new LinkedHashMap<>();
         for (LocalMusicSource.Song song : localSongs) {
-            String albumKey = artworkAlbumKey(song);
+            String albumKey = MusicLibraryGroupPolicy.artworkAlbumKey(song);
             byAlbum.computeIfAbsent(albumKey, unused -> new ArrayList<>()).add(song);
         }
         Map<String, List<Uri>> indexed = new LinkedHashMap<>();
@@ -611,7 +596,7 @@ public final class MusicActivity extends ComponentActivity {
 
     private String childCountLabel(MenuRow row) {
         if (row.kind == ROW_GROUP) {
-            return countLabel(row.songs.size(), "Song", "Songs");
+            return MusicLibraryGroupPolicy.countLabel(row.songs.size(), "Song", "Songs");
         }
         if (row.kind != ROW_MENU) return null;
         if (row.menuIndex < 4) {
@@ -619,19 +604,15 @@ public final class MusicActivity extends ComponentActivity {
             int count = row.menuIndex == 0
                     ? localSongs.size() : localCategoryCounts[row.menuIndex];
             return row.menuIndex == 0
-                    ? countLabel(count, "Song", "Songs")
-                    : countLabel(count, "Item", "Items");
+                    ? MusicLibraryGroupPolicy.countLabel(count, "Song", "Songs")
+                    : MusicLibraryGroupPolicy.countLabel(count, "Item", "Items");
         }
         if (row.menuIndex == 4) {
-            return countLabel(playlistCount, "Item", "Items");
+            return MusicLibraryGroupPolicy.countLabel(playlistCount, "Item", "Items");
         }
         if (row.menuIndex == MENU_FOLDERS) return null;
         // Shuffle Songs and Settings have no child-count subtitle.
         return null;
-    }
-
-    private static String countLabel(int count, String singular, String plural) {
-        return count + " " + (count == 1 ? singular : plural);
     }
 
     private void updateLocalCategoryCounts() {
@@ -641,7 +622,7 @@ public final class MusicActivity extends ComponentActivity {
             Set<String> keys = new HashSet<>();
             for (LocalMusicSource.Song song : localSongs) {
                 if (category == 2 && !MusicAlbumTag.present(song.album)) continue;
-                keys.add(groupKey(song, category));
+                keys.add(MusicLibraryGroupPolicy.groupKey(song, category));
             }
             localCategoryCounts[category] = keys.size();
         }
@@ -1388,7 +1369,7 @@ public final class MusicActivity extends ComponentActivity {
             if (error != null || !Boolean.TRUE.equals(added)) {
                 playlistFailure(error);
             } else {
-                playlistNotice(countLabel(songs.size(), "song", "songs")
+                playlistNotice(MusicLibraryGroupPolicy.countLabel(songs.size(), "song", "songs")
                         + " added to playlist");
                 playlistChanged();
             }
@@ -2297,40 +2278,16 @@ public final class MusicActivity extends ComponentActivity {
     }
 
     private List<MenuRow> groupedRows(int category) {
-        // All grouping is read-only; no secondary music scanner is required.
-        Map<String, Group> groups = new LinkedHashMap<>();
-        for (LocalMusicSource.Song song : localSongs) {
-            // A missing album tag does not define a browsable album.
-            if (category == 2 && !MusicAlbumTag.present(song.album)) continue;
-            String label = category == 1 ? song.artist
-                    : category == 2 ? song.album : song.genre;
-            String key = groupKey(song, category);
-            Group group = groups.get(key);
-            if (group == null) {
-                group = new Group(label);
-                groups.put(key, group);
-            }
-            group.songs.add(song);
-        }
-
-        ArrayList<Group> sorted = new ArrayList<>(groups.values());
-        sorted.sort(Comparator.comparing(group -> group.label,
-                String.CASE_INSENSITIVE_ORDER));
-        ArrayList<MenuRow> rows = new ArrayList<>(sorted.size());
-        for (Group group : sorted) {
+        // Grouping keys, insertion order and alphabetical sorting are app-owned
+        // Kotlin policies; row creation/navigation remains in this Activity.
+        List<MusicLibraryGroupPolicy.Group> groups =
+                MusicLibraryGroupPolicy.groups(localSongs, category);
+        ArrayList<MenuRow> rows = new ArrayList<>(groups.size());
+        for (MusicLibraryGroupPolicy.Group group : groups) {
             rows.add(MenuRow.group(group.label, category, group.songs));
         }
         if (rows.isEmpty()) rows.add(MenuRow.message("No local music found"));
         return rows;
-    }
-
-    private static String groupKey(LocalMusicSource.Song song, int category) {
-        if (category == 1) return song.artist.toLowerCase(Locale.ROOT);
-        if (category == 2) {
-            return song.albumId >= 0 ? "album:" + song.albumId
-                    : "album:" + song.album + ":" + song.artist;
-        }
-        return song.genre.toLowerCase(Locale.ROOT);
     }
 
     private void navigateTo(Page next) {
@@ -2464,7 +2421,7 @@ public final class MusicActivity extends ComponentActivity {
                 // catalog, not merely the seven menu item labels.
                 if (localSongs != null) {
                     for (LocalMusicSource.Song song : localSongs) {
-                        if (songMatches(song, term)) matches.add(MenuRow.song(song));
+                        if (MusicLibraryGroupPolicy.songMatches(song, term)) matches.add(MenuRow.song(song));
                     }
                 }
                 if (localSongs == null && loading) {
@@ -2476,7 +2433,7 @@ public final class MusicActivity extends ComponentActivity {
                 for (MenuRow row : currentPage.rows) {
                     if (row.kind == ROW_MESSAGE || row.kind == ROW_SETTINGS_HEADER) continue;
                     if (row.title.toLowerCase(Locale.ROOT).contains(term)
-                            || (row.kind == ROW_SONG && songMatches(row.song, term))) {
+                            || (row.kind == ROW_SONG && MusicLibraryGroupPolicy.songMatches(row.song, term))) {
                         matches.add(row);
                     }
                 }
@@ -2488,13 +2445,6 @@ public final class MusicActivity extends ComponentActivity {
         list.notifyRowsChanged();
         list.setSelectionFromTop(0, 0);
         list.refreshSelection();
-    }
-
-    private static boolean songMatches(LocalMusicSource.Song song, String term) {
-        return song.title.toLowerCase(Locale.ROOT).contains(term)
-                || song.artist.toLowerCase(Locale.ROOT).contains(term)
-                || song.album.toLowerCase(Locale.ROOT).contains(term)
-                || song.genre.toLowerCase(Locale.ROOT).contains(term);
     }
 
     /**
