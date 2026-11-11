@@ -296,15 +296,28 @@ appearance only; callers retain search filtering, visibility and focus.
 
 ## Compose media row native-list touch ownership
 
-The canonical `Bbos6MediaListRow` is paint-only except for its optional
-trailing action. In an Android ListView, its `AndroidComposeView` may
-consume ACTION_DOWN even when the wrapper is set non-clickable. Always
-host it using shared `Bbos6MediaListRowTouchHost`, which passes ordinary
-row gestures back to native ListView and forwards only a touch *starting*
-within the real trailing-action hitbox to Compose. The hitbox and painted
-button MUST share `Bbos6MediaListTouchGeometry` dimensions. Never fix
-a list tap by moving action/selection handlers onto a particular screen.
-DPAD/trackpad, selection, long press and scrolling remain list-owned.
+The canonical `Bbos6MediaListRow` is paint-only except for its
+optional trailing action. In an Android ListView, the inner
+`AndroidComposeView` can consume touch gestures without activating
+native rows. Simply returning `false` from
+`Bbos6MediaListRowTouchHost.dispatchTouchEvent(ACTION_DOWN)` was
+**not sufficient** on Q25: scrolling worked but taps did not.
+
+The shared `Bbos6MediaListRowTouchHost` now calls Android's standard
+`View.onTouchEvent` for ordinary native row gestures, with Java-compatible
+`setNativeRowActions(Runnable?, BooleanSupplier?)` bound on *every*
+adapter recycle. The owning list uses its existing `performItemClick`
+and long-press action and may intercept MOVE for scrolling, issuing
+ACTION_CANCEL to prevent a tap on a drag. Native `View` owns touch
+slop and long-press timing; do **not** invent a gesture timeout.
+Only gestures beginning on the actual optional trailing action are
+forwarded to Compose. Keep `Bbos6MediaListTouchGeometry` as the one
+source of the button's painted and interactive dimensions.
+
+Never fix list tapping per screen. The shared host owns routing;
+the list owns data, selection, click/long-click callbacks, scrolling,
+trackpad and DPAD. Test scroll versus tap, tap after fling, long press,
+optional Remove without duplicate row activation and accessibility.
 
 ## Compose modal root focus policy
 

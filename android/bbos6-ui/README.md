@@ -281,3 +281,25 @@ state, UI focusability, or native EditText leaf behavior.
 
 No Android platform focus overlays or compensating layers permitted.
 Build and Q25 tap/long-press/Properties parity tests are required.
+
+## Q25 second-stage native list tap fix (Android View click lifecycle)
+
+The first touch-pass-through helper suppressed Compose's ordinary-row
+ACTION_DOWN, but on Q25 native ListView still scrolled without invoking
+its row click. Returning `false` was not a substitute for an actual
+native view click target. The corrected shared
+`Bbos6MediaListRowTouchHost` handles normal row gestures using
+Android's built-in `View.onTouchEvent` and exposes
+`setNativeRowActions(Runnable?, BooleanSupplier?)`, rebound for each
+adapter row. This dispatches native click and long-click events while
+allowing the parent ListView to intercept a scroll and cancel the
+row's in-progress tap. No custom timers or gesture detectors.
+
+The optional trailing Remove button is still owned by Compose, and
+continues to use the shared action hitbox. Recycled/disabled rows
+must drop native action callbacks. The actual list owner invokes
+`performItemClick` for semantic accessibility/click compatibility
+and obtains current position at activation time rather than trusting
+the recycled bind index. Keyboard/trackpad and the already fixed
+Properties focus suppression are unchanged. Build + Q25 tests remain
+required before merge.
