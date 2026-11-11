@@ -15,7 +15,7 @@ object Bbos6FocusPolicy {
     }
 
     private fun applyTo(container: ViewGroup) {
-        container.defaultFocusHighlightEnabled = false
+        container.setDefaultFocusHighlightEnabled(false)
         for (i in 0 until container.childCount) {
             (container.getChildAt(i) as? ViewGroup)?.let(::applyTo)
         }
