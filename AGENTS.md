@@ -302,3 +302,12 @@ playlist validation or input methods into UI code.
 
 Only `Bbos6SearchEmptyFeedbackView` owns search no-results visuals;
 the existing Activity decides visibility and search/filter rules.
+
+### Compose-hosted playlist native field
+
+For AndroidX MusicActivity all Bbos6PopupButtonList layouts use the shared
+Compose popup panel; text-input mode embeds the original shared native
+Bbos6TextField using AndroidView. Application callback and playlist
+validation stay in Music. Keep native EditText keyboard/IME/cursor
+semantics and input/button focus crossings; do not replace this with
+independent Compose text-entry state or a Music-only popup implementation.

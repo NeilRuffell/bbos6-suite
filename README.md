@@ -1532,3 +1532,25 @@ Pinned shared commit: `0d3eeb7097d50c8cedc6ef6b57567a8a17dc9645`.
 Unmerged until Gradle build and Q25 checks: button-only modal icon/title,
 action selection via keyboard and touch, disabled actions, Back,
 New/Rename Playlist native input, and empty searches on every library page.
+
+## Compose-hosted native playlist text entry
+
+The shared `Bbos6PopupButtonList.Builder.show(Activity)` now uses
+the canonical Compose popup panel for text-input dialogs in
+`MusicActivity` as well as button-only prompts. Its text field is
+the *same* canonical native `Bbos6TextField` (Android `EditText`)
+embedded via Compose `AndroidView`, not a new Compose text editor.
+The shared panel owns title, visual frame, action button sizing and
+selected gradient; the native field retains select-all-on-focus, hardware
+keyboard, clipboard, cursor, 30dp control height and IME behavior.
+
+Input focus DPAD_DOWN enters the Cancel/Save button row; button-focus
+DPAD_UP returns to the native field. The popup Java action API still
+delivers a snapshot of current native text when Save is activated.
+Music's `askPlaylistName()`, validation, Room callbacks, and playlist
+writes are unchanged. Non-AndroidX callers keep the prior native popup.
+
+Pin: `51279dabc4aa94ea7212f058c975eae3d8dbc0b6`.
+Not yet built/tested on Q25: verify Create/Rename Playlist, entering and
+deleting text, physical keyboard, left/right cursor movement, select-all,
+DPAD input/button roundtrip, touch Cancel/Save and Back before merging.
