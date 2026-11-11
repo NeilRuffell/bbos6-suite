@@ -35,6 +35,12 @@ import dev.q25.bbos6.ui.compose.Bbos6EmptyStateComposeView;
 import dev.q25.bbos6.ui.compose.Bbos6SearchEmptyFeedbackView;
 import dev.q25.bbos6.ui.Bbos6PropertiesPopup;
 
+import dev.q25.bbmusic.MusicActivityModels.MenuRow;
+import dev.q25.bbmusic.MusicActivityModels.Page;
+import dev.q25.bbmusic.MusicActivityModels.DeleteRequest;
+
+import static dev.q25.bbmusic.MusicActivityModels.*;
+
 import androidx.activity.ComponentActivity;
 import androidx.media3.common.MediaItem;
 import androidx.media3.session.MediaController;
@@ -72,21 +78,6 @@ public final class MusicActivity extends ComponentActivity {
     private static final int EXPORT_PLAYLIST_REQUEST = 6105;
     private static final String MUSIC_SETTINGS_PREFS = "bbmusic_settings";
     private static final String AUTO_REFRESH_PREF = "auto_refresh_on_launch";
-    private static final int ROW_MENU = 0;
-    private static final int ROW_SONG = 1;
-    private static final int ROW_GROUP = 2;
-    private static final int ROW_MESSAGE = 3;
-    private static final int ROW_SETTING = 4;
-    private static final int ROW_FOLDER = 5;
-    private static final int ROW_NOW_PLAYING = 6;
-    private static final int ROW_SETTINGS_HEADER = 7;
-    private static final int ROW_BROWSER_DIRECTORY = 8;
-    private static final int ROW_BROWSER_FILE = 9;
-    private static final int ROW_BROWSER_UNAVAILABLE = 10;
-    private static final int ROW_BROWSER_ROOT = 11;
-    private static final int ROW_PLAYLIST = 12;
-    private static final int ROW_PLAYLIST_ACTION = 13;
-    private static final int ROW_PLAYLIST_MISSING = 14;
     // Existing menu indices 0-6 are reserved for their original actions.
     private static final int MENU_FOLDERS = 7;
     private static final String[] MENU = {
@@ -148,171 +139,6 @@ public final class MusicActivity extends ComponentActivity {
     private final ArrayDeque<Page> backStack = new ArrayDeque<>();
     private Page currentPage;
     private OnBackInvokedCallback nestedBackCallback;
-    private static final class MenuRow {
-        final String title;
-        final int kind;
-        final int menuIndex;
-        final int groupCategory;
-        final List<LocalMusicSource.Song> songs;
-        final LocalMusicSource.Song song;
-        final Uri folderTree;
-        final String folderLocation;
-        final long playlistId;
-        final long playlistEntryId;
-        final String playlistAction;
-
-        MenuRow(String title, int kind, int menuIndex, int groupCategory,
-                List<LocalMusicSource.Song> songs, LocalMusicSource.Song song,
-                Uri folderTree, String folderLocation) {
-            this(title, kind, menuIndex, groupCategory, songs, song,
-                    folderTree, folderLocation, -1L, -1L, null);
-        }
-
-        MenuRow(String title, int kind, int menuIndex, int groupCategory,
-                List<LocalMusicSource.Song> songs, LocalMusicSource.Song song,
-                Uri folderTree, String folderLocation,
-                long playlistId, long playlistEntryId, String playlistAction) {
-            this.title = title;
-            this.kind = kind;
-            this.menuIndex = menuIndex;
-            this.groupCategory = groupCategory;
-            this.songs = songs;
-            this.song = song;
-            this.folderTree = folderTree;
-            this.folderLocation = folderLocation;
-            this.playlistId = playlistId;
-            this.playlistEntryId = playlistEntryId;
-            this.playlistAction = playlistAction;
-        }
-
-        static MenuRow root(String name, int index) {
-            return new MenuRow(name, ROW_MENU, index, -1, null, null, null, null);
-        }
-
-        static MenuRow nowPlaying() {
-            return new MenuRow("Now Playing...", ROW_NOW_PLAYING, -1, -1,
-                    null, null, null, null);
-        }
-
-        static MenuRow group(String name, int category,
-                List<LocalMusicSource.Song> songs) {
-            return new MenuRow(name, ROW_GROUP, -1, category, songs, null, null, null);
-        }
-
-        static MenuRow song(LocalMusicSource.Song song) {
-            return new MenuRow(song.title, ROW_SONG, -1, -1, null, song, null, null);
-        }
-
-        static MenuRow playlist(MusicLibraryDatabase.PlaylistSummary summary) {
-            return new MenuRow(summary.name, ROW_PLAYLIST, -1, summary.songCount,
-                    null, null, null, null, summary.id, -1L, null);
-        }
-
-        static MenuRow playlistAction(String title, String action, long playlistId) {
-            return new MenuRow(title, ROW_PLAYLIST_ACTION, -1, -1,
-                    null, null, null, null, playlistId, -1L, action);
-        }
-
-        static MenuRow playlistSong(LocalMusicSource.Song song,
-                long playlistId, long entryId) {
-            return new MenuRow(song.title, ROW_SONG, -1, -1,
-                    null, song, null, null, playlistId, entryId, null);
-        }
-
-        static MenuRow playlistMissing(String title, long playlistId, long entryId) {
-            return new MenuRow(title, ROW_PLAYLIST_MISSING, -1, -1,
-                    null, null, null, null, playlistId, entryId, null);
-        }
-
-        static MenuRow message(String message) {
-            return new MenuRow(message, ROW_MESSAGE, -1, -1, null, null, null, null);
-        }
-
-        static MenuRow setting(String title) {
-            return new MenuRow(title, ROW_SETTING, -1, -1, null, null, null, null);
-        }
-
-        static MenuRow settingsHeader(String title) {
-            return new MenuRow(title, ROW_SETTINGS_HEADER, -1, -1,
-                    null, null, null, null);
-        }
-
-        static MenuRow folder(String name, String location, Uri tree) {
-            return new MenuRow(name, ROW_FOLDER, -1, -1,
-                    null, null, tree, location);
-        }
-
-        static MenuRow browserRoot(String name, Uri tree, String documentId) {
-            return new MenuRow(name, ROW_BROWSER_ROOT, -1, -1,
-                    null, null, tree, documentId);
-        }
-
-        static MenuRow browserDirectory(String name, Uri tree, String documentId) {
-            return new MenuRow(name, ROW_BROWSER_DIRECTORY, -1, -1,
-                    null, null, tree, documentId);
-        }
-
-        static MenuRow browserUnavailable(String name) {
-            return new MenuRow(name, ROW_BROWSER_UNAVAILABLE, -1, -1,
-                    null, null, null, null);
-        }
-
-        static MenuRow browserFile(String filename, LocalMusicSource.Song song) {
-            return new MenuRow(filename, song == null ? ROW_BROWSER_FILE : ROW_SONG,
-                    -1, -1, null, song, null, null);
-        }
-    }
-
-    /** Snapshot of exactly the documents in the user-confirmed operation. */
-    private static final class DeleteRequest {
-        final Page page;
-        final List<LocalMusicSource.Song> songs;
-        final String description;
-
-        DeleteRequest(Page page, List<LocalMusicSource.Song> songs, String description) {
-            this.page = page;
-            this.songs = Collections.unmodifiableList(new ArrayList<>(songs));
-            this.description = description;
-        }
-    }
-
-    private static final class Page {
-        String name;
-        final List<MenuRow> rows;
-        // Only a page opened directly from an album group has this header.
-        final MenuRow albumGroup;
-        // Set only on filesystem pages; entries are cached per visited page
-        // so a library refresh can rebind song availability without requerying.
-        Uri browserTree;
-        List<MusicFolderBrowser.Entry> browserEntries;
-        boolean playlistDirectory;
-        long playlistId = -1L;
-        long playlistPickerId = -1L;
-        String emptyTitle;
-        String emptyMessage;
-        int emptyArtworkRes;
-        int emptyAfterRows;
-        void setEmptyState(String title, String message, int afterRows) {
-            emptyTitle = title;
-            emptyMessage = message;
-            emptyAfterRows = afterRows;
-            // Original BBOS6 artwork is supplied only after positive identification.
-            emptyArtworkRes = 0;
-        }
-        int selected;
-        int selectedTop;
-
-        Page(String name, List<MenuRow> rows) {
-            this(name, rows, null);
-        }
-
-        Page(String name, List<MenuRow> rows, MenuRow albumGroup) {
-            this.name = name;
-            this.rows = rows;
-            this.albumGroup = albumGroup;
-        }
-    }
-
     // Artist/genre representative: alphabetical first album title, with
     // deterministic tie-breaking for identical album names.
     private static final Comparator<LocalMusicSource.Song> FIRST_ALBUM =
