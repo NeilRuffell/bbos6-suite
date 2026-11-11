@@ -142,6 +142,19 @@ internal object MusicLibraryPageRows {
      * View-only representation of one already-authorized SAF folder response.
      * Does not enumerate SAF, grant permissions or change the selected tree.
      */
+    /**
+     * Folder view uses the same verified catalog as playback and search.
+     * A SAF MIME type or filename extension is only an audio candidate, not
+     * proof that the document contains a playable audio stream.
+     * Duplicate provider rows for the same document also appear just once.
+     */
+    @JvmStatic
+    fun shouldRenderBrowserFile(
+        uri: String,
+        indexedUris: Set<String>,
+        displayedUris: Set<String>
+    ): Boolean = uri in indexedUris && uri !in displayedUris
+
     @JvmStatic
     fun browserRows(
         page: MusicActivityModels.Page,
@@ -157,6 +170,7 @@ internal object MusicLibraryPageRows {
                 }
             }
         }
+        val displayedUris = HashSet<String>()
         for (entry in entries) {
             if (entry.directory) {
                 rows.add(
@@ -165,14 +179,21 @@ internal object MusicLibraryPageRows {
                     )
                 )
             } else {
-                rows.add(
-                    MusicActivityModels.MenuRow.browserFile(
-                        entry.name, indexed[entry.uri.toString()]
-                    )
-                )
+                val uri = entry.uri.toString()
+                if (shouldRenderBrowserFile(uri, indexed.keys, displayedUris)) {
+                    rows.add(MusicActivityModels.MenuRow.browserFile(entry.name, indexed.getValue(uri)))
+                    displayedUris.add(uri)
+                }
             }
         }
-        if (rows.isEmpty()) rows.add(MusicActivityModels.MenuRow.message("Empty folder"))
+        if (rows.isEmpty()) {
+            val message = if (localSongs == null && entries.any { !it.directory }) {
+                "Reading selected music folders..."
+            } else {
+                "Empty folder"
+            }
+            rows.add(MusicActivityModels.MenuRow.message(message))
+        }
         return rows
     }
 
