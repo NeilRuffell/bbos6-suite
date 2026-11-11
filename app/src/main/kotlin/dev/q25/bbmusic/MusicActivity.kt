@@ -1186,3 +1186,281 @@ class MusicActivity : ComponentActivity() {
         navigateTo(Page("Folders", MusicLibraryPageRows.folderRootRows(this)))
     }
 
+    private fun openBrowserDirectory(row: MenuRow) {
+        val tree = row.folderTree ?: return
+        val directoryId = row.folderLocation ?: return
+        val page = Page(row.title, ArrayList<MenuRow>())
+        page.browserTree = tree
+        page.rows.add(MenuRow.message("Loading folder..."))
+        navigateTo(page)
+        folderBrowser.listChildren(tree, directoryId, object : MusicFolderBrowser.Listener {
+            override fun onLoaded(entries: List<MusicFolderBrowser.Entry>) {
+                page.browserEntries = entries
+                page.rows.clear()
+                page.rows.addAll(browserRows(page))
+                refreshBrowserPage(page)
+            }
+            override fun onError(message: String) {
+                page.rows.clear()
+                page.rows.add(MenuRow.message(message))
+                refreshBrowserPage(page)
+            }
+        })
+    }
+
+    private fun browserRows(page: Page): List<MenuRow> =
+        MusicLibraryPageRows.browserRows(page, localSongs)
+
+    private fun refreshBrowserPage(page: Page) {
+        if (currentPage !== page) return
+        if (searchOpen) {
+            updateSearchResults()
+            return
+        }
+        val selected = list.selectedItemPosition
+        val top = list.selectedView?.top ?: 0
+        visibleRows = page.rows
+        list.notifyRowsChanged()
+        updateEmptyState()
+        list.post {
+            if (currentPage === page && !searchOpen && !nowPlayingVisible &&
+                !isFinishing && !isDestroyed) {
+                list.requestFocus()
+                list.setSelectionFromTop(
+                    maxOf(0, minOf(selected, page.rows.size - 1)), top
+                )
+                list.refreshSelection()
+            }
+        }
+    }
+
+    private fun refreshBrowsedSongs() {
+        for (page in backStack) {
+            if (page.browserEntries == null) continue
+            page.rows.clear()
+            page.rows.addAll(browserRows(page))
+        }
+        if (currentPage.browserEntries != null) {
+            currentPage.rows.clear()
+            currentPage.rows.addAll(browserRows(currentPage))
+            refreshBrowserPage(currentPage)
+        }
+    }
+
+    private fun buildMusicFolderRows(): ArrayList<MenuRow> =
+        MusicLibraryPageRows.musicFolderSettingsRows(this)
+
+    private fun refreshMusicFolderRows() {
+        val page = musicFoldersPage ?: return
+        page.rows.clear()
+        page.rows.addAll(buildMusicFolderRows())
+        if (currentPage !== page) return
+        if (searchOpen) {
+            updateSearchResults()
+            return
+        }
+        val selected = maxOf(0, minOf(list.selectedItemPosition, page.rows.size - 1))
+        val top = list.selectedView?.top ?: 0
+        visibleRows = page.rows
+        list.notifyRowsChanged()
+        list.post {
+            if (currentPage === page && !searchOpen && !isFinishing && !isDestroyed) {
+                list.requestFocus()
+                list.setSelectionFromTop(selected, top)
+                list.refreshSelection()
+            }
+        }
+    }
+
+    private fun confirmFolderRemoval(row: MenuRow) {
+        val tree = row.folderTree ?: return
+        showButtonConfirmation(
+            "Remove music folder?",
+            "Remove \"" + row.title + "\" from the music library?\n\n" +
+                "The files on your device will not be deleted.",
+            "Remove",
+            Runnable { removeMusicFolder(tree) }
+        )
+    }
+
+    private fun removeMusicFolder(tree: Uri) {
+        try {
+            if (!MusicFolders.remove(this, tree)) {
+                refreshMusicFolderRows()
+                Toast.makeText(this, "Folder already removed", Toast.LENGTH_SHORT).show()
+                return
+            }
+            localSource.invalidate()
+            localSource.forgetRemovedTree(tree, MusicFolders.selectedTrees(this).isEmpty())
+            loading = false
+            pendingMenu = -1
+            pendingShuffleStart = false
+            localSongs = null
+            albumArtworkSources = emptyMap()
+            list.clearArtworkCache()
+            refreshMusicFolderRows()
+            if (MusicFolders.selectedTrees(this).isEmpty()) {
+                localSongs = emptyList()
+                updateLocalCategoryCounts()
+            } else {
+                startLocalScan(false, true)
+            }
+            Toast.makeText(this, "Music folder removed", Toast.LENGTH_SHORT).show()
+        } catch (exception: IllegalStateException) {
+            Log.w(TAG, "Cannot remove selected music folder", exception)
+            Toast.makeText(this, "Unable to remove music folder", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun updateNowPlayingHomeRow() {
+        if (!::rootPage.isInitialized || !::list.isInitialized) return
+        val shouldShow = playback.hasCurrentTrack()
+        val isShown = rootPage.rows.isNotEmpty() && rootPage.rows[0].kind == ROW_NOW_PLAYING
+        if (shouldShow == isShown) return
+        val offset = if (shouldShow) 1 else -1
+        if (shouldShow) rootPage.rows.add(0, MenuRow.nowPlaying())
+        else rootPage.rows.removeAt(0)
+        rootPage.selected = maxOf(0, rootPage.selected + offset)
+        if (currentPage !== rootPage) return
+        if (searchOpen) {
+            searchOriginalPosition = maxOf(0, searchOriginalPosition + offset)
+            if (searchInput.text.toString().trim().isNotEmpty()) return
+        }
+        if (nowPlayingVisible) {
+            savedListPosition = maxOf(0, savedListPosition + offset)
+            list.notifyRowsChanged()
+            return
+        }
+        val selected = list.selectedItemPosition
+        val nextSelection = maxOf(0, selected + offset)
+        val top = list.selectedView?.top ?: 0
+        list.notifyRowsChanged()
+        list.post {
+            if (currentPage === rootPage && !nowPlayingVisible &&
+                !isFinishing && !isDestroyed &&
+                (!searchOpen || searchInput.text.toString().trim().isEmpty())) {
+                list.setSelectionFromTop(nextSelection, top)
+                list.refreshSelection()
+            }
+        }
+    }
+
+    private fun shuffleAllSongs() {
+        if (MusicFolders.selectedTrees(this).isEmpty()) {
+            Toast.makeText(this, "Add a music folder in Settings first", Toast.LENGTH_LONG).show()
+            return
+        }
+        val songs = localSongs
+        if (songs == null) {
+            pendingShuffleStart = true
+            startLocalScan(true)
+            return
+        }
+        if (songs.isEmpty()) {
+            Toast.makeText(this, "No songs in selected folders", Toast.LENGTH_SHORT).show()
+            return
+        }
+        openNowPlaying()
+        playback.playSongs(songs, Random().nextInt(songs.size), true)
+    }
+
+    private fun openNowPlaying() {
+        if (nowPlayingVisible) return
+        savedListPosition = list.selectedItemPosition
+        savedListTop = list.selectedView?.top ?: 0
+        val shown = MusicNowPlayingView(
+            this, playback, object : MusicNowPlayingView.MetadataNavigation {
+                override fun albumFor(item: MediaItem): CharSequence? {
+                    for (song in localSongs.orEmpty()) {
+                        if (item.mediaId == song.uri.toString()) return song.album
+                    }
+                    return item.mediaMetadata.albumTitle
+                }
+                override fun openArtist() = openCurrentTrackGroup(1)
+                override fun openAlbum() = openCurrentTrackGroup(2)
+            }
+        )
+        nowPlaying = shown
+        nowPlayingVisible = true
+        ensureBackCallback()
+        appShell.showNowPlaying(shown) {
+            if (nowPlayingVisible && nowPlaying === shown) {
+                shown.requestFocus()
+                shown.render()
+            }
+        }
+    }
+
+    private fun closeNowPlaying() = closeNowPlaying(true)
+
+    private fun closeNowPlaying(restoreListPosition: Boolean) {
+        if (!nowPlayingVisible) return
+        nowPlayingVisible = false
+        nowPlaying?.dispose()
+        nowPlaying = null
+        appShell.showLibrary {
+            if (restoreListPosition) {
+                list.post {
+                    if (!nowPlayingVisible && !isFinishing && !isDestroyed) {
+                        list.requestFocus()
+                        list.setSelectionFromTop(maxOf(0, savedListPosition), savedListTop)
+                        list.refreshSelection()
+                    }
+                }
+            }
+        }
+        if (backStack.isEmpty() && !searchOpen) unregisterNestedBack()
+    }
+
+    private fun openCurrentTrackGroup(category: Int) {
+        if (!nowPlayingVisible || category !in 1..2) return
+        val playing = playback.controller()?.currentMediaItem ?: return
+        if (localSongs == null) {
+            Toast.makeText(this, "Music library is still loading", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val categoryRows = groupedRows(category)
+        var target: MenuRow? = null
+        var targetPosition = -1
+        for ((index, candidate) in categoryRows.withIndex()) {
+            if (candidate.kind != ROW_GROUP || candidate.songs == null) continue
+            if (candidate.songs.any { playing.mediaId == it.uri.toString() }) {
+                target = candidate
+                targetPosition = index
+                break
+            }
+        }
+        if (target == null) {
+            Toast.makeText(
+                this, "This track is not in the current music library", Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
+        var rootPosition = -1
+        for ((index, row) in rootPage.rows.withIndex()) {
+            if (row.kind == ROW_MENU && row.menuIndex == category) {
+                rootPosition = index
+                break
+            }
+        }
+        if (rootPosition < 0) return
+        if (searchOpen) closeSearch(false)
+        closeNowPlaying(false)
+        pendingMenu = -1
+        backStack.clear()
+        rootPage.selected = rootPosition
+        rootPage.selectedTop = 0
+        val categoryPage = Page(MENU[category], categoryRows)
+        categoryPage.selected = targetPosition
+        categoryPage.selectedTop = 0
+        backStack.push(rootPage)
+        backStack.push(categoryPage)
+        ensureBackCallback()
+        showPage(pageForGroup(target))
+    }
+
+    override fun onStart() {
+        super.onStart()
+        playback.connect()
+    }
+
