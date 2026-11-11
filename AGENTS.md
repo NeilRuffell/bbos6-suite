@@ -425,3 +425,17 @@ TrackpadPressHandler.kt keeps proven Q25 native event dispatch and state. Do not
 ### Kotlin playlist repository
 
 MusicPlaylists.kt remains app-specific. Do not move Room transactions to Compose or shared BBOS6 helpers. Keep exact selected-tree authorization before inserting tracks, original Room database/DAO and playlist ordering, 128-character name limit, serialized worker, cancelable main-thread callbacks and close behavior. During Java Activity migration retain its Callback<T> SAM interface and the playlist method names. No schema migrations or data clearing for the Kotlin port.
+
+## Native ListView tap regression guard
+
+`MusicListRowComposeView` MUST inherit shared
+`Bbos6MediaListRowTouchHost` (from the pinned bbos6-shared submodule)
+rather than raw `AbstractComposeView`. Compose's nested AndroidComposeView
+can consume touch ACTION_DOWN even when `isClickable = false`, preventing
+the native ListView from selecting/activating a row. The shared host lets
+all ordinary row touches/long-press/scroll reach the ListView; only
+gestures beginning within the canonical trailing Remove button bounds
+are delivered to the Compose remove action. Update its enabled flag on
+every `bindText` recycling operation. Never add per-screen tap handlers.
+All Properties modal focus suppression is likewise shared via
+`Bbos6ManagedFocusEffect`; no light/default platform focus wash allowed.

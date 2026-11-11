@@ -9,7 +9,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.platform.AbstractComposeView
+import dev.q25.bbos6.ui.compose.Bbos6MediaListRowTouchHost
 import androidx.compose.ui.res.painterResource
 import dev.q25.bbos6.ui.compose.Bbos6MediaListRow
 import dev.q25.bbos6.ui.compose.Bbos6NativeDrawablePainter
@@ -19,7 +19,7 @@ import dev.q25.bbos6.ui.compose.Bbos6NativeDrawablePainter
  * ListView continues to own recycling, scrolling, row activation,
  * long-press, trackpad/DPAD focus, selection and artwork cache requests.
  */
-class MusicListRowComposeView(context: Context) : AbstractComposeView(context) {
+class MusicListRowComposeView(context: Context) : Bbos6MediaListRowTouchHost(context) {
     private var rowTitle by mutableStateOf("")
     private var rowSubtitle by mutableStateOf<String?>(null)
     private var rowDuration by mutableStateOf<String?>(null)
@@ -55,6 +55,9 @@ class MusicListRowComposeView(context: Context) : AbstractComposeView(context) {
         rowTrackNumber = trackNumber
         removeVisible = showRemove
         removeCallback = onRemove
+        // Delegate only the actual trailing Remove touch target to Compose.
+        // All ordinary row taps/long presses must reach the native ListView.
+        setTrailingActionTouchEnabled(showRemove && onRemove != null)
     }
 
     fun setHighlighted(isHighlighted: Boolean) {

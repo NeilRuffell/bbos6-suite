@@ -1723,3 +1723,22 @@ TrackpadPressHandler.java and MusicTrackPropertiesReader.java are now Kotlin. Th
 ### Kotlin playlist repository (same Room schema)
 
 MusicPlaylists.java is now MusicPlaylists.kt. Retains original Java callback methods, single-thread Room executor, main-thread callbacks suppressed after close, exact authorized selected-tree SAF URI filtering, case-insensitive duplicate-name checks, 128-character name bound, stable ordered-entry IDs, transactional add/import/reorder operations and existing Room database schema/version. Does not change any playlist data or rename/duplicate behavior. Requires Gradle build and Q25 playlist creation/import/delete/reorder testing before merge.
+
+## Q25 native library taps and Properties overlay regression fix
+
+Pinned `bbos6-shared` to `fbbf4ca92c88f1a34e649f2d94b6588aa5c7aa7d`. Music's
+`MusicListRowComposeView` now inherits the reusable
+`Bbos6MediaListRowTouchHost`. Native ListView gets ordinary touch
+down/up to restore row activation, long press and scroll; Compose receives
+only a gesture starting in the genuine trailing Remove action.
+The shared component owns the hitbox and row visual dimensions, not Music.
+Existing adapter `onItemClick`, DataSource actions, artwork binding, and
+DPAD/trackpad selection are unchanged.
+
+Properties no longer relies on its Compose window accidentally suppressing
+Android's default light focus highlight: the shared Java-to-Compose dialog
+bridge applies `Bbos6FocusPolicy` at the ComposeView and actual
+AndroidComposeView, including read-only Properties panel. No extra overlay
+or color workaround introduced. The Q25 regression and strict prohibition
+are documented in both repositories. Gradle build and device testing
+required before merge; protect playlist editing and native text input.
