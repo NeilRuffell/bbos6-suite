@@ -23,4 +23,24 @@ public final class MusicLibraryGroupPolicyTest {
         assertTrue(MusicLibraryGroupPolicy.groups(Collections.emptyList(), 2).isEmpty());
         assertTrue(MusicLibraryGroupPolicy.groups(Collections.emptyList(), 3).isEmpty());
     }
+    @Test public void emptyCatalogProducesNoArtworkSourcesAndZeroCategoryCounts() {
+        assertTrue(MusicLibraryGroupPolicy.indexAlbumArtworkSources(null).isEmpty());
+        assertTrue(MusicLibraryGroupPolicy.indexAlbumArtworkSources(
+                Collections.emptyList()).isEmpty());
+
+        int[] counts = {9, 8, 7, 6};
+        MusicLibraryGroupPolicy.fillCategoryCounts(Collections.emptyList(), counts);
+        assertEquals(0, counts[0]);
+        assertEquals(0, counts[1]);
+        assertEquals(0, counts[2]);
+        assertEquals(0, counts[3]);
+    }
+
+    @Test public void nonMediaRowsDoNotResolveArtworkKeys() {
+        assertEquals(null, MusicLibraryGroupPolicy.albumKeyForRow(
+                MusicActivityModels.MenuRow.setting("Refresh library")));
+        assertEquals(null, MusicLibraryGroupPolicy.albumKeyForRow(
+                MusicActivityModels.MenuRow.group("Empty", 2, Collections.emptyList())));
+    }
+
 }
