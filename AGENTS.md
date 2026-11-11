@@ -405,3 +405,7 @@ Keep `dp(Int)` for existing integer dp constants/paddings, with
 conversion to the legacy `MusicPlayerChrome.dp(Context, Float)` so
 pixels remain rounded exactly as before. Do not introduce native
 focus overlays or change playback/DPAD handlers for compiler repairs.
+
+### Kotlin selected-folder authorization
+
+MusicFolders.kt owns the same persisted SAF allowlist and all permission checks. Keep bbmusic_selected_folders/tree_uris unchanged. Never expand folder access or change grant handling when migrating Java. Remove an allowance BEFORE OS permission release, not files. Keep @JvmStatic until all Java callers are migrated.

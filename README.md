@@ -1703,3 +1703,7 @@ No layout dimensions, focus ownership, media operations, or
 resource mappings changed. The Gradle 8.11.1 deprecation warning is
 unrelated to this compilation failure. A fresh Gradle/Q25 verification
 is required; no claims of test success.
+
+### Kotlin persisted selected-folder SAF policy
+
+MusicFolders.java is now MusicFolders.kt, with @JvmStatic preserving the Java caller API. This preserves SharedPreferences keys bbmusic_selected_folders and tree_uris, sorted saved URIs, intersected live read grants for scanning, live write permissions, and display-only primary: stripping. Deleting a selection commits allowlist removal first and then releases OS URI grants, without deleting files. Existing Java unit tests for displayLocation remain in place. Source-only: build and Q25 SAF testing required.
