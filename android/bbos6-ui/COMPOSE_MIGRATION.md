@@ -267,17 +267,16 @@ Recheck both compile variants and Q25 after this import-only API fix.
 
 ## Shared Compose button-only popup and search feedback
 
-The public `Bbos6PopupButtonList.Builder.show(Activity)` continues to
-validate unique action IDs, callback presence and nonempty buttons as
-before. For `ComponentActivity` callers **without text input**, it
-maps action IDs, enabled flags, selection, message/title, supplied
-drawable/resource icon, horizontal/vertical sizing and callback semantics
-to the already shared `Bbos6PopupButtonPanel` through
-`Bbos6PopupButtonComposeBridge`. A normal Android Dialog still owns
-cancellation, Back, size, dim 0.36 and the returned handle. Native
-`PopupDialog` remains available for platform-only Activity callers
-and **all text-input dialogs**, preserving the real Android `EditText`
-and tested hardware-key and IME editing rules.
+The public `Bbos6PopupButtonList.Builder.show(Activity)` continues
+to validate unique IDs, required callbacks and nonempty actions. For
+`ComponentActivity`, it maps action IDs, enabled state, selection,
+title/message, caller-provided icon, horizontal/vertical button sizing,
+text-input flag and current text into shared `Bbos6PopupButtonPanel`
+via `Bbos6PopupButtonComposeBridge`. Native Android `Dialog` still
+controls Back, 320dp panel width, dim 0.36 and the returned handle.
+For text input, the shared panel embeds the original native
+`Bbos6TextField` via `AndroidView`, preserving Android editing, cursor
+and IME. Platform-only Activities use the original native `PopupDialog`.
 
 The canonical `Bbos6SearchEmptyFeedback` and
 `Bbos6SearchEmptyFeedbackView` provide 15sp centered white empty-search

@@ -5,7 +5,6 @@ import android.text.InputType
 import android.util.TypedValue
 import android.view.Gravity
 import androidx.compose.ui.viewinterop.AndroidView
-import dev.q25.bbos6.ui.Bbos6TextField
 import android.view.WindowManager
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -143,7 +142,7 @@ fun Bbos6PopupButtonPanel(
         mutableStateOf(TextFieldValue(initialText, selection = TextRange(0, initialText.length)))
     }
     // Java consumers retain the actual Android EditText, not a second editor.
-    var nativeField by remember { mutableStateOf<Bbos6TextField?>(null) }
+    var nativeField by remember { mutableStateOf<dev.q25.bbos6.ui.Bbos6TextField?>(null) }
     fun currentValue(): String? = when {
         !textInput -> null
         nativeTextInput -> nativeField?.text?.toString() ?: initialText
@@ -314,7 +313,7 @@ fun Bbos6PopupButtonPanel(
                     // Original verified EditText, now inside Compose chrome.
                     AndroidView(
                         factory = { context ->
-                            Bbos6TextField(context).apply {
+                            dev.q25.bbos6.ui.Bbos6TextField(context).apply {
                                 setSingleLine(true)
                                 inputType = InputType.TYPE_CLASS_TEXT or
                                     InputType.TYPE_TEXT_FLAG_CAP_SENTENCES

@@ -263,12 +263,12 @@ modal renderers.
 
 ## Compose popup bridge and search-empty label
 
-Shared `Bbos6PopupButtonComposeBridge` is the only transitional
-button-only popup adapter for AndroidX ComponentActivity callers.
-Keep native `Bbos6PopupButtonList.PopupDialog` for native EditText
-dialogs and platform Activity callers until their keyboard/IME parity
-can be verified. Do not change popup action callback or safe-default
-selection semantics.
+Shared `Bbos6PopupButtonComposeBridge` handles button-only and
+text-input popups for AndroidX ComponentActivity callers. Text input
+is the original Android `Bbos6TextField` embedded via AndroidView,
+not a substitute editor. Keep `Bbos6PopupButtonList.PopupDialog` for
+plain Activity callers. Preserve callback and safe-default selection
+semantics.
 
 Shared `Bbos6SearchEmptyFeedbackView` owns the passive no-results
 appearance only; callers retain search filtering, visibility and focus.
