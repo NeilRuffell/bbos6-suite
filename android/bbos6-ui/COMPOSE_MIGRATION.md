@@ -1,4 +1,13 @@
-# Kotlin + Jetpack Compose UI migration (unmerged feature work)
+# Kotlin + Jetpack Compose UI migration — implementation history
+
+**For the current reusable APIs and their actual availability, use
+[COMPONENT_CATALOG.md](COMPONENT_CATALOG.md).** This document records the
+step-by-step migration, experiments, regressions and Q25 acceptance gates.
+Statements below such as "unmerged", "not wired" or "requires device testing"
+describe the *then-current checkpoint*, not necessarily the state of today's
+`master` branch. Actual source code, the component catalogue and pinned
+consumer gitlinks are authoritative.
+
 
 **Target:** All BBOS6 reusable presentation components and the independent
 Music application use Kotlin + Jetpack Compose. No new Java or XML View
