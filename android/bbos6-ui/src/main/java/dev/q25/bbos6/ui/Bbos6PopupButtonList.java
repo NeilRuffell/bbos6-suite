@@ -2,6 +2,9 @@ package dev.q25.bbos6.ui;
 
 import android.app.Activity;
 import android.app.Dialog;
+import androidx.activity.ComponentActivity;
+import dev.q25.bbos6.ui.compose.Bbos6PopupAction;
+import dev.q25.bbos6.ui.compose.Bbos6PopupButtonComposeBridge;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Insets;
@@ -207,6 +210,23 @@ public final class Bbos6PopupButtonList {
                 if (!ids.add(action.id)) {
                     throw new IllegalArgumentException("Duplicate button ID: " + action.id);
                 }
+            }
+
+            // Java API remains canonical. Button-only dialogs use the
+            // shared Compose panel for lifecycle-capable Activities.
+            // Text-entry dialogs remain the verified native EditText host.
+            if (!hasTextInput && activity instanceof ComponentActivity) {
+                ArrayList<Bbos6PopupAction> sharedActions =
+                        new ArrayList<>(actions.size());
+                for (Action action : actions) {
+                    sharedActions.add(new Bbos6PopupAction(
+                            action.id, action.label, action.enabled));
+                }
+                return Bbos6PopupButtonComposeBridge.show(
+                        (ComponentActivity) activity, sharedActions,
+                        title, message, iconResourceId, iconDrawable,
+                        initialSelectionId, horizontalButtons,
+                        dismissOnAction, listener);
             }
 
             PopupDialog dialog = new PopupDialog(activity, title, message,

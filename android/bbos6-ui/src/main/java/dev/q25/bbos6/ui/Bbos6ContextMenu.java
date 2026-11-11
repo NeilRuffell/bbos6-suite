@@ -2,6 +2,9 @@ package dev.q25.bbos6.ui;
 
 import android.app.Activity;
 import android.app.Dialog;
+
+import androidx.activity.ComponentActivity;
+import dev.q25.bbos6.ui.compose.Bbos6ContextMenuComposeBridge;
 import android.graphics.Color;
 import android.graphics.Insets;
 import android.graphics.Outline;
@@ -155,6 +158,13 @@ public final class Bbos6ContextMenu {
                     }
                 }
                 snapshot.add(new ArrayList<>(group));
+            }
+            // Shared Kotlin Compose presentation for ComponentActivity hosts.
+            // Preserve the original native menu for non-AndroidX callers.
+            if (activity instanceof ComponentActivity) {
+                return Bbos6ContextMenuComposeBridge.show(
+                        (ComponentActivity) activity, snapshot, columns,
+                        initialSelectionId, dismissOnAction, actionListener);
             }
             MenuDialog dialog = new MenuDialog(activity, snapshot, columns,
                     initialSelectionId, dismissOnAction, actionListener);

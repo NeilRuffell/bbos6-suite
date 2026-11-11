@@ -115,3 +115,191 @@ adb -s 202512003630 install -r app/build/outputs/apk/release/app-release.apk
 The model tests verify value preservation and input validation. Music
 supplies a working caller for both popup helpers. Follow Music's tested
 release-APK/approval workflow; never replace the installed signing identity.
+
+## Compose migration in progress
+
+See [COMPOSE_MIGRATION.md](COMPOSE_MIGRATION.md) for the Kotlin + Jetpack Compose
+presentation migration. The existing Java View APIs remain the runtime path
+until full parity and Q25 verification; no Music logic has been changed.
+
+### Compose list section headings
+
+`Bbos6SectionHeader(title)` is a 36dp non-focusable, non-interactive
+section heading with the existing BlackBerry-style grey vertical gradient,
+1dp rim, bold 14sp title, and 16dp side insets. The shared renderer contains
+no list-selection state or Music-specific settings logic. Applications retain
+their own list/adapter rows and must mark headers non-selectable.
+
+### Compose media-detail header
+
+`Bbos6MediaDetailHeader` is a reusable, non-interactive 89dp detail panel:
+88dp artwork, four independently supplied text lines, and a full-width 1dp
+separator. It does not fetch artwork or format album/song metadata. Callers
+own any business logic and can use a built-in placeholder Painter when no
+artwork is available.
+
+### Compose-backed empty state for legacy View hosts
+
+`dev.q25.bbos6.ui.compose.Bbos6EmptyStateComposeView` is a temporary
+Kotlin/Compose host for apps migrating an existing Java `ListView` layout.
+It delegates to the same reusable `Bbos6EmptyState` Composable and keeps
+Java-callable `setContent`, `setArtworkResource` and `setArtwork` APIs.
+The enclosing application still decides visibility, content, sizing and
+list-scroll position. Neither helper acquires focus or responds to taps.
+
+### Compose media-list rows and app-neutral chrome
+
+`Bbos6MediaListRow` draws 68dp content-sized rows with optional artwork,
+track number, second line, duration, selected background and Remove target.
+The caller retains list scrolling, selection, actions and artwork cache.
+`Bbos6SearchChrome` is only the search-panel background/top border.
+`Bbos6MetadataPlate` is a non-focus-owner beveled label with an explicit
+highlight flag; app code still chooses which metadata link is selected.
+`Bbos6NativeDrawablePainter` exposes source Android drawables in Compose
+without an extra rendered image copy.
+
+### Compose Now Playing presentation
+
+`Bbos6NowPlayingSurface(panel)` provides pure-Compose mode/seek/transport
+chrome and the right-anchored half-radial artwork backdrop.
+`Bbos6NowPlayingSurfaceView` is a non-clickable, non-focusable host for
+staged Android View integrations; the parent still owns its interactive
+children. `Bbos6NowPlayingText` draws caller-supplied Now Playing labels.
+Media3 interaction, seekbar action semantics, and DPAD focus remain outside
+the shared package.
+
+### Mode/seek chrome fade fidelity
+
+Mode and seek panels intentionally have a **single 1dp edge separator**;
+the secondary 7dp/5dp bevel beneath/above it is *not* a flat, full-width
+glow. Their per-pixel nonlinear alpha gradients and horizontal falloff are
+implemented in `Bbos6NowPlayingSurface.kt` with pure alpha functions
+covered by `Bbos6NowPlayingBevelTest`. This matches the previous native
+MusicPlayerChrome formulas and the verified 2513.png / 2486.png references.
+
+### Compose Now Playing controls, rail and artwork
+
+`Bbos6NowPlayingControlSelection` provides independent focus-only
+mode and transport backgrounds. `Bbos6NowPlayingSeekRail` draws the
+full-range progress rail without taking ownership of the native SeekBar
+thumb or its touch/edit semantics. `Bbos6NowPlayingArtwork` displays
+caller-provided cover painters with original FIT_CENTER scaling. Passive
+Android bridge views are supplied for gradual conversion of existing
+Now Playing layouts. No app-specific media or metadata logic lives here.
+
+
+## Java legacy modal consumers now use shared Compose panels
+
+The canonical `Bbos6ContextMenu.Builder.show(Activity)` and
+`Bbos6PropertiesPopup.show(Activity, List)` retain their existing Java
+signature, input models, validation and native `Dialog` return type.
+When the host is an AndroidX `ComponentActivity`, shared
+`Bbos6ContextMenuComposeBridge` and `Bbos6PropertiesComposeBridge`
+convert legacy immutable models to the existing Compose
+`Bbos6ContextMenuGrid` and `Bbos6PropertiesPanel`.
+
+Native Android `Dialog` still owns window gravity, Back/outside dismissal,
+state and return handle. Existing app action IDs, enabled flags, icons,
+initial selection, callback timing, focus and navigation are preserved by
+the bridge. Context menus remain undimmed and outside-dismissible;
+Properties are undimmed, read-only and outside-touch persistent. Compose
+tree owners are installed from the caller's ComponentActivity. Activities
+without AndroidX lifecycle support continue using the old native dialogs,
+so BB UI and other legacy hosts are not silently switched.
+
+New unit tests assert the Java-to-Compose model mapping for both modals.
+Q25 tests must verify menu keyboard/trackpad highlight and scrolling,
+context long press, action routing/dismissal, properties values/scroll and
+Back. No app-specific business logic is moved.
+
+
+## Shared Compose button-only popup and search feedback
+
+The public `Bbos6PopupButtonList.Builder.show(Activity)` retains
+all original Java validation, IDs, and callbacks. For `ComponentActivity`
+**button-only dialogs**, the shared Compose panel renders action faces,
+title/message/icons, selections, and layout. Native `Dialog` still
+controls Back, width, 36% dim and returns its normal handle.
+**Any popup containing a native text field** is routed to the existing
+`Bbos6PopupButtonList.PopupDialog`, which already owns Android
+`EditText` focus, left/right DPAD navigation, input↔button transfer,
+callback text, and the shared BBOS6 focus policy. Native popup remains
+the fallback for plain `Activity` callers.
+
+The canonical `Bbos6SearchEmptyFeedback` and
+`Bbos6SearchEmptyFeedbackView` provide 15sp centered white empty-search
+text with 16dp/20dp padding. Visibility and search filtering remain
+app-owned. No empty-state row participates in navigation. Both additions
+require Q25 build/interaction testing before a merge.
+
+
+## Q25 blocked Compose text-entry popup experiment
+
+A trial `AndroidView(Bbos6TextField)` inside the shared Compose popup
+failed Q25 parity: focusing the button row produced Android's lighter
+whole-panel default focus overlay, and the trackpad stopped moving
+between Cancel and Save after leaving the editor. The old native
+`PopupDialog` correctly handled both cases with
+`Bbos6FocusPolicy.forManagedContainers(panel)` and
+`dispatchKeyEvent` for DPAD/trackpad traversal. Therefore, revert the
+Java text-input route to the already tested native popup until a
+properly verified hybrid focus-owner bridge exists. The broken hybrid
+implementation has been removed rather than left active or copied
+into Music. Pure Kotlin-native Compose popup entry remains independent.
+
+**Strict BBOS6 focus policy:** For custom-managed focus-owning ViewGroups,
+including the ComposeView and Compose's Android root, disable only the
+platform's `defaultFocusHighlightEnabled` with canonical
+`Bbos6FocusPolicy`. Never add a compensating overlay, transparent cover,
+new selection gradient, or suppress native EditText leaf focus.
+Selection color must track the *actual* button-focus owner; selected
+index alone cannot paint a highlight. The fallback retains all
+existing input actions, field selection, shortcuts, and dialog semantics.
+Device-test input↔buttons focus, DPAD left/right, touch, Cancel/Save and Back
+before merging.
+
+## Q25 touch-row and Properties focus regressions
+
+A native ListView row containing an AbstractComposeView can have its
+ACTION_DOWN consumed by the inner Compose owner, even when the outer
+view is not clickable. Added the neutral
+`Bbos6MediaListRowTouchHost` to let the native list receive all
+ordinary row tapping, long pressing, scrolling and trackpad movement
+while delegating touches *starting on* the optional trailing action
+to Compose. `Bbos6MediaListTouchGeometry` provides the one canonical
+76dp x 36dp action size and 10dp end inset, shared with the painted row.
+A platform-independent JUnit test checks hitbox boundaries and density.
+
+The shared Java-to-Compose dialog host now applies
+`Bbos6FocusPolicy` to its ComposeView. The shared
+`Bbos6ManagedFocusEffect` applies it again to the actual mounted
+AndroidComposeView, for context, Properties and action dialogs.
+`Bbos6PropertiesPanel` also applies the effect for direct Kotlin
+Compose callers. This disables native platform default/light focus
+decoration at the source, without changing panel palette, modal dim
+state, UI focusability, or native EditText leaf behavior.
+
+No Android platform focus overlays or compensating layers permitted.
+Build and Q25 tap/long-press/Properties parity tests are required.
+
+## Q25 second-stage native list tap fix (Android View click lifecycle)
+
+The first touch-pass-through helper suppressed Compose's ordinary-row
+ACTION_DOWN, but on Q25 native ListView still scrolled without invoking
+its row click. Returning `false` was not a substitute for an actual
+native view click target. The corrected shared
+`Bbos6MediaListRowTouchHost` handles normal row gestures using
+Android's built-in `View.onTouchEvent` and exposes
+`setNativeRowActions(Runnable?, BooleanSupplier?)`, rebound for each
+adapter row. This dispatches native click and long-click events while
+allowing the parent ListView to intercept a scroll and cancel the
+row's in-progress tap. No custom timers or gesture detectors.
+
+The optional trailing Remove button is still owned by Compose, and
+continues to use the shared action hitbox. Recycled/disabled rows
+must drop native action callbacks. The actual list owner invokes
+`performItemClick` for semantic accessibility/click compatibility
+and obtains current position at activation time rather than trusting
+the recycled bind index. Keyboard/trackpad and the already fixed
+Properties focus suppression are unchanged. Build + Q25 tests remain
+required before merge.

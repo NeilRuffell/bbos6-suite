@@ -222,3 +222,109 @@ submodule availability or collaborator onboarding. Keep the shared repository
 private unless the owner explicitly changes its visibility.
 
 See [README.md](README.md) for paths and usage.
+
+## Kotlin + Jetpack Compose migration target
+
+Future BBOS6 application UI and shared presentation helpers are to use Kotlin
+and Jetpack Compose. Migration is staged in feature branches, not directly in
+`master`. Do not rewrite application-specific behavior or alter persistent
+data as a side effect of converting UI. Keep legacy native Views available
+until each Compose replacement is parity-verified for real hardware focus,
+touch, keyboard and trackpad. Read
+`android/bbos6-ui/COMPOSE_MIGRATION.md` for current progress.
+
+## Compose-backed empty states
+
+The Kotlin `Bbos6EmptyStateComposeView` is the shared transition host for
+existing Android View containers. All new empty-state visuals remain in the
+`Bbos6EmptyState` Composable, never in a Music-only widget. Preserve the
+Java-callable content/artwork methods and the non-focusable, non-clickable
+contract so list selection/navigation stays exclusively app-owned.
+
+## Compose Now Playing control-face ownership
+
+The only new Now Playing control visuals are shared
+`Bbos6NowPlayingControlSelection`, `Bbos6NowPlayingSeekRail`, and
+`Bbos6NowPlayingArtwork`. Consuming applications own selection/focus,
+transport action callbacks, native SeekBar interaction and all artwork
+loading. Keep the already Q25-verified 1dp mode/seek separators and
+nonlinear 2D bevel fades intact when changing these subcomponents.
+
+## Transitional Java modal API to Compose bridge
+
+`Bbos6ContextMenu.Builder.show(Activity)` and
+`Bbos6PropertiesPopup.show(Activity, List)` now select shared Compose
+presentations for AndroidX ComponentActivity hosts, while maintaining
+the native implementation as a compatibility fallback for plain Activity.
+Never move caller action IDs, commands, item formatting or storage logic
+into the bridge. Preserve Java Dialog return semantics, Q25 DPAD focus and
+Back/outside-touch behavior. Test both render paths before deleting legacy
+modal renderers.
+
+## BBOS6 custom focus — strictly no Android default overlay
+
+**NON-NEGOTIABLE:** Android's automatic light/default focus-highlight
+overlay is prohibited on *every* custom-managed BBOS6 panel, including
+ComposeView, AndroidComposeView, shared popup, grid, media-list and modal
+focus-owner containers. It obscures the canonical blue selection gradient.
+Use the existing shared `Bbos6FocusPolicy.forManagedContainers(root)`
+on Android ViewGroup focus owners (including Compose hosts and roots).
+Never "fix" an overlay with transparent layers, extra drawables,
+dim filters, background color matching, or per-screen hacks. Preserve
+native EditText and other leaf controls' real focus/typing behavior.
+One active interaction zone draws one BBOS6 selection; selected index
+alone is not actual focus. A focus-overlay recurrence blocks Q25
+acceptance and merging; validate focus changes in **both** directions.
+
+## Current popup focus routing (Q25 regression and guard)
+
+`Bbos6PopupButtonList.Builder.show(Activity)` uses canonical shared
+Compose popup chrome for **button-only** dialogs when the Activity is
+a `ComponentActivity`. Any popup with `.textInput(...)` MUST use
+the original native `PopupDialog`, regardless of Activity type.
+The original native dialog owns DPAD/trackpad dispatch and uses
+`Bbos6FocusPolicy`; text input remains native `Bbos6TextField`.
+A prior Compose/AndroidView hybrid lost left/right navigation after
+leaving the field and drew the default focus overlay on the button
+group. That approach is **rejected** until it can provide proper
+native↔Compose focus transfer and pass device testing; do not route
+input dialogs to the Compose bridge speculatively. The original
+plain-Activity native fallback is also retained.
+
+Shared `Bbos6SearchEmptyFeedbackView` owns passive no-results
+appearance only; callers retain search filtering, visibility and focus.
+
+## Compose media row native-list touch ownership
+
+The canonical `Bbos6MediaListRow` is paint-only except for its
+optional trailing action. In an Android ListView, the inner
+`AndroidComposeView` can consume touch gestures without activating
+native rows. Simply returning `false` from
+`Bbos6MediaListRowTouchHost.dispatchTouchEvent(ACTION_DOWN)` was
+**not sufficient** on Q25: scrolling worked but taps did not.
+
+The shared `Bbos6MediaListRowTouchHost` now calls Android's standard
+`View.onTouchEvent` for ordinary native row gestures, with Java-compatible
+`setNativeRowActions(Runnable?, BooleanSupplier?)` bound on *every*
+adapter recycle. The owning list uses its existing `performItemClick`
+and long-press action and may intercept MOVE for scrolling, issuing
+ACTION_CANCEL to prevent a tap on a drag. Native `View` owns touch
+slop and long-press timing; do **not** invent a gesture timeout.
+Only gestures beginning on the actual optional trailing action are
+forwarded to Compose. Keep `Bbos6MediaListTouchGeometry` as the one
+source of the button's painted and interactive dimensions.
+
+Never fix list tapping per screen. The shared host owns routing;
+the list owns data, selection, click/long-click callbacks, scrolling,
+trackpad and DPAD. Test scroll versus tap, tap after fling, long press,
+optional Remove without duplicate row activation and accessibility.
+
+## Compose modal root focus policy
+
+All BBOS6 Java-to-Compose dialog bridges apply
+`Bbos6FocusPolicy.forManagedContainers` to their outer ComposeView
+and `Bbos6ManagedFocusEffect` to their mounted AndroidComposeView root.
+Read-only `Bbos6PropertiesPanel` applies the same effect when hosted
+directly by a Kotlin caller. The entire light/default Android focus
+highlight is strictly prohibited on BBOS6-managed modal containers.
+Never obscure it with an extra draw layer or disable native leaf editing.
