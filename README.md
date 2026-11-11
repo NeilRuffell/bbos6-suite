@@ -1836,3 +1836,7 @@ disposable test files only.
 ### Kotlin service override compatibility (MediaLibraryService)
 
 `MusicPlaybackService.onTaskRemoved` must override `onTaskRemoved(rootIntent: Intent?)`: Android's `Service` Java API exposes a platform-nullable Intent to the Kotlin compiler. Its implementation does not read the Intent; nullable override preserves Recents-dismiss pause/checkpoint and stopSelf behavior. A non-null `Intent` parameter fails debug and release Kotlin compilation with `overrides nothing`. No playback state, data, or service identity changes.
+
+## Local SAF scanner Kotlin port
+
+LocalMusicSource.java is now LocalMusicSource.kt. Same Java-accessible Listener, Song field ABI, ScanSummary fields and methods; original Java source removed. The scanner remains restricted to MusicFolders.selectedTrees and verified audio streams, uses the same sorted length-prefixed verified-audio-v3-album-tags: selection key, conservative file fingerprints, metadata fallbacks, duplicate URI suppression, album-tag legacy revalidation, deterministic song order, single worker, 400-row deletion batches and atomic Room transactions. Cancelled requests cannot commit or deliver stale callbacks. The existing Room v3 database file and saved data are untouched. Full Q25 Gradle and device testing of library cold start, Refresh, Full rescan, folder removal, missing album metadata, playlists and playback is required before merge.

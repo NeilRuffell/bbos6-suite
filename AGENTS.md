@@ -504,3 +504,7 @@ disposable local test tracks on device.
 ## Kotlin native Media3 service
 
 `MusicPlaybackService.kt` is the only MediaLibraryService (same manifest identity). Preserve the `MediaLibrarySession.Callback` media-browse and `onPlaybackResumption` contracts, the saved authorized queue, single-item metadata preview for system resumption, full queue only on actual play, five-second position checkpoint, Stop-IDLE clearing persisted state, Home background playback versus Recents removal pause, and Activity-independent deletion pruning. Retain @JvmStatic pruneDeletedDocuments for remaining Java callers. Do not change service exportability, signing, saved state or session ID. Device-test Bluetooth/system media buttons and resumption before merge.
+
+## Kotlin Music scanner index contract
+
+LocalMusicSource.kt remains the only app-owned SAF scanner, restricted to currently selected read-authorized trees. Maintain the exact verified-audio-v3-album-tags: cache key, sorted length-prefix tree list, positive MediaExtractor audio verification, absent album as empty string, legacy Unknown Album verification, unchanged file fingerprint policy, 400-row deletion batching and Room delta transaction, serialized worker, request serial cancellation, and on-worker database close. Song and ScanSummary expose @JvmField for Java MusicActivity and related classes. Never scan device-wide MediaStore or clear database as a migration step.
