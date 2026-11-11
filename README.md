@@ -149,20 +149,26 @@ unchanged for directory queries, authorization and navigation.
 
 Folder navigation uses the same `MusicListView` / hardware trackpad focus as
 other library pages. Directories appear before files, in case-insensitive name
-order. Only directories not beginning with `.` and audio-file candidates are
-shown. Hidden directories such as `.thumbnails`, cover artwork, playlists and
+order. Only directories not beginning with `.` and verified indexed audio files
+are shown. Hidden directories such as `.thumbnails`, cover artwork, playlists and
 other non-audio files are omitted, including from configured-root entries
 when a root's display name starts with `.`. This affects only Folders browsing:
 Settings can still manage all configured roots and the library scanner's
 existing selection remains unchanged.
 
-Audio candidates use the same MIME/extension/playlist exclusion policy as the
-library scanner, centralized in `MusicFilePolicy`. A matching extension or
-provider MIME type alone does not establish playability: files absent from the
-verified music catalog remain non-selectable. Indexed music files show artist,
-duration and artwork where available and play through the existing Media3
-session. Previous/Next uses the playable tracks in the displayed folder (or
-its current filtered results), not the entire library.
+The folder worker first identifies audio candidates with the same
+MIME/extension/playlist exclusion policy as the library scanner, centralized
+in `MusicFilePolicy`. Folder rows show those files **only** when their document
+URI matches a verified song in the currently selected tree's catalog. A matching
+extension or MIME type alone is insufficient; unindexed, unsupported or
+unreadable audio-looking files are hidden rather than shown as unplayable
+duplicates. Repeated provider rows for a document URI are displayed once.
+New music requires **Refresh library** to become visible if it has not yet been
+indexed. When the catalog is still loading, a folder containing only audio
+candidates displays the loading message rather than an empty folder. Indexed
+music shows artist, duration and artwork where available and plays through the
+existing Media3 session. Previous/Next uses the playable tracks in the
+displayed folder (or its current filtered results), not the entire library.
 
 `MusicFolderBrowser` queries only the immediate children of a directory
 through Android's Storage Access Framework, on a background worker. It reads
