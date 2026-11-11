@@ -566,3 +566,20 @@ is how existing pages clear their state. Row IDs and all default sentinels
 navigation, list focus/scroll, deletion authorization and playback methods.
 Run `MusicActivityModelsTest` and verify root entries, playlists, empty
 states, search/Back, Q25 touch and trackpad before merging.
+
+### Kotlin Activity artwork indexing and counts
+
+The app-specific `MusicLibraryGroupPolicy.kt` now owns the old
+`MusicActivity` first-album comparator, `albumKeyForRow`, indexed album
+artwork candidate ordering and four category counters. Preserve the original
+per-album insertion order; candidate tracks sort by positive track number
+(otherwise `Int.MAX_VALUE`), case-insensitive title, and exact URI string.
+Per-album URI lists remain unmodifiable. Untagged tracks receive their own
+`untagged:` URI key; artists/genres select the same earliest alphabetical
+album, never borrow artwork from another album on missing art. Album grouping
+continues to omit only missing tags, not the literal "Unknown Album".
+The Activity retains the authorized `localSongs` snapshot, loader/cache,
+selection, update timing and `list.refreshVisibleRows()` call. The Kotlin
+counter utility must never notify or reset ListView navigation itself.
+Verify artwork on Artists/Albums/Genres and tagless tracks, counts after
+refresh and the physical Q25 trackpad/scroll without a forced rescan.
