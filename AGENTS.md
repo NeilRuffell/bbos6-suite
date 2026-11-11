@@ -283,3 +283,12 @@ paint-only seek rail must never acquire input focus or draw extra rules.
 `MusicNowPlayingArtworkView` is only a binding bridge; actual image
 rendering is in shared `Bbos6NowPlayingArtwork` and Music retains all
 artwork lookups and stale async guards.
+
+### Shared modal Compose transition
+
+For `MusicActivity` (ComponentActivity), context menus and Properties
+use the canonical shared `Bbos6ContextMenuComposeBridge` and
+`Bbos6PropertiesComposeBridge` automatically through existing Java
+APIs. Do not add Music-specific UI dialogs or reimplement action
+callbacks. Keep original focus/activation/Back semantics; explicitly
+verify both modal types on Q25 before any merge.

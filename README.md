@@ -1471,3 +1471,27 @@ selected/disabled click and DPAD, separator alignment, seek first/last
 positions and dragged progress (including disabled track), album covers
 present/absent, stop, Back and screen re-entry. Build/device verification
 is mandatory before merging.
+
+## Shared Compose modal integration (Properties and context actions)
+
+The previously native `Bbos6ContextMenu.Builder.show(Activity)` and
+`Bbos6PropertiesPopup.show(Activity, List)` are now Compose-backed
+automatically in Music because `MusicActivity` extends AndroidX
+`ComponentActivity`. Both changes live exclusively in
+`bbos6-shared`, pinned as submodule
+`7c4f4ed91d6905f74e40022f337f83039d74a786`.
+
+The shared bridges retain Java action/row models, all IDs, resource icon
+mappings, enabled flags, callbacks, selected IDs, window `Dialog` return
+values, Back/outside-touch policy and underlying list/scroll selection.
+The new UI is rendered by existing canonical Compose helpers
+`Bbos6ContextMenuGrid` and `Bbos6PropertiesPanel`, not Music-only
+copies. On non-AndroidX Activities, the original native dialogs still
+render without a behavior change.
+
+No Java Music business logic changed. The user's preceding Now Playing
+batch passed Q25 inspection, but the new modal integration is untested.
+Device checks: touch long-press and trackpad menus on Songs/Albums and
+Playlists; icon proportions, disabled item skipping, menu/group scrolling,
+Back/Cancel, action activation once on key-up, and Properties display,
+scroll, outside touches and Back.
