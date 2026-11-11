@@ -31,6 +31,18 @@ public final class MusicLibraryRowPolicyTest {
                 MusicLibraryRowPolicy.menuIconForRow(MenuRow.root("Folders", 7)));
         assertEquals(R.drawable.bbos6_menu_now_playing,
                 MusicLibraryRowPolicy.menuIconForRow(MenuRow.nowPlaying()));
+        MusicLibraryDatabase.PlaylistSummary playlist =
+                new MusicLibraryDatabase.PlaylistSummary();
+        playlist.id = 42L;
+        playlist.name = "Favorites";
+        playlist.songCount = 3;
+        assertEquals(R.drawable.bbos6_menu_playlists,
+                MusicLibraryRowPolicy.menuIconForRow(MenuRow.playlist(playlist)));
+        assertEquals(R.drawable.bbos6_menu_add_playlist,
+                MusicLibraryRowPolicy.menuIconForRow(
+                        MenuRow.playlistAction("Add Playlist", "choose-add", -1L)));
+        assertEquals(0, MusicLibraryRowPolicy.menuIconForRow(
+                MenuRow.playlistAction("Play all", "play", 42L)));
         assertEquals(0, MusicLibraryRowPolicy.menuIconForRow(
                 MenuRow.settingsHeader("Music library")));
     }

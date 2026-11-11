@@ -10,11 +10,16 @@ import android.net.Uri
 internal object MusicLibraryRowPolicy {
     private const val MENU_FOLDERS = 7
 
-    /** Existing verified original asset resource mappings; no new mapping. */
+    /** Canonical BBOS6 asset mappings, including indexed Add Playlist 335.png. */
     @JvmStatic
     fun menuIconForRow(row: MusicActivityModels.MenuRow): Int {
         when (row.kind) {
             MusicActivityModels.ROW_NOW_PLAYING -> return R.drawable.bbos6_menu_now_playing // 341.png
+            MusicActivityModels.ROW_PLAYLIST -> return R.drawable.bbos6_menu_playlists // 337.png
+            MusicActivityModels.ROW_PLAYLIST_ACTION ->
+                return if (row.playlistAction == "choose-add")
+                    R.drawable.bbos6_menu_add_playlist // 335.png
+                else 0
             MusicActivityModels.ROW_FOLDER,
             MusicActivityModels.ROW_BROWSER_ROOT,
             MusicActivityModels.ROW_BROWSER_DIRECTORY,
