@@ -1,5 +1,6 @@
 package dev.q25.bbmusic
 
+import android.content.Context
 import java.util.Locale
 
 /**
@@ -83,4 +84,96 @@ internal object MusicLibraryPageRows {
         }
         return matches
     }
+    /**
+     * Home Folders roots: show saved SAF entries even when grants have been
+     * revoked. Readability always comes from MusicFolders.selectedTrees().
+     */
+    @JvmStatic
+    fun folderRootRows(context: Context): ArrayList<MusicActivityModels.MenuRow> {
+        val rows = ArrayList<MusicActivityModels.MenuRow>()
+        val authorized = MusicFolders.selectedTrees(context).mapTo(HashSet()) { it.toString() }
+        val saved = MusicFolders.savedTrees(context)
+        for (tree in saved) {
+            val name = MusicFolders.displayName(context, tree)
+            if (!MusicFilePolicy.isVisibleDirectory(name)) continue
+            if (tree.toString() in authorized) {
+                rows.add(
+                    MusicActivityModels.MenuRow.browserRoot(
+                        name, tree, MusicFolders.documentId(tree)
+                    )
+                )
+            } else {
+                rows.add(MusicActivityModels.MenuRow.browserUnavailable(name))
+            }
+        }
+        if (rows.isEmpty()) {
+            rows.add(
+                MusicActivityModels.MenuRow.message(
+                    if (saved.isEmpty()) "No folders selected" else "No visible folders"
+                )
+            )
+        }
+        return rows
+    }
+
+    /**
+     * Settings > Music Folders keeps saved roots regardless of current read
+     * authorization, preserving the original 'Access unavailable' subtitle.
+     */
+    @JvmStatic
+    fun musicFolderSettingsRows(context: Context): ArrayList<MusicActivityModels.MenuRow> {
+        val rows = arrayListOf(MusicActivityModels.MenuRow.setting("Add folders"))
+        val authorized = MusicFolders.selectedTrees(context).mapTo(HashSet()) { it.toString() }
+        for (tree in MusicFolders.savedTrees(context)) {
+            val location = MusicFolders.displayLocation(MusicFolders.documentId(tree))
+            rows.add(
+                MusicActivityModels.MenuRow.folder(
+                    MusicFolders.displayName(context, tree),
+                    if (tree.toString() in authorized) location
+                    else "Access unavailable - $location",
+                    tree
+                )
+            )
+        }
+        return rows
+    }
+
+    /**
+     * View-only representation of one already-authorized SAF folder response.
+     * Does not enumerate SAF, grant permissions or change the selected tree.
+     */
+    @JvmStatic
+    fun browserRows(
+        page: MusicActivityModels.Page,
+        localSongs: List<LocalMusicSource.Song>?
+    ): ArrayList<MusicActivityModels.MenuRow> {
+        val rows = ArrayList<MusicActivityModels.MenuRow>()
+        val entries = page.browserEntries ?: return rows
+        val indexed = HashMap<String, LocalMusicSource.Song>()
+        if (localSongs != null) {
+            for (song in localSongs) {
+                if (song.sourceTree == page.browserTree) {
+                    indexed[song.uri.toString()] = song
+                }
+            }
+        }
+        for (entry in entries) {
+            if (entry.directory) {
+                rows.add(
+                    MusicActivityModels.MenuRow.browserDirectory(
+                        entry.name, page.browserTree!!, entry.documentId
+                    )
+                )
+            } else {
+                rows.add(
+                    MusicActivityModels.MenuRow.browserFile(
+                        entry.name, indexed[entry.uri.toString()]
+                    )
+                )
+            }
+        }
+        if (rows.isEmpty()) rows.add(MusicActivityModels.MenuRow.message("Empty folder"))
+        return rows
+    }
+
 }
