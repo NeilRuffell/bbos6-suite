@@ -1,13 +1,22 @@
-# Reusable BBOS6 native Android popup helpers
+# Reusable BBOS6 Kotlin/Compose and native Android UI library
 
-A standalone, pure-Java/native-Android UI library. No Media3, storage,
-music metadata, BB UI Vector/LSPosed or third-party dependency.
+**Future-app component bucket:** [COMPONENT_CATALOG.md](COMPONENT_CATALOG.md)
+contains the canonical exported-component list, Kotlin/Compose samples,
+submodule + Gradle setup, legacy fallback rules and the known missing
+reusable abstractions.
+
+This library is a standalone, app-neutral Android Gradle module containing
+Kotlin/Jetpack Compose UI and retained Java/native Android compatibility
+classes. It does not depend on Music business logic, Media3, SAF storage,
+BB UI Vector or LSPosed. It is **not yet a Kotlin-only library**.
 
 Consumed by the independent [`bb-music`](https://github.com/NeilRuffell/bb-music)
 application through the pinned `assets/bbos6` Git submodule. Other native Android
 applications can use the same module without maintaining their own copy.
 
 ## Components
+
+For a complete current component inventory, refer to the [catalogue](COMPONENT_CATALOG.md). The native helpers below are one part of the shared module; they are not its entire public API.
 
 - `dev.q25.bbos6.ui.Bbos6PropertiesPopup` — a native read-only `Dialog`
   with independent property rows and value alignment.
