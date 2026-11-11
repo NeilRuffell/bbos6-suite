@@ -250,3 +250,17 @@ New unit tests assert the Java-to-Compose model mapping for both modals.
 Q25 tests must verify menu keyboard/trackpad highlight and scrolling,
 context long press, action routing/dismissal, properties values/scroll and
 Back. No app-specific business logic is moved.
+
+## Kotlin view-tree owner compatibility correction
+
+A Q25 Gradle build of the initial Compose Java-dialog bridge failed at
+`bbos6-ui:compileDebugKotlin` and `compileReleaseKotlin` because the
+bridge tried to import the Java-style `ViewTreeLifecycleOwner`,
+`ViewTreeViewModelStoreOwner` and `ViewTreeSavedStateRegistryOwner` types
+into Kotlin. The installed AndroidX lifecycle and savedstate APIs expose
+the setters to Kotlin as `View.setViewTreeLifecycleOwner`,
+`View.setViewTreeViewModelStoreOwner` and
+`View.setViewTreeSavedStateRegistryOwner` extensions. The bridge now
+calls these supported methods on the ComposeView directly. No change to
+model translation, modal rendering, callbacks, focus, or data semantics.
+Recheck both compile variants and Q25 after this import-only API fix.
