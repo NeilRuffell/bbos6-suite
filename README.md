@@ -1742,3 +1742,20 @@ AndroidComposeView, including read-only Properties panel. No extra overlay
 or color workaround introduced. The Q25 regression and strict prohibition
 are documented in both repositories. Gradle build and device testing
 required before merge; protect playlist editing and native text input.
+
+## Q25 list tap regression, second fix
+
+The first shared touch-pass-through host restored scrolling but not
+tap activation. Native `ListView` needs a real native clickable row
+target. `Bbos6MediaListRowTouchHost` now routes ordinary row gestures
+to Android's standard View click/long-click handling rather than
+returning false on ACTION_DOWN. Music's row wrapper rebinds callbacks
+on every recycle; `MusicListView` resolves a current row using
+`getPositionForView` at activation and calls the same native
+`performItemClick` and `OnItemLongClickListener` used previously.
+ListView can intercept a drag and cancel the in-progress row press,
+preserving native scrolling and preventing activation on fling.
+Only gestures beginning inside the visible Remove button remain
+Compose-owned. Disabled rows have no click listener. Current shared
+submodule pin: `31d8d025d7218f098d2928b44e7655fcc144542c`. No focus/color/playback changes.
+Build and Q25 test required.

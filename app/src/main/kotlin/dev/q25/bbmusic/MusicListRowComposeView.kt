@@ -2,6 +2,7 @@ package dev.q25.bbmusic
 
 import android.content.Context
 import android.graphics.Bitmap
+import java.util.function.BooleanSupplier
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,6 +59,14 @@ class MusicListRowComposeView(context: Context) : Bbos6MediaListRowTouchHost(con
         // Delegate only the actual trailing Remove touch target to Compose.
         // All ordinary row taps/long presses must reach the native ListView.
         setTrailingActionTouchEnabled(showRemove && onRemove != null)
+    }
+
+    /**
+     * Keep native row action callbacks fresh across adapter recycling.
+     * Shared superclass owns the platform click/long-click gesture lifecycle.
+     */
+    fun bindNativeActions(onTap: Runnable?, onLongPress: BooleanSupplier?) {
+        setNativeRowActions(onTap, onLongPress)
     }
 
     fun setHighlighted(isHighlighted: Boolean) {

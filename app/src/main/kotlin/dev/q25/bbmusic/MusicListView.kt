@@ -15,6 +15,7 @@ import android.widget.AdapterView
 import android.widget.BaseAdapter
 import android.widget.ListView
 import dev.q25.bbos6.ui.Bbos6FocusPolicy
+import java.util.function.BooleanSupplier
 import kotlin.math.roundToInt
 
 /**
@@ -205,6 +206,24 @@ class MusicListView(context: Context, private val data: DataSource) : ListView(c
             row.showRemoveButton,
             if (row.showRemoveButton) Runnable { data.activate(position) } else null
         )
+        // The Compose row must itself receive a native click gesture.
+        // A false ACTION_DOWN only restored scrolling, not ListView taps.
+        // Never capture a recycled row's position in these callbacks.
+        views.root.bindNativeActions(
+            if (row.enabled) Runnable {
+                val target = currentTouchPosition(views.root)
+                if (target >= 0) {
+                    performItemClick(views.root, target, rowAdapter.getItemId(target))
+                }
+            } else null,
+            if (row.enabled && data.supportsLongPress(position)) BooleanSupplier {
+                val target = currentTouchPosition(views.root)
+                target >= 0 && data.supportsLongPress(target) &&
+                    (onItemLongClickListener?.onItemLongClick(
+                        this, views.root, target, rowAdapter.getItemId(target)
+                    ) == true)
+            } else null
+        )
         val spoken = if (row.trackNumber == null) row.title.orEmpty()
             else (if (row.trackNumber == "--") "Track number unavailable, "
                   else "Track ${row.trackNumber}, ") + row.title.orEmpty()
@@ -215,6 +234,12 @@ class MusicListView(context: Context, private val data: DataSource) : ListView(c
         )
         bindArtwork(views, row)
         styleRow(views, position)
+    }
+
+    private fun currentTouchPosition(view: View): Int {
+        val position = getPositionForView(view)
+        return if (position in 0 until data.size() &&
+            rowAdapter.isEnabled(position)) position else -1
     }
 
     private fun bindArtwork(views: RowViews, row: RowData) {

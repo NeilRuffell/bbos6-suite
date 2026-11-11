@@ -439,3 +439,19 @@ are delivered to the Compose remove action. Update its enabled flag on
 every `bindText` recycling operation. Never add per-screen tap handlers.
 All Properties modal focus suppression is likewise shared via
 `Bbos6ManagedFocusEffect`; no light/default platform focus wash allowed.
+
+## Native Compose-row touch activation — Q25 second-stage regression rule
+
+Returning `false` on ordinary `AbstractComposeView.dispatchTouchEvent`
+ACTION_DOWN lets Q25 scroll but **does not** activate a native
+`ListView` row. Use shared `Bbos6MediaListRowTouchHost` native
+`View.onTouchEvent` click/long-click processing, and bind fresh
+`setNativeRowActions` through the Music row wrapper during each adapter
+recycle. In `MusicListView`, resolve current row with
+`getPositionForView` at invocation, then use existing
+`performItemClick` and `OnItemLongClickListener`; never activate an
+old recycled index. Android ListView intercepts drag and cancels row
+pressed state. Keep Compose pointer routing only for explicit
+trailing Remove. The shared helper owns generic gesture policy;
+Music owns data and action callbacks. No custom timeout, focus overlay
+or per-screen handler allowed.
