@@ -15,7 +15,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.InsetDrawable;
 import android.graphics.drawable.LayerDrawable;
 import android.view.Gravity;
-import android.widget.ImageView;
+import android.view.View;
 import android.widget.SeekBar;
 
 /**
@@ -399,7 +399,7 @@ final class MusicPlayerChrome {
                 });
     }
 
-    static Drawable transportSeparators(Context context, ImageView[] buttons) {
+    static Drawable transportSeparators(Context context, View[] buttons) {
         return new Drawable() {
             private final Paint dark = new Paint();
             private final Paint light = new Paint();

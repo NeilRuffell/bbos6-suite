@@ -1304,3 +1304,539 @@ sequential/shuffle playback, process restart persistence, unavailable files
 after removing a folder and reauthorizing it, plus M3U8 roundtrip using
 primary-storage audio. Test cancellation and unsupported SAF document providers.
 Only merge/publish after actual Q25 results and explicit approval.
+
+## Kotlin + Jetpack Compose migration (feature branch, not merged)
+
+The UI migration retains `dev.q25.bbmusic`, the app's existing upgrade
+signing identity, Room database, SAF folder grants, playlists, Media3 service,
+playback rules, adapter navigation and Q25 keyboard/trackpad interactions.
+
+The first active integration replaces the *presentation only*
+`MusicSettingsHeaderView` implementation with a Kotlin `ComposeView`.
+It renders the canonical `Bbos6SectionHeader` from the shared submodule.
+The old `MusicListView` adapter continues to create the same class and call
+`bind(title)`; its non-selectable group-row type and focus rules are intact.
+
+Temporary mixing of Kotlin Compose presentation with the unchanged legacy
+Java application runtime is confined to this unmerged migration branch.
+It is **not** the final all-Compose Music architecture. Do not remove the
+existing application/renderer until each replacement is verified on Q25.
+Build and test the release APK in place without uninstalling or clearing data,
+and never merge until explicitly approved.
+
+The existing `MusicActivity` now inherits AndroidX `ComponentActivity` on
+this feature branch, solely to provide Compose-required lifecycle and saved
+state owners to the existing View tree. Its playback, storage, navigation,
+keyboard handling, and lifecycle method bodies are otherwise unchanged.
+
+### Album header Compose presentation
+
+`MusicAlbumHeaderView` now renders through the canonical shared
+`Bbos6MediaDetailHeader` Composable. It preserves the same 89dp height,
+88dp cover, four metadata lines, placeholder artwork and 1dp separator.
+`MusicActivity.bindAlbumHeader()` and the `MusicListView` artwork loader
+are not modified: the existing cache, SAF-selected sources, stale callback
+generation checks, album title/artist/genre formatting, and navigation remain
+unchanged. The row is still outside the selectable list adapter.
+
+The Music feature branch pins shared commit
+`b7310c4f8682f2394e33c9b23fa65d9373815730`. Verify album detail
+artwork (present/missing), Back, scrolling/trackpad selection and rotation
+before approving or merging.
+
+### Compose-backed Music empty state
+
+The list viewport's `emptyState` is now a
+`Bbos6EmptyStateComposeView` from `bbos6-shared`, implemented entirely
+through the shared Compose `Bbos6EmptyState`. It exposes the existing
+`setContent(...)` and `setArtworkResource(...)` methods to the unchanged
+`updateEmptyState()` logic. The empty-state component remains outside the
+selectable `MusicListView` adapter, non-focusable, non-clickable and
+transparent behind its content. List selection, keyboard/trackpad navigation,
+reserved action-row spacing, Playlists' original 354.png artwork, search,
+playback and data are unchanged.
+
+The integration remains unmerged until verified on the Q25. Check the empty
+Playlists page and an empty playlist detail, including focus staying on the
+action rows, Back, and both touch and physical trackpad behavior.
+
+
+## Large Compose presentation batch: list rows, search and Now Playing metadata
+
+This batch migrates three additional, distinct Music presentation layers
+together, after making their reusable Composables in `bbos6-shared`:
+
+1. **Every non-section Music library/menu/folder/song/playlist row** now
+   uses `MusicListRowComposeView` backed by `Bbos6MediaListRow`. The native
+   `MusicListView` retains the same adapter, scroll/selection/DPAD rules,
+   click and long-click routing, original menu-icon pixel trimming, and
+   artwork loader/cache. The artwork binding key still prevents stale
+   asynchronous callbacks from leaking into recycled rows. The optional
+   Remove control invokes the exact existing `DataSource.activate(position)`.
+2. **Search header chrome** uses shared `Bbos6SearchChrome`. The same
+   native `Bbos6TextField` remains attached, with the existing text watcher,
+   IME and hardware type-to-search logic unchanged.
+3. **Now Playing artist/album metadata plates** use `Bbos6MetadataPlate`
+   via `MusicBeveledTextLabel`, preserving `setText`,
+   `setMetadataFocused`, the native zone/focus controller, caller touch
+   listeners and metadata navigation callbacks. Transport/seek controls and
+   Media3 playback are not modified.
+
+Shared submodule is pinned to `9656f1d56ccbc224dd5da4bf6b156a75418a0648`.
+No application IDs, signing identities, persistent data, SAF grants or
+playback methods were changed.
+
+This batch requires Q25 regression testing of all Music library pages,
+row icon/cover sizing, fast scrolling/recycling, keyboard/trackpad selected
+gradient, long-press context menu, folder Remove touch, type-to-search,
+and Now Playing artist/album tap/DPAD and focus.
+
+
+## Now Playing four-panel and dynamic text Compose batch
+
+The mode header, half-radial artwork backdrop, seek strip and transport
+background are now drawn by the shared `Bbos6NowPlayingSurface` using a
+non-focusable, non-clickable shared Compose host placed **behind** the
+existing native interactive controls. All four panels retain their former
+heights, layout containers and children. Native controls, SeekBar rail,
+thumb, time calculations, transportation icons, selections and separators
+remain unchanged.
+
+Four independent Now Playing text fields (queue count, song title, elapsed
+and remaining times) now use Kotlin `MusicPlayerTextView`, which delegates
+to the shared `Bbos6NowPlayingText`. The previous Java-facing `setText`
+update contract and all formatting computations remain unchanged.
+
+No Java player `render`, `renderFocus`, `renderProgress`, artwork-loader,
+trackpad/DPAD, ticker, or action methods were changed. The old drawable
+helpers are retained for later parity comparison, not deleted.
+
+Test the Now Playing panel gradients, text alignment, song-title wrapping,
+long times, seek-thumb travel and time accuracy, transport button touch and
+DPAD, Repeat/Shuffle icons, media-action behavior and focus colors on Q25.
+
+### Mode/seek chrome bevel regression fix
+
+Q25 feedback identified two too-thick glows in the first Compose Now
+Playing panel port: beneath the mode header's top line and above the seek
+panel's bottom line. Their source is the shared `Bbos6NowPlayingSurface`,
+**not** Music seekbar geometry or touch/focus logic. The initial port
+replaced the mode reflection with a full-width linear 7dp fade and
+flattened the seek reflection into a constant-intensity 5dp strip. The
+shared follow-up change restores the original Java `MusicPlayerChrome`
+2D fades: row-wise `(1-progress)^1.55` (mode, maximum 42 alpha) and
+`rise^3.2` (seek, maximum 52 alpha), both tapering off toward the
+horizontal edges. Keep the intentional 1dp separators and all native
+SeekBar, transport, DPAD, controller and media methods unmodified.
+
+The application submodule is pinned to the shared fix
+`4d5878065438d034dbfb85b495e041e11ed08ab4`.
+Review both panels side-by-side with the previously accepted native
+release, then verify playback and selection still work. Builds and Q25
+visual parity of this revised SHA remain unverified.
+
+## Now Playing: Compose controls, progress rail and album art
+
+After the Q25 acceptance of the corrected mode/seek panel bevels, the
+remaining Now Playing visual building blocks now use the shared Compose
+library:
+
+- The original Repeat and Shuffle PNG ImageViews still own **all**
+  touch and accessibility handling. A passive shared Compose mode
+  highlight lives behind each button, inset 1dp to leave the already
+  verified header rules visible. The existing `renderFocus()` computes
+  precisely the same enabled, selected and current mode states.
+- Four original native transport icons, enabled alpha, touch callbacks
+  and transport/DPAD zone logic are unchanged. Each sits above the
+  shared Compose transport selection gradient. The native foreground
+  separator drawable now follows the same-size parent button slots;
+  only its parameter type changes from `ImageView[]` to `View[]`.
+- The 3dp seek **progress rail** now draws in shared Compose, using the
+  original 2dp end guard and entire SeekBar width to cover start/end
+  positions precisely. The original Android SeekBar still handles the
+  pill, seek gesture, touch-time preview, focus, editing and time math.
+  On every SeekBar progress change, the passive Compose rail follows
+  the same value. Disabled alpha follows native SeekBar alpha.
+- `MusicNowPlayingArtworkView` retains Music's existing resource/
+  bitmap setters and async loader callback, but delegates FIT_CENTER
+  rendering with 6dp inset to shared `Bbos6NowPlayingArtwork`.
+  Original 543.png no-art bitmap resource is untouched.
+
+All application-level Media3 callbacks, library/metadata decisions, seek
+policy, native input dispatch, playback session and app data are unchanged.
+Shared submodule pins `26d0b6f03bb2767d8ca614cf699f8e98f5ee83fb`.
+
+Test on Q25: Repeat/Shuffle selected/unselected/unavailable, transport
+selected/disabled click and DPAD, separator alignment, seek first/last
+positions and dragged progress (including disabled track), album covers
+present/absent, stop, Back and screen re-entry. Build/device verification
+is mandatory before merging.
+
+## Shared Compose modal integration (Properties and context actions)
+
+The previously native `Bbos6ContextMenu.Builder.show(Activity)` and
+`Bbos6PropertiesPopup.show(Activity, List)` are now Compose-backed
+automatically in Music because `MusicActivity` extends AndroidX
+`ComponentActivity`. Both changes live exclusively in
+`bbos6-shared`, pinned as submodule
+`7c4f4ed91d6905f74e40022f337f83039d74a786`.
+
+The shared bridges retain Java action/row models, all IDs, resource icon
+mappings, enabled flags, callbacks, selected IDs, window `Dialog` return
+values, Back/outside-touch policy and underlying list/scroll selection.
+The new UI is rendered by existing canonical Compose helpers
+`Bbos6ContextMenuGrid` and `Bbos6PropertiesPanel`, not Music-only
+copies. On non-AndroidX Activities, the original native dialogs still
+render without a behavior change.
+
+No Java Music business logic changed. The user's preceding Now Playing
+batch passed Q25 inspection, but the new modal integration is untested.
+Device checks: touch long-press and trackpad menus on Songs/Albums and
+Playlists; icon proportions, disabled item skipping, menu/group scrolling,
+Back/Cancel, action activation once on key-up, and Properties display,
+scroll, outside touches and Back.
+
+### Compose Dialog bridge Kotlin interop correction
+
+The first shared dialog bridge failed Kotlin compilation because the
+AndroidX Java-style `ViewTree*Owner.set(...)` types are not visible as
+Kotlin symbols. Shared commit `7ddf64801a9de9466e2c62ec4f872a1e120c672e`
+uses the supported `View.setViewTreeLifecycleOwner`,
+`View.setViewTreeSavedStateRegistryOwner` and
+`View.setViewTreeViewModelStoreOwner` Kotlin extensions instead.
+Only shared bridge imports/owner setup changed; Music's modal callers and
+business logic are untouched. Build and Q25 behavior still require a retest.
+
+## Compose popup-button and empty-search presentation batch
+
+For Music's `ComponentActivity`, the Java
+`Bbos6PopupButtonList.Builder.show(Activity)` uses shared Compose
+popup presentation for **button-only** playlist choices and
+confirmations, retaining action IDs, selected state, icons, text,
+button widths, dimming, Back and callback behavior.
+
+**Create/Rename Playlist text-input popups keep the native shared
+`Bbos6PopupButtonList.PopupDialog` with `Bbos6TextField`**.
+Native DPAD/trackpad focus crossing, editing, IME and button highlights
+remain under the already-tested native implementation. Neither the
+`MusicActivity.askPlaylistName()` callbacks nor persisted data changed.
+
+The standalone “No search results found” TextView has been replaced
+with the shared passive `Bbos6SearchEmptyFeedbackView`. Search
+filtering, ListView navigation, focus and the exact empty-result
+visibility conditions are unchanged.
+
+Earlier shared popup batch: `0d3eeb7097d50c8cedc6ef6b57567a8a17dc9645`.
+Unmerged until Gradle build and Q25 checks: button-only modal icon/title,
+action selection via keyboard and touch, disabled actions, Back,
+New/Rename Playlist native input, and empty searches on every library page.
+
+## Q25 text-entry popup focus regression — native fallback restored
+
+Q25 verification of the experimental `AndroidView(Bbos6TextField)`
+inside the Compose popup showed two defects: Android's lighter default
+focus overlay appeared over the Cancel/Save area, and physical
+trackpad left/right navigation stopped after leaving the text field.
+That hybrid has been removed. `Bbos6PopupButtonList.Builder.show`
+now chooses the native popup whenever `.textInput(...)` is present,
+even for Music's `ComponentActivity`; button-only popups remain Compose.
+This restores the previous native popup's shared
+`Bbos6FocusPolicy.forManagedContainers(panel)` and its original
+DPAD/trackpad `dispatchKeyEvent` routing. Source behavior only; new
+APK and Q25 device tests still required.
+
+**Mandatory policy:** Android's automatic light/default
+full-container focus overlay is strictly forbidden on all BBOS6
+custom-managed focus owners. Disable it at its source using the shared
+`Bbos6FocusPolicy` on native/Compose ViewGroup owners. Never
+compensate with transparent covers or extra colors; preserve native
+EditText leaf focus. Update the shared helper first for future changes.
+
+Current shared submodule: `d08c1ac95432fe116ba7c5a0bf5e560f9b5a3e29`.
+Retest Create and Rename Playlist: move down from native EditText to
+buttons; trackpad left/right moves selected Cancel/Save; DPAD_UP returns
+to input; no light overlay; touch, keyboard, Cancel, Save and Back.
+
+## Kotlin Compose application shell and app policy migration
+
+Music's top-level screen container is now `MusicAppShellView.kt`
+(`AbstractComposeView` + `AndroidView`). Compose owns the active
+Library-versus-Now-Playing surface, black canvas, system-window inset
+root and Android-view attachment sequencing. The same native
+`libraryShell` and `MusicNowPlayingView` instances are retained,
+so ListView scrolling, adapter selection, search input, artwork
+caches and Media3 focus zones are not rebuilt. The native ListView
+and input components remain transitional; this is **not** a
+claim that MusicActivity/navigation and all native subviews are
+fully converted.
+
+`MusicActivity` now asks the Kotlin host to show a screen rather
+than reparenting the Java FrameLayout directly. The Compose host
+runs the caller's focus restoration only *after* the corresponding
+native screen is actually attached. The canonical shared
+`Bbos6FocusPolicy` disables Android's automatic default
+focus decoration on managed container nodes; native EditText
+leaf focus remains untouched.
+
+Pure independent policy classes moved from Java to Kotlin without
+changing Java callers or persisted identifiers:
+`MusicAlbumTag`, `MusicDeletedQueueIndex`,
+`TrackpadPressState`, `MusicDocumentPath`,
+`MusicFilePolicy`, `MediaSeekPolicy`,
+`MusicFileChangeDetector`, `MusicPlaylistPaths`. JVM static
+entry points are retained with `@JvmStatic`, and constant
+fields with `const val`. No changes to actual player session,
+Room database schema, SAF grants, application ID or signing identity.
+
+**Still required for full pure Kotlin+Compose application:** replace
+`MusicActivity.java` navigation/data orchestration, the native
+`MusicListView.java` row/recycling/DPAD owner, the
+`MusicNowPlayingView.java` layout/input owner, and the remaining
+Java music domain/services. Convert in isolated testable batches;
+never delete proven navigation or media behavior without Q25 parity.
+
+This batch is source-committed only. Compile and device validation
+must run before merge; verify Library↔Now Playing focus, list scroll
+position restore, search retention, Media3 controls, popup focus,
+cover art, trackpad and touch.
+
+## Kotlin library navigation controller with existing shared Compose rows
+
+`MusicListView.java` is converted to `MusicListView.kt`. It still
+extends Android `ListView` to retain the already device-tested
+physical trackpad navigation, focus, touch scroll/edge alignment and
+long-press detection, while the *actual row visuals and settings header*
+are rendered through shared Kotlin Compose components. Java
+`MusicActivity` retains the same `DataSource` and `RowData` model
+and all application navigation and click handlers. Native scrolling
+does not imply Java source; this owner is now Kotlin code.
+
+Original functions preserved: `notifyRowsChanged`,
+`refreshVisibleRows`, `refreshSelection`,
+`loadAlbumArtwork`, `clearArtworkCache`, `dispose`,
+`handleVerticalKey` and `canvasColor`. Original icon alpha
+bounds, artwork request-key guards, Q25 focus/selection, 68dp rows,
+1dp dividers, empty/section header behavior and accessibility text
+remain. The shared `Bbos6FocusPolicy` is applied to managed list
+containers to prohibit Android's light default focus overlay.
+
+Still pending complete app conversion: Java `MusicActivity` page
+controller, `MusicNowPlayingView` platform interaction owner, and
+the remaining Java playback/service/SAF/Room classes. This is a
+source-only unverified commit: test build, Q25 item selection,
+touch long press, artwork and library scroll position before merge.
+
+### Kotlin library artwork loader
+
+`MusicListArtworkLoader.java` is now `MusicListArtworkLoader.kt`,
+retaining the same Java-callable `Listener.onLoaded(Bitmap?)` API,
+album-keyed 12 MiB LRU cache, two-thread worker, 160px sampled cover
+bound, SAF `content:` restriction, main-thread callback dispatch and
+generation guard. Duplicate concurrent requests still share a callback
+list; invalidation clears only in-memory covers, and close cancels worker
+tasks. `MusicListView.kt` still protects recycled Compose rows using
+their original binding key. No metadata source, icon mapping, or SAF
+permissions changed. Build and Q25 artwork tests still required.
+
+### Kotlin SAF Music folder browser
+
+`MusicFolderBrowser.java` is now `MusicFolderBrowser.kt`. The native
+DocumentsProvider APIs, read-only single-thread querying, exact
+`MusicFolders.selectedTrees(context)` authorization checks before
+the query and before delivering results, hidden-directory/file-type
+filtering, folder-first case-insensitive sort, main-thread callbacks,
+error messages, and worker cleanup are preserved. `Listener` and
+`Entry` keep the existing Java caller ABI so the native MusicActivity
+can continue while its navigation controller is migrated. No SAF
+permissions or stored folders changed. Q25 Folders browsing, removal
+and grant revocation remain mandatory test cases.
+
+### Kotlin Now Playing artwork and generic fallback
+
+`MusicArtworkLoader.java` and
+`MusicCoverPlaceholderDrawable.java` now have Kotlin implementations
+with unchanged Java class names/constructor APIs. The artwork loader
+retains single-thread embedded-picture extraction, existing 600px
+downsample limit, release/error logging, main-thread callbacks and
+generation-based stale-track filtering; it does not alter source
+selection or playback. The generic placeholder keeps its exact
+previous paint colors and note geometry. Original numbered BBOS6
+assets remain untouched. On-device cover switching and fallback
+render tests still required.
+
+## Kotlin Now Playing presentation and input controller
+
+The entire \`MusicNowPlayingView.java\` controller is replaced by
+\`MusicNowPlayingView.kt\` without changing the app-facing constructor,
+\`MetadataNavigation\` callback interface, \`render()\`, \`directional()\`,
+\`activate()\` or \`dispose()\`. All four BBOS6 Now Playing panels use
+the existing canonical shared Kotlin Compose surfaces. Other Compose
+widgets continue rendering the title/queue/time labels, original cover,
+selection faces, Seek rail and artist/album metadata plates.
+
+The existing native \`SeekBar\` and transport/mode \`ImageView\` inputs
+remain under Kotlin control for Q25 focus, touch, accurate thumb travel
+and DPAD. Media3 remains exclusively in \`MusicPlaybackClient\`.
+Vertical zone traversal, absent-metadata skipping, mode and transport
+left/right, trackpad seek editing, time countdown, 1s ticker and
+stale-track artwork callback guard retain the Java behavior. The
+shared \`Bbos6FocusPolicy\` is applied to the Now Playing root to
+exclude Android's prohibited default light focus decoration.
+
+**Build and Q25 verification required.** Check all controls, Stop
+reset/resumption, shuffle/repeat, metadata jump/Back, seek pill,
+trackpad zone traversal, paused artwork, and library return. Pure
+Kotlin+Compose completion still requires MusicActivity and remaining
+Music domain/service Java conversions; native Android platform
+controls can remain as APIs, not separate Java source screens.
+
+### Now Playing Kotlin compiler interoperability fix
+
+Owner's first Gradle build of the Kotlin `MusicNowPlayingView` failed in
+both variants because a public Kotlin constructor exposed the
+package-private Java `MusicPlaybackClient` type, and the Kotlin
+`dp(Float)` helper was called with Java-style `Int` arguments. The
+controller now uses an `internal constructor` (still callable from
+the existing Java Activity at JVM level) and a `dp(Int)` helper
+that converts to `Float` when calling `MusicPlayerChrome.dp`.
+No layout dimensions, focus ownership, media operations, or
+resource mappings changed. The Gradle 8.11.1 deprecation warning is
+unrelated to this compilation failure. A fresh Gradle/Q25 verification
+is required; no claims of test success.
+
+### Kotlin persisted selected-folder SAF policy
+
+MusicFolders.java is now MusicFolders.kt, with @JvmStatic preserving the Java caller API. This preserves SharedPreferences keys bbmusic_selected_folders and tree_uris, sorted saved URIs, intersected live read grants for scanning, live write permissions, and display-only primary: stripping. Deleting a selection commits allowlist removal first and then releases OS URI grants, without deleting files. Existing Java unit tests for displayLocation remain in place. Source-only: build and Q25 SAF testing required.
+
+### Kotlin Media3 playback client
+
+MusicPlaybackClient.java is now MusicPlaybackClient.kt. It preserves Java calls, Media3 session connection, a bounded single retry, pending queue precedence, content URI validation, paused queue restoration, native Play/Pause/Stop, shuffle/repeat, backwards deleted-track removal, retained queue filtering, and disconnect ownership. MusicPlaybackRetention persistence and the Media3 service are unchanged. Build and Q25 test before merge.
+
+### Kotlin retained playback state (unchanged queue_v1)
+
+MusicPlaybackRetention.java is now MusicPlaybackRetention.kt. Preference file `bbmusic_playback` and all existing `queue_v1`, index, position_ms, shuffle, repeat, URI/title/artist/album JSON fields retain exactly the same names. Java static APIs remain via `@JvmStatic`; `Saved` retains its Java-readable fields using `@JvmField`. Only exact live authorized SAF tree documents restore, and if the saved current track no longer qualifies, restore clears the queue rather than switching songs. Durable stop/clear, position checkpoint, and deleted-queue index recovery are retained. No Room, signing, or saved-data migration. Build plus Q25 pause/relaunch/Stop/delete test required.
+
+### Kotlin trackpad confirm and Properties adapters
+
+TrackpadPressHandler.java and MusicTrackPropertiesReader.java are now Kotlin. The confirm-key handler preserves the native KeyEvent DPAD_CENTER/Enter/Numpad Enter codes, press-once/hold-once/release contract, Android long-press timeout, and cancellation. The read-only SAF Properties adapter still queries only authorized document URIs off the UI thread, revalidates tree grants before delivery, suppresses synthetic Unknown Artist, and never invents a creation date or filesystem path. Both retain the same Java caller interfaces. This batch is source-only until the next Q25 build; no shared UI helper changed.
+
+### Kotlin playlist repository (same Room schema)
+
+MusicPlaylists.java is now MusicPlaylists.kt. Retains original Java callback methods, single-thread Room executor, main-thread callbacks suppressed after close, exact authorized selected-tree SAF URI filtering, case-insensitive duplicate-name checks, 128-character name bound, stable ordered-entry IDs, transactional add/import/reorder operations and existing Room database schema/version. Does not change any playlist data or rename/duplicate behavior. Requires Gradle build and Q25 playlist creation/import/delete/reorder testing before merge.
+
+## Q25 native library taps and Properties overlay regression fix
+
+Pinned `bbos6-shared` to `fbbf4ca92c88f1a34e649f2d94b6588aa5c7aa7d`. Music's
+`MusicListRowComposeView` now inherits the reusable
+`Bbos6MediaListRowTouchHost`. Native ListView gets ordinary touch
+down/up to restore row activation, long press and scroll; Compose receives
+only a gesture starting in the genuine trailing Remove action.
+The shared component owns the hitbox and row visual dimensions, not Music.
+Existing adapter `onItemClick`, DataSource actions, artwork binding, and
+DPAD/trackpad selection are unchanged.
+
+Properties no longer relies on its Compose window accidentally suppressing
+Android's default light focus highlight: the shared Java-to-Compose dialog
+bridge applies `Bbos6FocusPolicy` at the ComposeView and actual
+AndroidComposeView, including read-only Properties panel. No extra overlay
+or color workaround introduced. The Q25 regression and strict prohibition
+are documented in both repositories. Gradle build and device testing
+required before merge; protect playlist editing and native text input.
+
+## Q25 list tap regression, second fix
+
+The first shared touch-pass-through host restored scrolling but not
+tap activation. Native `ListView` needs a real native clickable row
+target. `Bbos6MediaListRowTouchHost` now routes ordinary row gestures
+to Android's standard View click/long-click handling rather than
+returning false on ACTION_DOWN. Music's row wrapper rebinds callbacks
+on every recycle; `MusicListView` resolves a current row using
+`getPositionForView` at activation and calls the same native
+`performItemClick` and `OnItemLongClickListener` used previously.
+ListView can intercept a drag and cancel the in-progress row press,
+preserving native scrolling and preventing activation on fling.
+Only gestures beginning inside the visible Remove button remain
+Compose-owned. Disabled rows have no click listener. Current shared
+submodule pin: `31d8d025d7218f098d2928b44e7655fcc144542c`. No focus/color/playback changes.
+Build and Q25 test required.
+
+## Kotlin-native player chrome compatibility cleanup
+
+Q25 owner verified native list touch activation and Properties focus
+corrections at Music `0dbbabf` / shared `31d8d02`.
+Reference audit across all Music main-source Java/Kotlin files and
+existing app tests found no uses of
+`HalfRadialGradientDrawable.java` or `MediaChromeDivider.java`;
+both obsolete Java-only paint helpers were deleted, rather than
+maintaining unnecessary Kotlin replacements.
+
+`MusicSelectionGradient.java` was still used by
+`MusicPlayerChrome.java` to draw the old native seek thumb. It is
+now `MusicSelectionGradient.kt`, retaining its exact 11-stop light
+and 3-stop dark colors, native TOP_BOTTOM orientation, square corners
+and Java-callable static factory methods. Compose selection faces
+continue to use their canonical `bbos6-shared` components.
+No asset index, screen, playback, focus or storage behavior changed.
+The next Gradle build and Q25 Now Playing test must confirm parity.
+
+## Kotlin M3U8 playlist transfer controller
+
+`MusicPlaylistTransfer.java` is now `MusicPlaylistTransfer.kt`.
+Android's document picker and `ContentResolver` remain the only I/O
+interfaces. Same 2 MiB UTF-8/BOM import limit, 20,000 entry cap,
+comment/empty line handling, exact selected-file catalog lookup through
+`MusicPlaylistPaths`, primary-storage-only verified SAF document IDs,
+`#EXTM3U`/`#EXTINF` export format, duration seconds, and newline
+sanitization of artist/title. Missing or non-primary-storage tracks
+still prevent export; no partial playlist or network/raw file reads
+are introduced.
+
+The original Java caller methods `read`, `checkExport`, `write`
+and `close`, Java `Callback<T>.onComplete` interface and
+`Imported.songs/unmatched/total` fields are preserved. Work stays on
+one background executor with callbacks on the main looper, suppressed
+after close. No changes to Room schema, SAF permissions, playlist
+storage, icon index or shared BBOS6 helpers. Source-committed only:
+release compilation and Q25 import/export testing required.
+
+## Kotlin confirmed track deletion controller
+
+`MusicTrackDeletion.java` is now `MusicTrackDeletion.kt`,
+preserving the original Java `Listener` and `DisplayNameListener`
+callback interfaces, `Result.deletedIds/failed/deletedCount()` ABI,
+and destructive confirmation ownership in `MusicActivity`.
+A delete operation still deduplicates exact selected document URIs
+and verifies current saved SAF tree selection, **persisted write
+permission**, exact DocumentsProvider tree/document identities,
+and provider `FLAG_SUPPORTS_DELETE` while excluding directories.
+Only `DocumentsContract.deleteDocument` performs deletion.
+
+Room scan state is invalidated both before and after the confirmed
+worker batch, with deleted IDs removed from persistence and
+active Media3 sessions even if the Activity closes. Native
+`MusicPlaybackRetention`, `MusicPlaybackService` and
+`MusicLibraryDatabase` schemas are unchanged. On Activity
+teardown, already-confirmed deletion batches still complete without
+delivering callbacks. No files are moved or unselected trees accessed.
+
+Source committed but not built/device tested. On Q25 test a
+confirmed single-track deletion, cancellation, grouped deletion,
+read-only/unavailable document rejection, playlist/queue
+reconciliation, and interrupted-Activity completion using
+disposable test files only.
+
+## Optional platform MediaBrowser adapter is Kotlin
+
+`SymfoniumSource.java` has been migrated to `SymfoniumSource.kt` without changing its optional, unconnected role in the current native Music application. All external media operations still use ordinary Android `MediaBrowser` and `MediaController` public APIs, with the existing connection lifecycle, one-shot paged subscriptions, subscription cleanup, controller callbacks and transport requests. Neither source imports a player library, copies another app's catalog nor changes BB Music's Media3 playback engine, SAF permissions, stored library or UI. Java source was deleted. Source-only conversion; compile and Q25 smoke test required.
+
+## Media3 Kotlin playback service
+
+`MusicPlaybackService.java` has been converted to `MusicPlaybackService.kt` while retaining its manifest class name, ExoPlayer single-authority service, `MediaLibrarySession`, Android-system-media-button queue resumption, cached `bbmusic-recent-queue`, approved SAF URI restoration, single-item metadata-only notification preview, exact 5-second checkpoint, deliberate Stop clearing playback resumption, Recents versus Home differences, noisy-audio detection, background confirmed deletion pruning and saved-state format. The static Java-facing `pruneDeletedDocuments(Context, Set<String>)` remains available via `@JvmStatic`. Media3 service callback signatures match the published Kotlin callback definitions. No Room/SAF/persistence schema or BBOS6 assets changed. Source-committed only, not yet compiled or Q25-tested; verify Android system controls, resumption, Stop and cleanup before merge.
+
+### Kotlin service override compatibility (MediaLibraryService)
+
+`MusicPlaybackService.onTaskRemoved` must override `onTaskRemoved(rootIntent: Intent?)`: Android's `Service` Java API exposes a platform-nullable Intent to the Kotlin compiler. Its implementation does not read the Intent; nullable override preserves Recents-dismiss pause/checkpoint and stopSelf behavior. A non-null `Intent` parameter fails debug and release Kotlin compilation with `overrides nothing`. No playback state, data, or service identity changes.
+
+## Local SAF scanner Kotlin port
+
+LocalMusicSource.java is now LocalMusicSource.kt. Same Java-accessible Listener, Song field ABI, ScanSummary fields and methods; original Java source removed. The scanner remains restricted to MusicFolders.selectedTrees and verified audio streams, uses the same sorted length-prefixed verified-audio-v3-album-tags: selection key, conservative file fingerprints, metadata fallbacks, duplicate URI suppression, album-tag legacy revalidation, deterministic song order, single worker, 400-row deletion batches and atomic Room transactions. Cancelled requests cannot commit or deliver stale callbacks. The existing Room v3 database file and saved data are untouched. Full Q25 Gradle and device testing of library cold start, Refresh, Full rescan, folder removal, missing album metadata, playlists and playback is required before merge.
