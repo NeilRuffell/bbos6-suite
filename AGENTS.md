@@ -526,7 +526,12 @@ and separators on the Q25, and confirm Java `MusicActivity` interoperability.
 and original non-destructive v1→v2 and v2→v3 migrations. Entity, projection
 and playlist-row fields use `@JvmField` so remaining Java app code keeps
 direct field access, and `open(Context)` remains Java-callable via
-`@JvmStatic`. The Kotlin Room compiler is run with `kapt`; do not enable
+`@JvmStatic`. The Kotlin Room compiler is run with `kapt` and the processor-only
+`org.jetbrains.kotlin:kotlin-metadata-jvm:2.4.21` compatibility dependency.
+Room 2.8.5's transitive metadata reader rejected Kotlin 2.4.0 metadata
+(`maximum supported version is 2.3.0`) in both debug/release kapt tasks;
+keep the Kotlin metadata reader aligned with Kotlin 2.4.21 until migrating
+Room processing to a verified compatible toolchain. Do not enable
 destructive fallback migration or change the existing database filename.
 Verify an *upgrade in place* on a device with a populated catalog and real
 playlists, followed by cold restart, incremental refresh, full rescan,
