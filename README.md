@@ -1778,3 +1778,23 @@ and Java-callable static factory methods. Compose selection faces
 continue to use their canonical `bbos6-shared` components.
 No asset index, screen, playback, focus or storage behavior changed.
 The next Gradle build and Q25 Now Playing test must confirm parity.
+
+## Kotlin M3U8 playlist transfer controller
+
+`MusicPlaylistTransfer.java` is now `MusicPlaylistTransfer.kt`.
+Android's document picker and `ContentResolver` remain the only I/O
+interfaces. Same 2 MiB UTF-8/BOM import limit, 20,000 entry cap,
+comment/empty line handling, exact selected-file catalog lookup through
+`MusicPlaylistPaths`, primary-storage-only verified SAF document IDs,
+`#EXTM3U`/`#EXTINF` export format, duration seconds, and newline
+sanitization of artist/title. Missing or non-primary-storage tracks
+still prevent export; no partial playlist or network/raw file reads
+are introduced.
+
+The original Java caller methods `read`, `checkExport`, `write`
+and `close`, Java `Callback<T>.onComplete` interface and
+`Imported.songs/unmatched/total` fields are preserved. Work stays on
+one background executor with callbacks on the main looper, suppressed
+after close. No changes to Room schema, SAF permissions, playlist
+storage, icon index or shared BBOS6 helpers. Source-committed only:
+release compilation and Q25 import/export testing required.

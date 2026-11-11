@@ -466,3 +466,17 @@ native `MusicPlayerChrome`; its exact blue gradient stops and
 `@JvmStatic` factories preserve the established Android drawable
 contract until the native player chrome is fully retired in favor of
 canonical shared Compose components. No new maintained palette copies.
+
+## Kotlin M3U8 SAF import/export boundary
+
+`MusicPlaylistTransfer.kt` owns Music-specific M3U8 transfer,
+not canonical BBOS6 UI. Preserve the external Android document-picker
+I/O, 2MiB import cap, 20,000 entry limit and exact matching exclusively
+against the caller's authorized indexed-song snapshot. The
+`MusicPlaylistPaths` verifier must not be bypassed or widened to
+network URLs or arbitrary files. Verify primary-storage provider IDs
+before producing export paths. Never emit incomplete M3U8 when any
+entry is missing or non-primary-storage. Retain original `#EXTM3U`,
+`#EXTINF`, UTF-8/newline behavior, and Java caller interface until
+MusicActivity itself migrates. Device-test import/export and malformed
+document handling before merge.
