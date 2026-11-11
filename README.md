@@ -1719,3 +1719,7 @@ MusicPlaybackRetention.java is now MusicPlaybackRetention.kt. Preference file `b
 ### Kotlin trackpad confirm and Properties adapters
 
 TrackpadPressHandler.java and MusicTrackPropertiesReader.java are now Kotlin. The confirm-key handler preserves the native KeyEvent DPAD_CENTER/Enter/Numpad Enter codes, press-once/hold-once/release contract, Android long-press timeout, and cancellation. The read-only SAF Properties adapter still queries only authorized document URIs off the UI thread, revalidates tree grants before delivery, suppresses synthetic Unknown Artist, and never invents a creation date or filesystem path. Both retain the same Java caller interfaces. This batch is source-only until the next Q25 build; no shared UI helper changed.
+
+### Kotlin playlist repository (same Room schema)
+
+MusicPlaylists.java is now MusicPlaylists.kt. Retains original Java callback methods, single-thread Room executor, main-thread callbacks suppressed after close, exact authorized selected-tree SAF URI filtering, case-insensitive duplicate-name checks, 128-character name bound, stable ordered-entry IDs, transactional add/import/reorder operations and existing Room database schema/version. Does not change any playlist data or rename/duplicate behavior. Requires Gradle build and Q25 playlist creation/import/delete/reorder testing before merge.

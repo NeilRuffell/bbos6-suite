@@ -421,3 +421,7 @@ MusicPlaybackClient.kt owns Media3 UI-side session connection and still uses the
 ### Kotlin confirm-key and Properties adapters
 
 TrackpadPressHandler.kt keeps proven Q25 native event dispatch and state. Do not draw or suppress focus in this app handler; shared Bbos6FocusPolicy owns focus appearance. MusicTrackPropertiesReader.kt must verify selected-tree grants before a DocumentsProvider query and again before callback, on main thread. Preserve native metadata omissions; never invent creation dates or absolute paths; reuse the canonical Bbos6PropertiesItem. No UI copies.
+
+### Kotlin playlist repository
+
+MusicPlaylists.kt remains app-specific. Do not move Room transactions to Compose or shared BBOS6 helpers. Keep exact selected-tree authorization before inserting tracks, original Room database/DAO and playlist ordering, 128-character name limit, serialized worker, cancelable main-thread callbacks and close behavior. During Java Activity migration retain its Callback<T> SAM interface and the playlist method names. No schema migrations or data clearing for the Kotlin port.
