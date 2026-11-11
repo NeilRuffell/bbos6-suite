@@ -27,7 +27,8 @@ not Java. Their public methods remain callable from Java for existing callers.
 | Section heading | `Bbos6SectionHeader(title)` | Page sections and whether rows are selectable |
 | Empty content | `Bbos6EmptyState(heading, description, artwork)` | When empty, artwork selection and viewport sizing |
 | Empty content inside a native layout | `Bbos6EmptyStateComposeView` (*View host*) | Placement outside the selectable list and visibility |
-| Media/list row face | `Bbos6MediaListRow(...)` | List data, selection, scrolling, event routing and artwork loading |
+| Compact modal list selection | `Bbos6ListSelectionPanel` / `Bbos6ListSelectionComposeBridge` | Stable choice IDs/labels, selection action and dialog lifecycle |
+| Media/list row face | `Bbos6MediaListRow(..., rowHeightDp = 68)` | List data, selection, scrolling, event routing and artwork loading |
 | Native ListView + Compose row touch routing | `Bbos6MediaListRowTouchHost` (*View host*) | Adapter position, click/long click and scroll owner |
 | Media/detail header | `Bbos6MediaDetailHeader(...)` | Content, artwork loading and navigation |
 | Search panel face | `Bbos6SearchChrome()` | Input field, typing, filtering and results |
@@ -55,6 +56,15 @@ native scrolling, selection restoration and Q25 trackpad policy. Do
 not copy that implementation into future apps. A generic, verified
 app-neutral list controller is a **separate extraction task**, to be
 developed in this shared module.
+
+The compact list-selection popup presents the same `Bbos6MediaListRow`
+selection face at 40dp with one line of text, no artwork and a scrollable
+vertical list. Its bridge returns an Android `Dialog`, preserving hardware
+trackpad/DPAD Enter, Back/ESC, touch and bounded window geometry. Use
+`Bbos6ListSelectionItem(id, label)` with stable, unique IDs; the app handles
+the selected ID and its resulting operation. The full media row remains 68dp
+by default. This is a selection list, not the app-neutral full-page list
+controller still identified as missing below.
 
 ## Set up a new application (one canonical dependency)
 

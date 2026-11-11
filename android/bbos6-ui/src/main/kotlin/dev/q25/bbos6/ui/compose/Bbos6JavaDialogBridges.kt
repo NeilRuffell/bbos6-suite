@@ -246,3 +246,46 @@ object Bbos6PopupButtonComposeBridge {
         return dialog
     }
 }
+
+/**
+ * App-neutral, scrollable choice dialog for native/legacy Activity callers.
+ * Each row uses the shared Bbos6MediaListRow face; the caller supplies stable
+ * IDs and owns all selection effects. No platform AlertDialog list styling.
+ */
+object Bbos6ListSelectionComposeBridge {
+    @JvmStatic
+    fun show(
+        activity: ComponentActivity,
+        title: String,
+        items: List<Bbos6ListSelectionItem>,
+        onSelected: (String) -> Unit
+    ): Dialog {
+        require(items.isNotEmpty()) { "At least one list choice is required" }
+        require(items.map { it.id }.toSet().size == items.size) {
+            "Duplicate list choice ID"
+        }
+        val viewport = availableViewport(activity)
+        val width = min(
+            viewport.first,
+            (320f * activity.resources.displayMetrics.density).roundToInt()
+        ).coerceAtLeast(1)
+        val (dialog, content) = createComposeDialog(
+            activity, dismissOnOutside = false, dimBehind = true
+        )
+        content.setContent {
+            Bbos6ManagedFocusEffect()
+            Bbos6ListSelectionPanel(
+                title = title,
+                items = items,
+                onEscape = dialog::dismiss,
+                onSelected = { id ->
+                    dialog.dismiss()
+                    onSelected(id)
+                }
+            )
+        }
+        dialog.show()
+        dialog.window?.setLayout(width, WindowManager.LayoutParams.WRAP_CONTENT)
+        return dialog
+    }
+}
