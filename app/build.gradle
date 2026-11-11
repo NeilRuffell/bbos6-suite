@@ -60,5 +60,9 @@ dependencies {
     def roomVersion = '2.8.5'
     implementation "androidx.room:room-runtime:$roomVersion"
     kapt "androidx.room:room-compiler:$roomVersion"
+    // Room 2.8.5 resolves a pre-2.4 metadata reader on kapt's processor path.
+    // The Kotlin 2.4.21 stubs require a metadata reader with 2.4 support.
+    // Keep this on kapt only; it does not change runtime/database dependencies.
+    kapt 'org.jetbrains.kotlin:kotlin-metadata-jvm:2.4.21'
     testImplementation 'junit:junit:4.13.2'
 }
