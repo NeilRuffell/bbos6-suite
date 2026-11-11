@@ -65,6 +65,23 @@ etc.) belong to the consuming app, not to the shared renderer.
 The reusable, app-neutral library lives in
 [`android/bbos6-ui/`](android/bbos6-ui/).
 
+**Mandatory first stop for any new BBOS6 application:** read
+[`android/bbos6-ui/COMPONENT_CATALOG.md`](android/bbos6-ui/COMPONENT_CATALOG.md)
+before adding UI, deciding where a helper belongs, or duplicating a
+component. It is the cross-repository "bucket": public Kotlin/Compose
+surfaces, native compatibility APIs, actual dependency setup, app-owned
+responsibilities and known gaps. New reusable behavior must be added at
+this shared module level; never copy `MusicListView` or other app-specific
+code into a second application and call it shared. If generic native
+ListView/trackpad behavior is needed by multiple apps, first design and
+Q25-verify a **new shared** controller API, then update consumers via
+separate pinned-gitlink PRs.
+
+The library is **mixed Kotlin/Compose and native Java** until parity
+is established; the completed Kotlin Music application does not imply
+the legacy shared Java APIs have been removed. Revisit the component
+catalogue when adding, replacing, or retiring any shared API.
+
 - `Bbos6ContextMenu` and `Bbos6PropertiesPopup` implement common visuals.
 - Other shared BBOS6 UI changes belong in this library, rather than a
   page-specific visual fork.
