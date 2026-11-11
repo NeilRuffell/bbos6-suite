@@ -1659,3 +1659,267 @@ class MusicActivity : ComponentActivity() {
     private fun groupedRows(category: Int): List<MenuRow> =
         MusicLibraryPageRows.groupedRows(localSongs!!, category)
 
+    private fun navigateTo(next: Page) {
+        val previous = currentPage
+        if (searchOpen) {
+            previous.selected = searchOriginalPosition
+            previous.selectedTop = searchOriginalTop
+            closeSearch(false)
+        } else {
+            previous.selected = list.selectedItemPosition
+            previous.selectedTop = list.selectedView?.top ?: 0
+        }
+        backStack.push(previous)
+        ensureBackCallback()
+        showPage(next)
+    }
+
+    private fun bindAlbumHeader(page: Page) {
+        val album = page.albumGroup
+        if (album?.songs.isNullOrEmpty()) {
+            albumHeader.clear()
+            albumHeader.visibility = View.GONE
+            return
+        }
+        val first = album!!.songs!![0]
+        val key = MusicLibraryGroupPolicy.albumKeyForRow(album)
+        val candidates = if (key == null) null else albumArtworkSources[key]
+        albumHeader.bind(
+            album.title, first.artist, first.genre,
+            album.songs.size, if (key == null) null else "album:$key", candidates
+        )
+        albumHeader.visibility = View.VISIBLE
+    }
+
+    private fun updateEmptyState() {
+        if (!::emptyState.isInitialized || !::currentPage.isInitialized ||
+            searchOpen || nowPlayingVisible || currentPage.emptyTitle == null) {
+            if (::emptyState.isInitialized) emptyState.visibility = View.GONE
+            return
+        }
+        val page = currentPage
+        emptyState.setContent(page.emptyTitle, page.emptyMessage)
+        emptyState.setArtworkResource(page.emptyArtworkRes)
+        val reservedRows = maxOf(0, page.emptyAfterRows)
+        val top = dp(reservedRows * MusicListView.ROW_HEIGHT_DP) +
+            maxOf(0, reservedRows - 1) * list.dividerHeight
+        val params = FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
+        )
+        params.topMargin = top
+        emptyState.layoutParams = params
+        emptyState.visibility = View.VISIBLE
+    }
+
+    private fun showPage(page: Page) {
+        if (searchOpen) closeSearch(false)
+        currentPage = page
+        visibleRows = page.rows
+        bindAlbumHeader(page)
+        trackpadPress.cancel()
+        list.notifyRowsChanged()
+        updateEmptyState()
+        list.post {
+            if (currentPage === page && !searchOpen && !isFinishing && !isDestroyed) {
+                list.requestFocus()
+                list.setSelectionFromTop(maxOf(0, page.selected), page.selectedTop)
+                list.refreshSelection()
+            }
+        }
+    }
+
+    private fun openSearch() {
+        if (searchOpen) return
+        searchOriginalPosition = list.selectedItemPosition
+        searchOriginalTop = list.selectedView?.top ?: 0
+        searchOpen = true
+        pendingMenu = -1
+        searchBar.visibility = View.VISIBLE
+        updateEmptyState()
+        ensureBackCallback()
+    }
+
+    private fun closeSearch(restorePosition: Boolean) {
+        if (!searchOpen) return
+        searchOpen = false
+        searchBar.visibility = View.GONE
+        noSearchResults.visibility = View.GONE
+        searchInput.setText("")
+        visibleRows = currentPage.rows
+        list.notifyRowsChanged()
+        updateEmptyState()
+        if (backStack.isEmpty() && !nowPlayingVisible) unregisterNestedBack()
+        if (restorePosition) {
+            val page = currentPage
+            val index = searchOriginalPosition
+            val top = searchOriginalTop
+            list.post {
+                if (!searchOpen && !nowPlayingVisible && currentPage === page &&
+                    !isFinishing && !isDestroyed) {
+                    list.requestFocus()
+                    list.setSelectionFromTop(maxOf(0, index), top)
+                    list.refreshSelection()
+                }
+            }
+        }
+    }
+
+    private fun updateSearchResults() {
+        if (!searchOpen) return
+        val term = searchInput.text.toString().trim().lowercase(Locale.ROOT)
+        visibleRows = MusicLibraryPageRows.searchRows(
+            term, currentPage === rootPage, currentPage.rows, localSongs, loading
+        )
+        noSearchResults.visibility = if (term.isNotEmpty() && visibleRows.isEmpty())
+            View.VISIBLE else View.GONE
+        list.notifyRowsChanged()
+        list.setSelectionFromTop(0, 0)
+        list.refreshSelection()
+    }
+
+    /**
+     * Q25 physical-keyboard type-to-search without stealing ListView focus.
+     * DPAD, ALT/Shift and system modifier shortcuts retain original behavior.
+     */
+    private fun handleSearchKey(event: KeyEvent): Boolean {
+        val code = event.keyCode
+        if (searchOpen && (code == KeyEvent.KEYCODE_DEL ||
+                code == KeyEvent.KEYCODE_FORWARD_DEL)) {
+            if (event.action == KeyEvent.ACTION_DOWN) {
+                val value = searchInput.text
+                val length = value.length
+                var start = maxOf(0, searchInput.selectionStart)
+                var end = maxOf(0, searchInput.selectionEnd)
+                start = minOf(start, length)
+                end = minOf(end, length)
+                if (start != end) {
+                    value.delete(minOf(start, end), maxOf(start, end))
+                } else if (code == KeyEvent.KEYCODE_DEL && start > 0) {
+                    val from = Character.offsetByCodePoints(value.toString(), start, -1)
+                    value.delete(from, start)
+                } else if (code == KeyEvent.KEYCODE_FORWARD_DEL && start < length) {
+                    val to = Character.offsetByCodePoints(value.toString(), start, 1)
+                    value.delete(start, to)
+                }
+            }
+            return true
+        }
+        if (event.metaState and (KeyEvent.META_CTRL_ON or KeyEvent.META_META_ON) != 0) {
+            return false
+        }
+        val character = event.unicodeChar
+        if (!Character.isValidCodePoint(character) || character < 32 ||
+            Character.isISOControl(character)) return false
+        if (!searchOpen && Character.isWhitespace(character)) return false
+        if (event.action == KeyEvent.ACTION_DOWN) {
+            openSearch()
+            val value = searchInput.text
+            val length = value.length
+            val start = maxOf(0, minOf(length, searchInput.selectionStart))
+            val end = maxOf(0, minOf(length, searchInput.selectionEnd))
+            val from = minOf(start, end)
+            value.replace(from, maxOf(start, end), String(Character.toChars(character)))
+            searchInput.setSelection(from + Character.charCount(character))
+        }
+        return true
+    }
+
+    private fun ensureBackCallback() {
+        if (nestedBackCallback != null) return
+        val callback = OnBackInvokedCallback { navigateBack() }
+        nestedBackCallback = callback
+        onBackInvokedDispatcher.registerOnBackInvokedCallback(
+            OnBackInvokedDispatcher.PRIORITY_DEFAULT, callback
+        )
+    }
+
+    private fun navigateBack() {
+        if (nowPlayingVisible) {
+            closeNowPlaying()
+            return
+        }
+        if (searchOpen) {
+            closeSearch(true)
+            return
+        }
+        if (backStack.isEmpty()) return
+        val previous = backStack.pop()
+        if (backStack.isEmpty()) unregisterNestedBack()
+        showPage(previous)
+    }
+
+    private fun unregisterNestedBack() {
+        val callback = nestedBackCallback ?: return
+        onBackInvokedDispatcher.unregisterOnBackInvokedCallback(callback)
+        nestedBackCallback = null
+    }
+
+    @Suppress("DEPRECATION")
+    override fun onBackPressed() {
+        if (nowPlayingVisible || searchOpen || backStack.isNotEmpty()) navigateBack()
+        else super.onBackPressed()
+    }
+
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        val code = event.keyCode
+        if (!TrackpadPressHandler.isConfirmKey(code) &&
+            event.action == KeyEvent.ACTION_DOWN) {
+            trackpadPress.cancel()
+        }
+        if (TrackpadPressHandler.isConfirmKey(code)) return trackpadPress.handle(event)
+        if (nowPlayingVisible) {
+            if (code == KeyEvent.KEYCODE_DPAD_UP ||
+                code == KeyEvent.KEYCODE_DPAD_DOWN ||
+                code == KeyEvent.KEYCODE_DPAD_LEFT ||
+                code == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                if (event.action == KeyEvent.ACTION_DOWN) nowPlaying?.directional(code)
+                return true
+            }
+            return super.dispatchKeyEvent(event)
+        }
+        if (handleSearchKey(event)) return true
+        if (code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_DPAD_DOWN) {
+            return list.handleVerticalKey(event)
+        }
+        return super.dispatchKeyEvent(event)
+    }
+
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) trackpadPress.cancel()
+        return super.dispatchTouchEvent(event)
+    }
+
+    override fun onStop() {
+        trackpadPress.cancel()
+        propertiesRequestSerial++
+        deleteConfirmationSerial++
+        contextMenuDialog?.dismiss()
+        contextMenuDialog = null
+        propertiesDialog?.dismiss()
+        propertiesDialog = null
+        buttonPopupDialog?.dismiss()
+        buttonPopupDialog = null
+        if (isFinishing) playback.pauseForExit()
+        playback.disconnect()
+        super.onStop()
+    }
+
+    override fun onDestroy() {
+        unregisterNestedBack()
+        nowPlaying?.dispose()
+        playback.disconnect()
+        list.dispose()
+        localSource.close()
+        folderBrowser.close()
+        trackPropertiesReader.close()
+        trackDeletion.close()
+        playlists.close()
+        playlistTransfer.close()
+        super.onDestroy()
+    }
+
+    override fun onWindowFocusChanged(hasWindowFocus: Boolean) {
+        super.onWindowFocusChanged(hasWindowFocus)
+        if (!hasWindowFocus) trackpadPress.cancel()
+    }
+}
