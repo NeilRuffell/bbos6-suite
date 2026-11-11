@@ -1495,3 +1495,14 @@ Device checks: touch long-press and trackpad menus on Songs/Albums and
 Playlists; icon proportions, disabled item skipping, menu/group scrolling,
 Back/Cancel, action activation once on key-up, and Properties display,
 scroll, outside touches and Back.
+
+### Compose Dialog bridge Kotlin interop correction
+
+The first shared dialog bridge failed Kotlin compilation because the
+AndroidX Java-style `ViewTree*Owner.set(...)` types are not visible as
+Kotlin symbols. Shared commit `7ddf64801a9de9466e2c62ec4f872a1e120c672e`
+uses the supported `View.setViewTreeLifecycleOwner`,
+`View.setViewTreeSavedStateRegistryOwner` and
+`View.setViewTreeViewModelStoreOwner` Kotlin extensions instead.
+Only shared bridge imports/owner setup changed; Music's modal callers and
+business logic are untouched. Build and Q25 behavior still require a retest.
