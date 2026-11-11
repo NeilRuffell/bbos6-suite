@@ -1464,3 +1464,198 @@ class MusicActivity : ComponentActivity() {
         playback.connect()
     }
 
+    @Suppress("DEPRECATION")
+    private fun showFolderPicker() {
+        val picker = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+            addFlags(
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                    Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+            )
+            putExtra(Intent.EXTRA_LOCAL_ONLY, true)
+        }
+        try {
+            startActivityForResult(picker, ADD_FOLDER_REQUEST)
+        } catch (exception: RuntimeException) {
+            Log.w(TAG, "Cannot open Android folder picker", exception)
+            Toast.makeText(this, "Folder picker unavailable", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        when (requestCode) {
+            IMPORT_PLAYLIST_REQUEST -> {
+                if (resultCode == RESULT_OK) data?.data?.let { readImportedPlaylist(it) }
+                return
+            }
+            EXPORT_PLAYLIST_REQUEST -> {
+                val id = exportingPlaylistId
+                exportingPlaylistId = -1L
+                if (id >= 0L && resultCode == RESULT_OK) {
+                    data?.data?.let { writeExportedPlaylist(id, it) }
+                }
+                return
+            }
+            AUTHORIZE_DELETE_FOLDER_REQUEST -> {
+                onDeleteFolderAuthorization(resultCode, data)
+                return
+            }
+        }
+        if (requestCode != ADD_FOLDER_REQUEST || resultCode != RESULT_OK) return
+        val selectedTree = data?.data ?: return
+        if (!DocumentsContract.isTreeUri(selectedTree)) {
+            Toast.makeText(this, "Invalid folder selection", Toast.LENGTH_LONG).show()
+            return
+        }
+        try {
+            val authorizedBefore = MusicFolders.selectedTrees(this).contains(selectedTree)
+            contentResolver.takePersistableUriPermission(
+                selectedTree, Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+            val added = MusicFolders.add(this, selectedTree)
+            val accessRestored =
+                !authorizedBefore && MusicFolders.selectedTrees(this).contains(selectedTree)
+            if (added || accessRestored) {
+                localSource.invalidate()
+                localSongs = null
+                albumArtworkSources = emptyMap()
+                list.clearArtworkCache()
+                loading = false
+                pendingMenu = -1
+                startLocalScan(false, true)
+                Log.i(
+                    TAG, "Selected music folder added; total=" +
+                        MusicFolders.selectedTrees(this).size
+                )
+            }
+            refreshMusicFolderRows()
+            Toast.makeText(
+                this, when {
+                    added -> "Music folder added"
+                    accessRestored -> "Music folder access restored"
+                    else -> "Folder already selected"
+                }, Toast.LENGTH_SHORT
+            ).show()
+        } catch (exception: RuntimeException) {
+            Log.w(TAG, "Cannot persist selected folder", exception)
+            Toast.makeText(this, "Unable to save folder access", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun openLocalCategory(menuIndex: Int) {
+        pendingMenu = menuIndex
+        if (MusicFolders.selectedTrees(this).isEmpty()) {
+            pendingMenu = -1
+            navigateTo(Page(MENU[menuIndex], arrayListOf(MenuRow.message("No folders selected"))))
+            return
+        }
+        if (localSongs != null) showLocalCategory(menuIndex)
+        else if (!loading) startLocalScan(true)
+    }
+
+    private fun startLocalScan(showFeedback: Boolean) {
+        startLocalScan(showFeedback, false, false)
+    }
+
+    private fun startLocalScan(showFeedback: Boolean, refresh: Boolean) {
+        startLocalScan(showFeedback, refresh, false)
+    }
+
+    private fun startLocalScan(
+        showFeedback: Boolean, refresh: Boolean, fullRescan: Boolean
+    ) {
+        if (loading) {
+            if (showFeedback) Toast.makeText(
+                this, "Library scan already in progress", Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
+        if (MusicFolders.selectedTrees(this).isEmpty()) {
+            localSongs = emptyList()
+            updateLocalCategoryCounts()
+            return
+        }
+        loading = true
+        if (!refresh) localSongs = null
+        list.refreshVisibleRows()
+        if (showFeedback) Toast.makeText(
+            this, when {
+                fullRescan -> "Rescanning all music..."
+                refresh -> "Checking music library..."
+                else -> "Loading music library..."
+            }, Toast.LENGTH_SHORT
+        ).show()
+        val listener = object : LocalMusicSource.Listener {
+            override fun onLoaded(
+                songs: List<LocalMusicSource.Song>, summary: LocalMusicSource.ScanSummary
+            ) {
+                loading = false
+                localSongs = songs
+                if (refresh && summary.artworkMayHaveChanged()) list.clearArtworkCache()
+                updateAlbumArtworkSources()
+                updateLocalCategoryCounts()
+                refreshBrowsedSongs()
+                if (nowPlayingVisible) nowPlaying?.render()
+                if (searchOpen) updateSearchResults()
+                Log.i(TAG, "Selected-folder music ready: " + songs.size + " tracks")
+                if (showFeedback && refresh) {
+                    Toast.makeText(this@MusicActivity, summary.message(), Toast.LENGTH_LONG).show()
+                }
+                if (pendingShuffleStart) {
+                    pendingShuffleStart = false
+                    shuffleAllSongs()
+                }
+                val menu = pendingMenu
+                pendingMenu = -1
+                if (menu >= 0 && backStack.isEmpty()) showLocalCategory(menu)
+                if (startupAutoRefreshPending) {
+                    startupAutoRefreshPending = false
+                    if (!refresh && !summary.scanned && autoRefreshEnabled()) {
+                        startLocalScan(false, true)
+                    }
+                }
+            }
+
+            override fun onError(reason: String) {
+                loading = false
+                startupAutoRefreshPending = false
+                pendingMenu = -1
+                pendingShuffleStart = false
+                list.refreshVisibleRows()
+                if (searchOpen) updateSearchResults()
+                Toast.makeText(this@MusicActivity, reason, Toast.LENGTH_LONG).show()
+            }
+        }
+        when {
+            fullRescan -> localSource.fullRescan(listener)
+            refresh -> localSource.refresh(listener)
+            else -> localSource.load(listener)
+        }
+    }
+
+    private fun showLocalCategory(category: Int) {
+        val songs = localSongs ?: return
+        if (category !in 0..3) return
+        val rows = if (category == 0) songRows(songs) else groupedRows(category)
+        navigateTo(Page(MENU[category], rows.toMutableList()))
+        pendingMenu = -1
+    }
+
+    private fun pageForGroup(group: MenuRow): Page {
+        val songs = ArrayList(group.songs!!)
+        if (group.groupCategory == 2) {
+            songs.sortWith(compareBy { it.trackNumber })
+        }
+        return Page(
+            group.title, songRows(songs).toMutableList(),
+            if (group.groupCategory == 2) group else null
+        )
+    }
+
+    private fun songRows(songs: List<LocalMusicSource.Song>): List<MenuRow> =
+        MusicLibraryPageRows.songRows(songs)
+
+    private fun groupedRows(category: Int): List<MenuRow> =
+        MusicLibraryPageRows.groupedRows(localSongs!!, category)
+
