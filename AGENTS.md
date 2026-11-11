@@ -602,3 +602,19 @@ Native focus/trackpad navigation, search editing, album-art binding, list
 viewport and popup routing stay untouched. Run `MusicLibraryRowPolicyTest`
 and verify home labels/icons, artist/album/genre art, album track numbers,
 settings On/Off, playlists, folder subtitles, and Q25 touch/trackpad.
+
+### Kotlin Activity page-row construction and search filtering
+
+`MusicLibraryPageRows.kt` owns only Music-specific settings row order,
+song/category page row creation, and root/nested search result filtering.
+The Activity retains the Q25 physical-keyboard editing/Backspace handling,
+search field, visibleRows assignment, native ListView adapter and selection,
+and search overlay/Back navigation. Preserve the original `MenuRow` factories,
+root search over only the already indexed authorized `localSongs`,
+the original loading/empty strings, no header/message matches on nested
+pages, and `Locale.ROOT` lowercased title matches. The *empty search
+term must return the original `Page.rows` list by identity*; the filtered
+branch must never mutate that list. The settings row names/order are part
+of existing routing, not a shared BBOS6 style component. Regression tests:
+`MusicLibraryPageRowsTest`, plus Q25 typing from home and nested pages,
+search reset/Back position, settings, Artists/Albums/Genres and empty lists.
