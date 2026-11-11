@@ -561,3 +561,300 @@ class MusicActivity : ComponentActivity() {
         }
     }
 
+    private fun beginDelete(request: DeleteRequest) {
+        if (deletingTracks) return
+        deletingTracks = true
+        localSource.invalidate()
+        loading = false
+        Toast.makeText(
+            this, "Deleting " + request.songs.size + " songs...", Toast.LENGTH_SHORT
+        ).show()
+        trackDeletion.delete(request.songs) { result ->
+            deletingTracks = false
+            if (result.deletedCount() > 0) {
+                playback.removeDeletedSongs(result.deletedIds)
+                reconcileDeletedSongs(result.deletedIds)
+                list.clearArtworkCache()
+                updateAlbumArtworkSources()
+                updateLocalCategoryCounts()
+                refreshBrowsedSongs()
+                refreshAllPlaylistPages()
+                startLocalScan(false, true)
+            }
+            var message = "Deleted " + result.deletedCount() +
+                (if (result.deletedCount() == 1) " song" else " songs")
+            if (result.failed > 0) {
+                message += "; " + result.failed + " could not be deleted"
+            }
+            Toast.makeText(
+                this, message,
+                if (result.failed > 0) Toast.LENGTH_LONG else Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    private fun reconcileDeletedSongs(deletedIds: Set<String>) {
+        localSongs = localSongs?.filterNot { it.uri.toString() in deletedIds }
+        val pages = HashSet(backStack)
+        pages.add(currentPage)
+        for (page in pages) {
+            if (page === rootPage || page === settingsPage || page === musicFoldersPage) continue
+            val browserEntries = page.browserEntries
+            if (browserEntries != null) {
+                page.browserEntries = browserEntries.filterNot { it.uri.toString() in deletedIds }
+                page.rows.clear()
+                page.rows.addAll(browserRows(page))
+            } else {
+                page.rows.removeAll { row ->
+                    when {
+                        row.kind == ROW_SONG && row.song != null ->
+                            row.song.uri.toString() in deletedIds
+                        row.kind == ROW_GROUP && row.songs != null -> {
+                            // Groups originally hold mutable song arrays.
+                            (row.songs as MutableList<LocalMusicSource.Song>)
+                                .removeAll { it.uri.toString() in deletedIds }
+                            row.songs.isEmpty()
+                        }
+                        else -> false
+                    }
+                }
+                if (page.rows.isEmpty()) {
+                    page.rows.add(MenuRow.message("No local music found"))
+                }
+            }
+        }
+        if (!nowPlayingVisible) {
+            bindAlbumHeader(currentPage)
+            if (searchOpen) {
+                updateSearchResults()
+            } else {
+                visibleRows = currentPage.rows
+                val selected = list.selectedItemPosition
+                val top = list.selectedView?.top ?: 0
+                list.notifyRowsChanged()
+                list.post {
+                    if (!nowPlayingVisible && !searchOpen && !isFinishing && !isDestroyed) {
+                        list.requestFocus()
+                        list.setSelectionFromTop(
+                            maxOf(0, minOf(selected, visibleRows.size - 1)), top
+                        )
+                        list.refreshSelection()
+                    }
+                }
+            }
+        }
+    }
+
+    private fun showTrackProperties(row: MenuRow) {
+        val request = ++propertiesRequestSerial
+        val page = currentPage
+        val song = row.song ?: return
+        trackPropertiesReader.load(song) { items ->
+            if (request != propertiesRequestSerial || isFinishing || isDestroyed ||
+                nowPlayingVisible || page !== currentPage || !visibleRows.contains(row)
+            ) return@load
+            if (items.isEmpty()) {
+                Toast.makeText(this, "Track properties unavailable", Toast.LENGTH_SHORT).show()
+                return@load
+            }
+            if (propertiesDialog?.isShowing == true) propertiesDialog?.dismiss()
+            propertiesDialog = Bbos6PropertiesPopup.show(this, items)
+        }
+    }
+
+    private fun activate(position: Int) {
+        if (position !in visibleRows.indices) return
+        val row = visibleRows[position]
+        when (row.kind) {
+            ROW_NOW_PLAYING -> {
+                if (playback.hasCurrentTrack()) openNowPlaying()
+            }
+            ROW_MENU -> when (row.menuIndex) {
+                in 0..3 -> openLocalCategory(row.menuIndex)
+                4 -> openPlaylistDirectory()
+                5 -> shuffleAllSongs()
+                6 -> {
+                    settingsPage = Page("Settings", buildSettingsRows())
+                    navigateTo(settingsPage!!)
+                }
+                MENU_FOLDERS -> openFolders()
+            }
+            ROW_SETTING -> when (row.title) {
+                "Music Folders" -> {
+                    musicFoldersPage = Page("Music Folders", buildMusicFolderRows())
+                    navigateTo(musicFoldersPage!!)
+                }
+                "Refresh library" -> startLocalScan(true, true)
+                "Full rescan" -> confirmFullRescan()
+                "Auto refresh on launch" -> {
+                    val enabled = !autoRefreshEnabled()
+                    getSharedPreferences(MUSIC_SETTINGS_PREFS, MODE_PRIVATE).edit()
+                        .putBoolean(AUTO_REFRESH_PREF, enabled).apply()
+                    list.refreshVisibleRows()
+                }
+                "Add folders" -> showFolderPicker()
+            }
+            ROW_FOLDER -> confirmFolderRemoval(row)
+            ROW_BROWSER_DIRECTORY, ROW_BROWSER_ROOT -> openBrowserDirectory(row)
+            ROW_GROUP -> navigateTo(pageForGroup(row))
+            ROW_PLAYLIST -> openPlaylist(row)
+            ROW_PLAYLIST_ACTION -> activatePlaylistAction(row)
+            ROW_PLAYLIST_MISSING ->
+                playlistNotice("Track unavailable in selected music folders")
+            ROW_SONG -> {
+                if (currentPage.playlistPickerId >= 0L) {
+                    addSongsToPlaylist(currentPage.playlistPickerId, listOf(row.song!!))
+                    return
+                }
+                val queue = ArrayList<LocalMusicSource.Song>()
+                var startIndex = -1
+                for (item in visibleRows) {
+                    if (item.kind != ROW_SONG) continue
+                    if (item === row) startIndex = queue.size
+                    item.song?.let { queue.add(it) }
+                }
+                if (startIndex >= 0) {
+                    openNowPlaying()
+                    playback.playSongs(queue, startIndex, false)
+                }
+            }
+        }
+    }
+
+    private fun refreshPlaylistCount() {
+        playlists.list { items, error ->
+            if (error != null || items == null) return@list
+            playlistCount = items.size
+            if (::list.isInitialized) list.refreshVisibleRows()
+        }
+    }
+
+    private fun refreshPlaylistDirectory() {
+        val page = playlistsPage ?: return
+        playlists.list { items, error ->
+            if (isFinishing || isDestroyed || page !== playlistsPage) return@list
+            val rows = ArrayList<MenuRow>()
+            rows.add(MenuRow.playlistAction("Add Playlist", "choose-add", -1L))
+            page.setEmptyState(null, null, 0)
+            when {
+                error != null -> rows.add(MenuRow.message("Unable to load playlists"))
+                items.isNullOrEmpty() -> {
+                    page.setEmptyState(
+                        "No Playlists.",
+                        "You can import or create playlists for music on your device " +
+                            "by selecting Add Playlist", rows.size
+                    )
+                    page.emptyArtworkRes = R.drawable.bbos6_playlist_empty
+                }
+                else -> {
+                    for (item in items) rows.add(MenuRow.playlist(item))
+                    playlistCount = items.size
+                    if (::list.isInitialized) list.refreshVisibleRows()
+                }
+            }
+            page.rows.clear()
+            page.rows.addAll(rows)
+            if (currentPage === page) refreshBrowserPage(page)
+        }
+    }
+
+    private fun openPlaylistDirectory() {
+        val rows = arrayListOf(
+            MenuRow.playlistAction("Add Playlist", "choose-add", -1L),
+            MenuRow.message("Loading playlists...")
+        )
+        playlistsPage = Page("Playlists", rows).also { it.playlistDirectory = true }
+        navigateTo(playlistsPage!!)
+        refreshPlaylistDirectory()
+    }
+
+    private fun openPlaylist(row: MenuRow) {
+        val page = Page(row.title, ArrayList<MenuRow>())
+        page.playlistId = row.playlistId
+        page.rows.add(MenuRow.message("Loading playlist..."))
+        navigateTo(page)
+        refreshPlaylistDetail(page)
+    }
+
+    private fun refreshPlaylistDetail(page: Page) {
+        if (page.playlistId < 0L) return
+        playlists.entries(page.playlistId) { items, error ->
+            if (isFinishing || isDestroyed) return@entries
+            if (currentPage !== page && !backStack.contains(page)) return@entries
+            val rows = ArrayList<MenuRow>()
+            val id = page.playlistId
+            rows.add(MenuRow.playlistAction("Play all", "play", id))
+            rows.add(MenuRow.playlistAction("Shuffle", "shuffle", id))
+            rows.add(MenuRow.playlistAction("Add songs", "add", id))
+            rows.add(MenuRow.playlistAction("Rename playlist", "rename", id))
+            rows.add(MenuRow.playlistAction("Export M3U8", "export", id))
+            rows.add(MenuRow.playlistAction("Delete playlist", "delete", id))
+            page.setEmptyState(null, null, 0)
+            when {
+                error != null -> rows.add(MenuRow.message("Unable to load playlist songs"))
+                items.isNullOrEmpty() -> page.setEmptyState(
+                    "Empty playlist", "Add songs to this playlist to start listening.", rows.size
+                )
+                localSongs == null -> rows.add(MenuRow.message("Loading music library..."))
+                else -> {
+                    val indexed = HashMap<String, LocalMusicSource.Song>()
+                    for (song in localSongs!!) indexed[song.uri.toString()] = song
+                    for (entry in items) {
+                        val song = indexed[entry.uri]
+                        rows.add(
+                            if (song == null)
+                                MenuRow.playlistMissing(entry.title, id, entry.id)
+                            else MenuRow.playlistSong(song, id, entry.id)
+                        )
+                    }
+                }
+            }
+            page.rows.clear()
+            page.rows.addAll(rows)
+            if (currentPage === page) refreshBrowserPage(page)
+        }
+    }
+
+    private fun refreshAllPlaylistPages() {
+        if (playlistsPage != null) refreshPlaylistDirectory()
+        val pages = HashSet(backStack)
+        pages.add(currentPage)
+        for (page in pages) {
+            if (page.playlistId >= 0L) refreshPlaylistDetail(page)
+        }
+    }
+
+    private fun playlistChanged() {
+        refreshPlaylistCount()
+        refreshAllPlaylistPages()
+    }
+
+    private fun playlistNotice(message: String) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun playlistFailure(error: String?) {
+        Toast.makeText(
+            this, error ?: "Playlist operation failed", Toast.LENGTH_LONG
+        ).show()
+    }
+
+    private fun askPlaylistName(
+        title: String, original: String, onName: Consumer<String>
+    ) {
+        showButtonPopup(
+            Bbos6PopupButtonList.builder()
+                .title(title)
+                .textInput(original, "Playlist name")
+                .horizontalButtons()
+                .addButton("cancel", "Cancel")
+                .addButton("save", "Save")
+                .initiallySelected("cancel")
+                .onTextAction { actionId, text ->
+                    if (actionId == "save" && !isFinishing && !isDestroyed) {
+                        onName.accept(text)
+                    }
+                }
+        )
+    }
+
