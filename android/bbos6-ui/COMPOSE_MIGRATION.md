@@ -363,3 +363,21 @@ and obtains current position at activation time rather than trusting
 the recycled bind index. Keyboard/trackpad and the already fixed
 Properties focus suppression are unchanged. Build + Q25 tests remain
 required before merge.
+
+## Kotlin-only shared-source conversion (current feature branch)
+
+The 11 legacy Java implementation files, including native Android popup,
+Properties, context-grid, text field, focus, models and styling, have now
+been ported to Kotlin. Four old Java unit-test files are also now Kotlin.
+At the time of this branch update, `android/bbos6-ui/src/` contains 46
+Kotlin files and no Java files. Existing JVM-callable APIs and Compose
+bridges are retained so neither Music nor future apps need Java sources
+for these helpers.
+
+This is **not a declaration that native Android has been removed**:
+the Q25-verified native EditText/DPAD route for text-input popups remains
+implemented in Kotlin, while button-only dialog and Properties/context
+presentations use their existing Compose bridges in ComponentActivity.
+The translation and `verifyKotlinOnly` Gradle gate are awaiting a consumer
+build and Q25 verification. See [COMPONENT_CATALOG.md](COMPONENT_CATALOG.md)
+for current exported entrypoints and new-app Gradle wiring.
