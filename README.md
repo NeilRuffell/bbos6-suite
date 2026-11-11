@@ -1798,3 +1798,29 @@ one background executor with callbacks on the main looper, suppressed
 after close. No changes to Room schema, SAF permissions, playlist
 storage, icon index or shared BBOS6 helpers. Source-committed only:
 release compilation and Q25 import/export testing required.
+
+## Kotlin confirmed track deletion controller
+
+`MusicTrackDeletion.java` is now `MusicTrackDeletion.kt`,
+preserving the original Java `Listener` and `DisplayNameListener`
+callback interfaces, `Result.deletedIds/failed/deletedCount()` ABI,
+and destructive confirmation ownership in `MusicActivity`.
+A delete operation still deduplicates exact selected document URIs
+and verifies current saved SAF tree selection, **persisted write
+permission**, exact DocumentsProvider tree/document identities,
+and provider `FLAG_SUPPORTS_DELETE` while excluding directories.
+Only `DocumentsContract.deleteDocument` performs deletion.
+
+Room scan state is invalidated both before and after the confirmed
+worker batch, with deleted IDs removed from persistence and
+active Media3 sessions even if the Activity closes. Native
+`MusicPlaybackRetention`, `MusicPlaybackService` and
+`MusicLibraryDatabase` schemas are unchanged. On Activity
+teardown, already-confirmed deletion batches still complete without
+delivering callbacks. No files are moved or unselected trees accessed.
+
+Source committed but not built/device tested. On Q25 test a
+confirmed single-track deletion, cancellation, grouped deletion,
+read-only/unavailable document rejection, playlist/queue
+reconciliation, and interrupted-Activity completion using
+disposable test files only.

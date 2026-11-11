@@ -480,3 +480,19 @@ entry is missing or non-primary-storage. Retain original `#EXTM3U`,
 `#EXTINF`, UTF-8/newline behavior, and Java caller interface until
 MusicActivity itself migrates. Device-test import/export and malformed
 document handling before merge.
+
+## Kotlin confirmed track deletion safety
+
+`MusicTrackDeletion.kt` is app-specific and is not a shared BBOS6
+UI helper. Do not weaken authorization, copy/move files, or delete
+directories. The Activity must show destructive confirmation before
+calling it. The controller checks the **current** saved SAF tree,
+live read and write grants, exact document URI/tree identity, and
+provider `FLAG_SUPPORTS_DELETE` before deleting a document.
+Preserve Room scan-state invalidation both *before* and *after* the
+deletion batch; delete URIs in 400-item DB transactions and prune
+playback retention and active Media3 service. Work stays on one
+executor; closing the Activity stops UI callbacks without cancelling
+confirmed persistence changes. Keep Java `Listener`, `Result`
+field ABI until MusicActivity migration. Validate only with
+disposable local test tracks on device.
