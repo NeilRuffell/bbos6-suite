@@ -8,6 +8,8 @@ import static org.junit.Assert.assertTrue;
 import dev.q25.bbmusic.MusicActivityModels.MenuRow;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.List;
 import org.junit.Test;
 
@@ -70,7 +72,23 @@ public final class MusicLibraryPageRowsTest {
         assertEquals(MusicActivityModels.ROW_MESSAGE, loading.get(0).kind);
         assertFalse(loading == root);
     }
-    @Test public void browserRowsPreserveLoadingAndEmptyFolderSemantics() {
+    @Test public void folderBrowserExcludesUnverifiedCandidatesAndRepeatedDocumentUris() {
+        Set<String> indexed = new HashSet<>();
+        indexed.add("content://music/real.mp3");
+        Set<String> displayed = new HashSet<>();
+
+        assertTrue(MusicLibraryPageRows.shouldRenderBrowserFile(
+                "content://music/real.mp3", indexed, displayed));
+        displayed.add("content://music/real.mp3");
+
+        assertFalse(MusicLibraryPageRows.shouldRenderBrowserFile(
+                "content://music/real.mp3", indexed, displayed));
+        // An MP3-looking file without an indexed, verified stream is not a song row.
+        assertFalse(MusicLibraryPageRows.shouldRenderBrowserFile(
+                "content://music/sidecar.mp3", indexed, displayed));
+    }
+
+        @Test public void browserRowsPreserveLoadingAndEmptyFolderSemantics() {
         MusicActivityModels.Page page =
                 new MusicActivityModels.Page("Folder", new ArrayList<>());
         // A folder still loading has no content rows yet.
