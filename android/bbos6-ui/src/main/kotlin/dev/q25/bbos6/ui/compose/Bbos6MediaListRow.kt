@@ -59,11 +59,12 @@ fun Modifier.bbos6MediaListSelectionFace(highlighted: Boolean): Modifier =
     ))
 
 /**
- * App-neutral 68dp BBOS6 media/list row.
+ * App-neutral BBOS6 media/list row (68dp by default).
  *
  * The host owns recycling, current selection, artwork requests and caches,
  * data, focus, row activation, and long-press detection. This composable
  * supplies only the visible row and optional right-side touch action.
+ * Use a smaller rowHeightDp for single-line, artwork-free list choices.
  *
  * Passing null for subtitle/duration/trackNumber preserves their absent
  * state; menu artwork gets 8dp padding to make a 52dp visible artwork box.
@@ -81,10 +82,12 @@ fun Bbos6MediaListRow(
     highlighted: Boolean,
     showRemoveAction: Boolean,
     onRemove: (() -> Unit)?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    rowHeightDp: Int = 68
 ) {
+    require(rowHeightDp > 0) { "rowHeightDp must be positive" }
     Row(
-        modifier = modifier.fillMaxWidth().height(68.dp)
+        modifier = modifier.fillMaxWidth().height(rowHeightDp.dp)
             .bbos6MediaListSelectionFace(highlighted),
         verticalAlignment = Alignment.CenterVertically
     ) {

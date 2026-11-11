@@ -316,3 +316,24 @@ and obtains current position at activation time rather than trusting
 the recycled bind index. Keyboard/trackpad and the already fixed
 Properties focus suppression are unchanged. Build + Q25 tests remain
 required before merge.
+
+## Compact BBOS6 list-selection popup
+
+`Bbos6ListSelectionComposeBridge.show(ComponentActivity, title, items, onSelected)`
+opens a scrollable app-owned selection dialog with a Compose
+`Bbos6ListSelectionPanel`. Its items are unique `Bbos6ListSelectionItem`
+stable IDs and single-line labels. Each entry renders the **existing**
+`Bbos6MediaListRow` at a compact 40dp (default media rows stay 68dp),
+without album artwork, duration, subtitle or icon. The popup uses the
+existing charcoal/rim design and focused blue list-row selection; it
+supports touch, Up/Down, trackpad/Enter and Back/Escape, and keeps long
+lists within the Q25 viewport. Native Android Dialog controls modal
+lifetime and dimming.
+
+The host application owns all item queries, callbacks and actions, such
+as choosing an existing playlist or opening a separate playlist name
+editor. Do not copy or restyle a row in the consuming application.
+
+Verification: run `:bbos6-ui:testDebugUnitTest` and confirm short and
+long choices, scrolling, focus visibility, trackpad center activation,
+touch, Back, empty-list rejection and no UI regression in 68dp media rows.
