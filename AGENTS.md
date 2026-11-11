@@ -274,3 +274,12 @@ background overlays or changing the seekbar dimensions. The reference
 separators are 1dp; two-dimensional per-pixel reflection alpha is
 controlled by shared `Bbos6NowPlayingSurface`, with regression tests
 in `Bbos6NowPlayingBevelTest`.
+
+### Now Playing Compose buttons and progress
+
+Keep mode/transport icon ImageViews and the native SeekBar as the only
+touch/DPAD/action owners. Their selection-only Compose hosts and the
+paint-only seek rail must never acquire input focus or draw extra rules.
+`MusicNowPlayingArtworkView` is only a binding bridge; actual image
+rendering is in shared `Bbos6NowPlayingArtwork` and Music retains all
+artwork lookups and stale async guards.

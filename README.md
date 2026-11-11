@@ -1434,3 +1434,40 @@ The application submodule is pinned to the shared fix
 Review both panels side-by-side with the previously accepted native
 release, then verify playback and selection still work. Builds and Q25
 visual parity of this revised SHA remain unverified.
+
+## Now Playing: Compose controls, progress rail and album art
+
+After the Q25 acceptance of the corrected mode/seek panel bevels, the
+remaining Now Playing visual building blocks now use the shared Compose
+library:
+
+- The original Repeat and Shuffle PNG ImageViews still own **all**
+  touch and accessibility handling. A passive shared Compose mode
+  highlight lives behind each button, inset 1dp to leave the already
+  verified header rules visible. The existing `renderFocus()` computes
+  precisely the same enabled, selected and current mode states.
+- Four original native transport icons, enabled alpha, touch callbacks
+  and transport/DPAD zone logic are unchanged. Each sits above the
+  shared Compose transport selection gradient. The native foreground
+  separator drawable now follows the same-size parent button slots;
+  only its parameter type changes from `ImageView[]` to `View[]`.
+- The 3dp seek **progress rail** now draws in shared Compose, using the
+  original 2dp end guard and entire SeekBar width to cover start/end
+  positions precisely. The original Android SeekBar still handles the
+  pill, seek gesture, touch-time preview, focus, editing and time math.
+  On every SeekBar progress change, the passive Compose rail follows
+  the same value. Disabled alpha follows native SeekBar alpha.
+- `MusicNowPlayingArtworkView` retains Music's existing resource/
+  bitmap setters and async loader callback, but delegates FIT_CENTER
+  rendering with 6dp inset to shared `Bbos6NowPlayingArtwork`.
+  Original 543.png no-art bitmap resource is untouched.
+
+All application-level Media3 callbacks, library/metadata decisions, seek
+policy, native input dispatch, playback session and app data are unchanged.
+Shared submodule pins `26d0b6f03bb2767d8ca614cf699f8e98f5ee83fb`.
+
+Test on Q25: Repeat/Shuffle selected/unselected/unavailable, transport
+selected/disabled click and DPAD, separator alignment, seek first/last
+positions and dragged progress (including disabled track), album covers
+present/absent, stop, Back and screen re-entry. Build/device verification
+is mandatory before merging.

@@ -27,6 +27,9 @@ import dev.q25.bbos6.ui.Bbos6FocusPolicy;
 import dev.q25.bbos6.ui.compose.Bbos6NowPlayingPanel;
 import dev.q25.bbos6.ui.compose.Bbos6NowPlayingSurfaceView;
 import dev.q25.bbos6.ui.compose.Bbos6NowPlayingTextAlignment;
+import dev.q25.bbos6.ui.compose.Bbos6NowPlayingControlKind;
+import dev.q25.bbos6.ui.compose.Bbos6NowPlayingControlSelectionView;
+import dev.q25.bbos6.ui.compose.Bbos6NowPlayingSeekRailView;
 
 /**
  * Standalone presentation port of the BB UI shade's expanded Now Playing:
@@ -57,17 +60,23 @@ final class MusicNowPlayingView extends LinearLayout {
     private final MetadataNavigation metadataNavigation;
     private final MusicArtworkLoader artworkLoader;
     private final ImageView modeShuffle;
+    private final Bbos6NowPlayingControlSelectionView modeShuffleFace;
+    private final Bbos6NowPlayingControlSelectionView modeRepeatFace;
     private final ImageView modeRepeat;
     private final MusicPlayerTextView queuePosition;
-    private final ImageView artworkImage;
+    private final MusicNowPlayingArtworkView artworkImage;
     private final MusicPlayerTextView trackTitle;
     private final MusicBeveledTextLabel trackArtist;
     private final MusicBeveledTextLabel trackAlbum;
     private final MusicPlayerTextView elapsed;
     private final MusicPlayerTextView remaining;
     private final SeekBar seekBar;
+    private final Bbos6NowPlayingSeekRailView seekRail;
     private final LinearLayout transportRow;
     private final ImageView[] transportButtons = new ImageView[4];
+    private final FrameLayout[] transportSlots = new FrameLayout[4];
+    private final Bbos6NowPlayingControlSelectionView[] transportFaces =
+            new Bbos6NowPlayingControlSelectionView[4];
     private final Handler ticker = new Handler(Looper.getMainLooper());
 
     private int zone = ZONE_TRANSPORT;
@@ -112,6 +121,13 @@ final class MusicNowPlayingView extends LinearLayout {
         addView(modePanel, new LayoutParams(LayoutParams.MATCH_PARENT,
                 dp(MusicPlayerChrome.MODE_HEADER_HEIGHT_DP)));
 
+        // The shared Compose highlight is passive and sits beneath the
+        // original click-owning ImageView. Keep both 48dp mode touch slots.
+        FrameLayout repeatSlot = new FrameLayout(context);
+        modeRepeatFace = new Bbos6NowPlayingControlSelectionView(
+                context, Bbos6NowPlayingControlKind.MODE);
+        repeatSlot.addView(modeRepeatFace, new FrameLayout.LayoutParams(
+                LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
         // Repeat occupies the left-hand header slot formerly used by "Media".
         modeRepeat = new ImageView(context);
         modeRepeat.setScaleType(ImageView.ScaleType.FIT_CENTER);
@@ -124,7 +140,9 @@ final class MusicNowPlayingView extends LinearLayout {
             client.toggleRepeat();
             render();
         });
-        modeHeader.addView(modeRepeat, new LayoutParams(
+        repeatSlot.addView(modeRepeat, new FrameLayout.LayoutParams(
+                LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+        modeHeader.addView(repeatSlot, new LayoutParams(
                 dp(48), LayoutParams.MATCH_PARENT));
 
         // Keep the count mathematically centered between equal-width buttons.
@@ -135,6 +153,11 @@ final class MusicNowPlayingView extends LinearLayout {
         modeHeader.addView(queuePosition, new LayoutParams(
                 0, LayoutParams.MATCH_PARENT, 1f));
 
+        FrameLayout shuffleSlot = new FrameLayout(context);
+        modeShuffleFace = new Bbos6NowPlayingControlSelectionView(
+                context, Bbos6NowPlayingControlKind.MODE);
+        shuffleSlot.addView(modeShuffleFace, new FrameLayout.LayoutParams(
+                LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
         modeShuffle = new ImageView(context);
         modeShuffle.setScaleType(ImageView.ScaleType.FIT_CENTER);
         modeShuffle.setPadding(0, 0, 0, 0);
@@ -146,7 +169,9 @@ final class MusicNowPlayingView extends LinearLayout {
             client.toggleShuffle();
             render();
         });
-        modeHeader.addView(modeShuffle, new LayoutParams(
+        shuffleSlot.addView(modeShuffle, new FrameLayout.LayoutParams(
+                LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+        modeHeader.addView(shuffleSlot, new LayoutParams(
                 dp(48), LayoutParams.MATCH_PARENT));
 
         // All remaining viewport height belongs to the artwork/metadata stage;
@@ -170,9 +195,8 @@ final class MusicNowPlayingView extends LinearLayout {
         FrameLayout artArea = new FrameLayout(context);
         artInfo.addView(artArea, new LayoutParams(0, LayoutParams.MATCH_PARENT, 1f));
 
-        artworkImage = new ImageView(context);
-        artworkImage.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        artworkImage.setPadding(dp(6), dp(6), dp(6), dp(6));
+        // Shared FIT_CENTER Compose presentation; same loader and fallback.
+        artworkImage = new MusicNowPlayingArtworkView(context);
         artworkImage.setContentDescription("Album artwork");
         artArea.addView(artworkImage, new FrameLayout.LayoutParams(
                 LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
@@ -238,12 +262,17 @@ final class MusicNowPlayingView extends LinearLayout {
         seekRow.addView(elapsed, new LayoutParams(
                 LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT));
 
+        // Compose paints the complete rail below the unmodified native
+        // SeekBar thumb and gesture target, in the same width/height bounds.
+        seekRail = new Bbos6NowPlayingSeekRailView(context,
+                MediaSeekPolicy.PROGRESS_MAX,
+                MusicPlayerChrome.SEEK_END_GUARD_DP,
+                MusicPlayerChrome.SEEK_TRACK_HEIGHT_DP);
         seekBar = new SeekBar(context);
         seekBar.setMax(MediaSeekPolicy.PROGRESS_MAX);
-        // A single shared background renders the full dark rail AND the white
-        // completed portion; only the pill uses native padded travel bounds.
-        seekBar.setBackground(MusicPlayerChrome.seekRailBackground(
-                context, seekBar));
+        // The shared Compose canvas renders the full-width progress rail.
+        // SeekBar retains only the original native pill/seek interaction.
+        seekBar.setBackground(null);
         seekBar.setFocusable(false);
         seekBar.setFocusableInTouchMode(false);
         // Native thumb travel is inset by half a pill + 2dp. With the
@@ -276,6 +305,7 @@ final class MusicNowPlayingView extends LinearLayout {
                 // Progress now paints in the full-width SeekBar background.
                 // Explicit invalidation also handles programmatic ticks.
                 bar.invalidate();
+                seekRail.updateProgress(progress);
                 if (fromUser && seekDragging) {
                     long previewPosition = MediaSeekPolicy.fromProgress(
                             progress, durationMs);
@@ -297,7 +327,12 @@ final class MusicNowPlayingView extends LinearLayout {
                 0, LayoutParams.MATCH_PARENT, 1f);
         seekParams.leftMargin = dp(2);
         seekParams.rightMargin = dp(2);
-        seekRow.addView(seekBar, seekParams);
+        FrameLayout seekTrack = new FrameLayout(context);
+        seekTrack.addView(seekRail, new FrameLayout.LayoutParams(
+                LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+        seekTrack.addView(seekBar, new FrameLayout.LayoutParams(
+                LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+        seekRow.addView(seekTrack, seekParams);
 
         remaining = new MusicPlayerTextView(context, "--:--", 14f, 0xff99aab8,
                 Bbos6NowPlayingTextAlignment.END, 1, 42, false, true);
@@ -320,6 +355,12 @@ final class MusicNowPlayingView extends LinearLayout {
         String[] descriptions = {"Previous", "Play or pause", "Stop", "Next"};
         for (int i = 0; i < transportButtons.length; i++) {
             final int buttonIndex = i;
+            FrameLayout slot = new FrameLayout(context);
+            Bbos6NowPlayingControlSelectionView selectionFace =
+                    new Bbos6NowPlayingControlSelectionView(
+                            context, Bbos6NowPlayingControlKind.TRANSPORT);
+            slot.addView(selectionFace, new FrameLayout.LayoutParams(
+                    LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
             ImageView button = new ImageView(context);
             button.setScaleType(ImageView.ScaleType.CENTER);
             button.setImageDrawable(MusicPlayerChrome.transportIcon(context, i, false));
@@ -335,11 +376,15 @@ final class MusicNowPlayingView extends LinearLayout {
                 activate();
             });
             transportButtons[i] = button;
-            transportRow.addView(button, new LayoutParams(
+            transportFaces[i] = selectionFace;
+            transportSlots[i] = slot;
+            slot.addView(button, new FrameLayout.LayoutParams(
+                    LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+            transportRow.addView(slot, new LayoutParams(
                     0, LayoutParams.MATCH_PARENT, 1f));
         }
         transportRow.setForeground(
-                MusicPlayerChrome.transportSeparators(context, transportButtons));
+                MusicPlayerChrome.transportSeparators(context, transportSlots));
         // The view owns trackpad focus and draws its own BBOS6 selection.
         // Never let Android paint its default highlight across the player.
         Bbos6FocusPolicy.forManagedContainers(this);
@@ -426,7 +471,9 @@ final class MusicNowPlayingView extends LinearLayout {
             elapsed.setText("0:00");
             remaining.setText("--:--");
             seekBar.setProgress(0);
+            seekRail.updateProgress(0);
             seekBar.setEnabled(false);
+            seekRail.setAlpha(seekBar.getAlpha());
             return;
         }
         long duration = controller.getDuration();
@@ -436,9 +483,11 @@ final class MusicNowPlayingView extends LinearLayout {
         remaining.setText(MediaSeekPolicy.formatRemainingTime(
                 durationMs, position));
         seekBar.setProgress(MediaSeekPolicy.toProgress(position, durationMs));
+        seekRail.updateProgress(seekBar.getProgress());
         boolean canSeek = durationMs > 0L && controller.isCurrentMediaItemSeekable();
         seekBar.setEnabled(canSeek);
         seekBar.setAlpha(canSeek ? 1f : 0.4f);
+        seekRail.setAlpha(canSeek ? 1f : 0.4f);
         if (!canSeek && seekEditing) {
             seekEditing = false;
             renderFocus();
@@ -465,8 +514,7 @@ final class MusicNowPlayingView extends LinearLayout {
         modeShuffle.setEnabled(shuffleAvailable);
         // No persistent active-state background: highlight only the focused
         // Shuffle control with the exact same selection as library list rows.
-        modeShuffle.setBackground(shuffleFocused
-                ? MusicPlayerChrome.modeSelectionBackground(getContext()) : null);
+        modeShuffleFace.setHighlighted(shuffleFocused);
         // Preserve the supplied PNG colors, including the unavailable variant.
         modeShuffle.setAlpha(1f);
         boolean repeatAvailable = controller != null
@@ -487,8 +535,7 @@ final class MusicNowPlayingView extends LinearLayout {
         modeRepeat.setEnabled(repeatAvailable);
         boolean repeatFocused = repeatAvailable && focused
                 && zone == ZONE_MODE && selectedMode == 0;
-        modeRepeat.setBackground(repeatFocused
-                ? MusicPlayerChrome.modeSelectionBackground(getContext()) : null);
+        modeRepeatFace.setHighlighted(repeatFocused);
         modeRepeat.setAlpha(1f);
         seekBar.setThumb(MusicPlayerChrome.seekThumb(getContext(),
                 focused && zone == ZONE_SEEK,
@@ -496,7 +543,7 @@ final class MusicNowPlayingView extends LinearLayout {
         for (int i = 0; i < transportButtons.length; i++) {
             boolean selected = focused && zone == ZONE_TRANSPORT && selectedButton == i;
             ImageView button = transportButtons[i];
-            button.setBackground(selected ? MusicPlayerChrome.transportSelection() : null);
+            transportFaces[i].setHighlighted(selected);
             boolean enabled = controller != null
                     && (i == 0 ? controller.hasPreviousMediaItem()
                     : i == 3 ? controller.hasNextMediaItem()
@@ -602,6 +649,6 @@ final class MusicNowPlayingView extends LinearLayout {
         active = false;
         ticker.removeCallbacks(tick);
         artworkLoader.close();
-        artworkImage.setImageDrawable(null);
+        artworkImage.clear();
     }
 }
