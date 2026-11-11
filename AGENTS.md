@@ -383,3 +383,15 @@ limit, keeping the existing Java-caller SAM listener.
 geometry, not an original numbered BBOS6 asset. Do not change
 `MusicNowPlayingView` artwork request ordering, callback stale-URI
 key check or loader shutdown while converting it to Kotlin/Compose.
+
+### Kotlin Now Playing controller
+
+\`MusicNowPlayingView.kt\` owns the app-specific Now Playing layout,
+zone traversal and input after the Java counterpart was retired.
+Canonical surfaces, labels, seek rail, selection and metadata plates
+remain in shared BBOS6 Compose. The existing native SeekBar/transport
+ImageViews are deliberate Android platform controls used from Kotlin;
+do not change DPAD/touch semantics, mode icon assets, progress math,
+click handlers or Media3 behavior while replacing layout wrappers.
+Protect the 1s ticker and async artwork generation callback across
+dispose, and preserve \`Bbos6FocusPolicy\` on the root.

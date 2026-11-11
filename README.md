@@ -1663,3 +1663,29 @@ selection or playback. The generic placeholder keeps its exact
 previous paint colors and note geometry. Original numbered BBOS6
 assets remain untouched. On-device cover switching and fallback
 render tests still required.
+
+## Kotlin Now Playing presentation and input controller
+
+The entire \`MusicNowPlayingView.java\` controller is replaced by
+\`MusicNowPlayingView.kt\` without changing the app-facing constructor,
+\`MetadataNavigation\` callback interface, \`render()\`, \`directional()\`,
+\`activate()\` or \`dispose()\`. All four BBOS6 Now Playing panels use
+the existing canonical shared Kotlin Compose surfaces. Other Compose
+widgets continue rendering the title/queue/time labels, original cover,
+selection faces, Seek rail and artist/album metadata plates.
+
+The existing native \`SeekBar\` and transport/mode \`ImageView\` inputs
+remain under Kotlin control for Q25 focus, touch, accurate thumb travel
+and DPAD. Media3 remains exclusively in \`MusicPlaybackClient\`.
+Vertical zone traversal, absent-metadata skipping, mode and transport
+left/right, trackpad seek editing, time countdown, 1s ticker and
+stale-track artwork callback guard retain the Java behavior. The
+shared \`Bbos6FocusPolicy\` is applied to the Now Playing root to
+exclude Android's prohibited default light focus decoration.
+
+**Build and Q25 verification required.** Check all controls, Stop
+reset/resumption, shuffle/repeat, metadata jump/Back, seek pill,
+trackpad zone traversal, paused artwork, and library return. Pure
+Kotlin+Compose completion still requires MusicActivity and remaining
+Music domain/service Java conversions; native Android platform
+controls can remain as APIs, not separate Java source screens.
