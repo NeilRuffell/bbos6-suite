@@ -1677,7 +1677,7 @@ class MusicActivity : ComponentActivity() {
     private fun bindAlbumHeader(page: Page) {
         val album = page.albumGroup
         val albumTracks = album?.songs
-        if (albumTracks.isNullOrEmpty()) {
+        if (album == null || albumTracks.isNullOrEmpty()) {
             albumHeader.clear()
             albumHeader.visibility = View.GONE
             return
