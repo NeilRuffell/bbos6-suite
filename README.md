@@ -1509,19 +1509,17 @@ business logic are untouched. Build and Q25 behavior still require a retest.
 
 ## Compose popup-button and empty-search presentation batch
 
-For Music's `ComponentActivity`, existing Java
-`Bbos6PopupButtonList.Builder.show(Activity)` now uses the canonical
-shared Compose popup panel for button-only playlist choices and
-confirmations, as well as text-input playlist dialogs. All original
-button IDs, initial selected ID, touch activation, DPAD/trackpad
-navigation, icon resources/drawables, title/message, horizontal button
-sizing, dimming, cancel/Back, callback timing and returned Android
-`Dialog` references remain app-owned through the shared Java bridge.
+For Music's `ComponentActivity`, the Java
+`Bbos6PopupButtonList.Builder.show(Activity)` uses shared Compose
+popup presentation for **button-only** playlist choices and
+confirmations, retaining action IDs, selected state, icons, text,
+button widths, dimming, Back and callback behavior.
 
-**Playlist Create/Rename popups also use the Compose panel**, with
-the *same native* `Bbos6TextField` embedded via `AndroidView`.
-The Android editor retains keyboard, cursor, selection, clipboard and
-IME behavior. Platform-only Activity hosts retain native popup layout.
+**Create/Rename Playlist text-input popups keep the native shared
+`Bbos6PopupButtonList.PopupDialog` with `Bbos6TextField`**.
+Native DPAD/trackpad focus crossing, editing, IME and button highlights
+remain under the already-tested native implementation. Neither the
+`MusicActivity.askPlaylistName()` callbacks nor persisted data changed.
 
 The standalone “No search results found” TextView has been replaced
 with the shared passive `Bbos6SearchEmptyFeedbackView`. Search
@@ -1533,24 +1531,28 @@ Unmerged until Gradle build and Q25 checks: button-only modal icon/title,
 action selection via keyboard and touch, disabled actions, Back,
 New/Rename Playlist native input, and empty searches on every library page.
 
-## Compose-hosted native playlist text entry
+## Q25 text-entry popup focus regression — native fallback restored
 
-The shared `Bbos6PopupButtonList.Builder.show(Activity)` now uses
-the canonical Compose popup panel for text-input dialogs in
-`MusicActivity` as well as button-only prompts. Its text field is
-the *same* canonical native `Bbos6TextField` (Android `EditText`)
-embedded via Compose `AndroidView`, not a new Compose text editor.
-The shared panel owns title, visual frame, action button sizing and
-selected gradient; the native field retains select-all-on-focus, hardware
-keyboard, clipboard, cursor, 30dp control height and IME behavior.
+Q25 verification of the experimental `AndroidView(Bbos6TextField)`
+inside the Compose popup showed two defects: Android's lighter default
+focus overlay appeared over the Cancel/Save area, and physical
+trackpad left/right navigation stopped after leaving the text field.
+That hybrid has been removed. `Bbos6PopupButtonList.Builder.show`
+now chooses the native popup whenever `.textInput(...)` is present,
+even for Music's `ComponentActivity`; button-only popups remain Compose.
+This restores the previous native popup's shared
+`Bbos6FocusPolicy.forManagedContainers(panel)` and its original
+DPAD/trackpad `dispatchKeyEvent` routing. Source behavior only; new
+APK and Q25 device tests still required.
 
-Input focus DPAD_DOWN enters the Cancel/Save button row; button-focus
-DPAD_UP returns to the native field. The popup Java action API still
-delivers a snapshot of current native text when Save is activated.
-Music's `askPlaylistName()`, validation, Room callbacks, and playlist
-writes are unchanged. Non-AndroidX callers keep the prior native popup.
+**Mandatory policy:** Android's automatic light/default
+full-container focus overlay is strictly forbidden on all BBOS6
+custom-managed focus owners. Disable it at its source using the shared
+`Bbos6FocusPolicy` on native/Compose ViewGroup owners. Never
+compensate with transparent covers or extra colors; preserve native
+EditText leaf focus. Update the shared helper first for future changes.
 
-Current pin: `5560331571c74c882428f1c9d833686e177aa712`.
-Not yet built/tested on Q25: verify Create/Rename Playlist, entering and
-deleting text, physical keyboard, left/right cursor movement, select-all,
-DPAD input/button roundtrip, touch Cancel/Save and Back before merging.
+Current shared submodule: `d08c1ac95432fe116ba7c5a0bf5e560f9b5a3e29`.
+Retest Create and Rename Playlist: move down from native EditText to
+buttons; trackpad left/right moves selected Cancel/Save; DPAD_UP returns
+to input; no light overlay; touch, keyboard, Cancel, Save and Back.

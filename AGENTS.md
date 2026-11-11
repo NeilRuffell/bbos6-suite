@@ -293,21 +293,31 @@ APIs. Do not add Music-specific UI dialogs or reimplement action
 callbacks. Keep original focus/activation/Back semantics; explicitly
 verify both modal types on Q25 before any merge.
 
-### Compose popup actions and empty search state
+### Strict BBOS6 focus-overlay prohibition — Q25 regression guard
 
-For ComponentActivity, all popups use the shared
-`Bbos6PopupButtonComposeBridge`; text-input mode embeds the canonical
-native `Bbos6TextField` in the shared Compose layout. Do not move
-playlist validation, input editing or callbacks into UI code.
+Android's default/light full-container focus overlay is **strictly
+forbidden** for every BBOS6 custom-managed focus owner in this project
+and in `bbos6-shared`. Preserve only the canonical blue selection
+gradient for the *actually focused* interaction area. Never mask
+Android's overlay with transparency, extra colors or compensating
+drawables. The shared `Bbos6FocusPolicy.forManagedContainers(root)`
+must disable Android's default focus highlight at native ViewGroup and
+ComposeView focus-owning containers; native EditText leaf focus and
+cursor/keyboard operations remain intact. A recurrence is a blocking
+visual/focus regression.
 
-Only `Bbos6SearchEmptyFeedbackView` owns search no-results visuals;
-the existing Activity decides visibility and search/filter rules.
+### Current popup migration boundary
 
-### Compose-hosted playlist native field
+Button-only popups use shared `Bbos6PopupButtonComposeBridge`;
+`.textInput(...)` popups use the already Q25-verified native
+`Bbos6PopupButtonList.PopupDialog` and canonical native
+`Bbos6TextField`, even within AndroidX ComponentActivity. The
+Compose/AndroidView hybrid was rejected after Q25 testing because it
+painted a light Android focus overlay and trackpad left/right stopped
+moving the selected Cancel/Save button. Native popup already handles
+DPAD and changes focus between input and buttons correctly. Retain this
+fallback until both problems are solved and tested in shared code.
+Application playlist validation and callbacks stay in Music.
 
-For AndroidX MusicActivity all Bbos6PopupButtonList layouts use the shared
-Compose popup panel; text-input mode embeds the original shared native
-Bbos6TextField using AndroidView. Application callback and playlist
-validation stay in Music. Keep native EditText keyboard/IME/cursor
-semantics and input/button focus crossings; do not replace this with
-independent Compose text-entry state or a Music-only popup implementation.
+`Bbos6SearchEmptyFeedbackView` remains the shared passive search
+no-results face; Music retains filter and visibility logic.
