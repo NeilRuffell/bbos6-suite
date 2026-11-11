@@ -166,6 +166,14 @@ pixel offsets, or compensating layout arithmetic.
 
 ## Playlist maintenance
 
+Playlist detail lists expose only **Play all** and **Shuffle** before the
+track rows. **Add songs**, **Rename playlist**, **Export M3U8**, and
+**Delete playlist** belong in the existing `Bbos6ContextMenu` long-press
+action on a playlist name in the Playlists directory. These actions call
+the pre-existing Music methods, including the original destructive
+confirmation and SAF export flow; do not introduce a second popup or
+duplicate functionality inside the playlist detail view.
+
 Playlists are implemented only in this repository, through
 `MusicPlaylists`, `MusicPlaylistTransfer` and the existing
 `MusicLibraryDatabase` Room schema (v3). Preserve playlist entries,

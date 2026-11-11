@@ -1245,13 +1245,18 @@ background workers; the native ListView and Media3 controller are reused.
   Save reuses the existing Room playlist
   validation and create/rename logic; Cancel makes no changes. Saved
   playlists follow with entry counts. Tap a playlist to open it;
-  long-press one to **Rename playlist** or **Delete playlist**.
-- Open playlist: **Play all**, **Shuffle**, **Add songs**, **Rename playlist**,
-  **Export M3U8**, **Delete playlist**, followed by the ordered track list.
+  long-press its name to access **Add songs**, **Rename playlist**,
+  **Export M3U8**, and **Delete playlist** through the existing shared
+  `Bbos6ContextMenu`. Delete still opens its existing confirmation and never
+  deletes audio files.
+- Open playlist: **Play all** and **Shuffle** appear above the ordered track
+  list; the four maintenance actions are no longer listed here.
   Playing one track uses the available songs of that playlist as its Media3
   queue. Shuffle uses the existing Media3 queue shuffle mode.
 - **Add songs** opens the existing All Songs list as a picker. Enter/tap
-  inserts the selected song; Back returns to the playlist. To add a whole
+  inserts the selected song; Back returns to Playlists when the picker was
+  opened from the playlist-name long-press menu. An empty playlist directs
+  users back to that long-press menu to add songs. To add a whole
   album, artist, or genre at once, long-press its group row anywhere in the
   music library and choose **Add to playlist**. The same action is available
   for individual track rows. The chooser now uses the shared BBOS6 compact
