@@ -983,7 +983,7 @@ class MusicActivity : ComponentActivity() {
             playlistNotice("Music library is loading")
             return
         }
-        val page = Page("Add songs", songRows(songs))
+        val page = Page("Add songs", songRows(songs).toMutableList())
         page.playlistPickerId = playlistId
         navigateTo(page)
     }
@@ -1058,7 +1058,7 @@ class MusicActivity : ComponentActivity() {
             contentResolver.query(
                 document, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null
             )?.use { cursor ->
-                if (cursor.moveToFirst()) return cursor.getString(0)
+                if (cursor.moveToFirst()) cursor.getString(0)?.let { return it }
             }
         } catch (exception: RuntimeException) {
             Log.w(TAG, "Cannot read playlist document name", exception)
@@ -1450,7 +1450,7 @@ class MusicActivity : ComponentActivity() {
         backStack.clear()
         rootPage.selected = rootPosition
         rootPage.selectedTop = 0
-        val categoryPage = Page(MENU[category], categoryRows)
+        val categoryPage = Page(MENU[category], categoryRows.toMutableList())
         categoryPage.selected = targetPosition
         categoryPage.selectedTop = 0
         backStack.push(rootPage)
@@ -1676,17 +1676,18 @@ class MusicActivity : ComponentActivity() {
 
     private fun bindAlbumHeader(page: Page) {
         val album = page.albumGroup
-        if (album?.songs.isNullOrEmpty()) {
+        val albumTracks = album?.songs
+        if (albumTracks.isNullOrEmpty()) {
             albumHeader.clear()
             albumHeader.visibility = View.GONE
             return
         }
-        val first = album!!.songs!![0]
+        val first = albumTracks[0]
         val key = MusicLibraryGroupPolicy.albumKeyForRow(album)
         val candidates = if (key == null) null else albumArtworkSources[key]
         albumHeader.bind(
             album.title, first.artist, first.genre,
-            album.songs.size, if (key == null) null else "album:$key", candidates
+            albumTracks.size, if (key == null) null else "album:$key", candidates
         )
         albumHeader.visibility = View.VISIBLE
     }
