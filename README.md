@@ -421,8 +421,9 @@ The shared helper now handles **per-track and artist/album/genre file deletion**
 **Full rescan** confirmation. It changes no file-operation, playback,
 playlist-database, or SAF permission behavior. The **Android document-tree
 write-authorization picker stays native** (it cannot be replaced by a custom
-popup); text-entry dialogs and list-selection dialogs still use Android
-controls because they need inputs rather than only a button stack.
+popup). Text-entry dialogs retain native Android EditText, but
+playlist selection uses the shared Compose `Bbos6ListSelectionComposeBridge`
+and compact `Bbos6MediaListRow` faces instead of an Android AlertDialog.
 
 ### SAF track and group deletion
 
@@ -1253,7 +1254,12 @@ background workers; the native ListView and Media3 controller are reused.
   inserts the selected song; Back returns to the playlist. To add a whole
   album, artist, or genre at once, long-press its group row anywhere in the
   music library and choose **Add to playlist**. The same action is available
-  for individual track rows.
+  for individual track rows. The chooser now uses the shared BBOS6 compact
+  list-selection popup: one-line 40dp `Bbos6MediaListRow` entries without
+  artwork, plus a final **New playlist...** choice. Playlist IDs, existing
+  creation flow, persisted data and SAF scope are unchanged. Use trackpad
+  Up/Down and center/Enter, touch or Back; large lists scroll within the
+  popup rather than opening a native Android choice box.
 - In a playlist, long-press an available track to **Move up**, **Move down**,
   or **Remove from playlist**. The context menu also offers Properties,
   Add to playlist and the separate destructive **Delete audio file** action
@@ -1846,3 +1852,21 @@ disposable test files only.
 ## Local SAF scanner Kotlin port
 
 LocalMusicSource.java is now LocalMusicSource.kt. Same Java-accessible Listener, Song field ABI, ScanSummary fields and methods; original Java source removed. The scanner remains restricted to MusicFolders.selectedTrees and verified audio streams, uses the same sorted length-prefixed verified-audio-v3-album-tags: selection key, conservative file fingerprints, metadata fallbacks, duplicate URI suppression, album-tag legacy revalidation, deterministic song order, single worker, 400-row deletion batches and atomic Room transactions. Cancelled requests cannot commit or deliver stale callbacks. The existing Room v3 database file and saved data are untouched. Full Q25 Gradle and device testing of library cold start, Refresh, Full rescan, folder removal, missing album metadata, playlists and playback is required before merge.
+
+## Compact playlist chooser (shared media-row popup)
+
+`MusicActivity.choosePlaylist` now supplies stable playlist IDs and names
+to `Bbos6ListSelectionComposeBridge` in `bbos6-shared`. The final
+`New playlist...` choice calls the unchanged `createPlaylist(songs)`;
+existing IDs still call `addSongsToPlaylist(id, songs)`. The shared
+Compose popup renders one-line `Bbos6MediaListRow` at **40dp** with no
+artwork, and owns selected highlighting, list scrolling and DPAD/trackpad
+navigation. The ordinary library rows remain **68dp**. Music owns only
+the action mapping and dialog lifetime, not a second picker renderer.
+Android SAF permissions and document pickers are unaffected.
+
+Q25 checks: long-press song/album/artist/genre and select Add to playlist,
+navigate 1 or many playlists with DPAD/trackpad, center/Enter and touch;
+confirm Back cancels; verify New playlist still opens the current name
+entry, inserts initial songs, and does not modify the database when cancelled.
+Build and install the existing release APK only; do not clear app data.

@@ -1,7 +1,6 @@
 package dev.q25.bbmusic
 
 import android.app.Activity
-import android.app.AlertDialog
 import android.app.Dialog
 import android.content.Intent
 import android.database.Cursor
@@ -36,6 +35,8 @@ import dev.q25.bbos6.ui.Bbos6TextField
 import dev.q25.bbos6.ui.Bbos6PropertiesPopup
 import dev.q25.bbos6.ui.compose.Bbos6EmptyStateComposeView
 import dev.q25.bbos6.ui.compose.Bbos6SearchEmptyFeedbackView
+import dev.q25.bbos6.ui.compose.Bbos6ListSelectionComposeBridge
+import dev.q25.bbos6.ui.compose.Bbos6ListSelectionItem
 import dev.q25.bbmusic.MusicActivityModels.MenuRow
 import dev.q25.bbmusic.MusicActivityModels.Page
 import dev.q25.bbmusic.MusicActivityModels.DeleteRequest
@@ -945,16 +946,26 @@ class MusicActivity : ComponentActivity() {
                 playlistFailure(error)
                 return@list
             }
-            val choices = Array(items.size + 1) { index ->
-                if (index == items.size) "New playlist..." else items[index].name
+            if (isFinishing || isDestroyed) return@list
+            val choices = ArrayList<Bbos6ListSelectionItem>(items.size + 1)
+            for (item in items) {
+                choices.add(Bbos6ListSelectionItem(item.id.toString(), item.name))
             }
-            AlertDialog.Builder(this)
-                .setTitle("Add to playlist")
-                .setItems(choices) { _, index ->
-                    if (index == items.size) createPlaylist(songs)
-                    else addSongsToPlaylist(items[index].id, songs)
+            choices.add(Bbos6ListSelectionItem("new", "New playlist..."))
+            buttonPopupDialog?.dismiss()
+            buttonPopupDialog = null
+            val shown = Bbos6ListSelectionComposeBridge.show(
+                this, "Add to playlist", choices
+            ) { choiceId ->
+                if (!isFinishing && !isDestroyed) {
+                    if (choiceId == "new") createPlaylist(songs)
+                    else choiceId.toLongOrNull()?.let { addSongsToPlaylist(it, songs) }
                 }
-                .show()
+            }
+            buttonPopupDialog = shown
+            shown.setOnDismissListener {
+                if (buttonPopupDialog === shown) buttonPopupDialog = null
+            }
         }
     }
 

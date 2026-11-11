@@ -153,8 +153,12 @@ gradient within this app.
 Keep Android-owned SAF permission grant dialogs and document pickers
 native; the popup is not a replacement for platform authorization.
 For simple one-line text entry, use the existing shared popup's native
-`EditText` and horizontal buttons. Keep more complex input or list-selection
-dialogs native until suitable shared helpers exist. Never alter deletion authorization,
+`EditText` and horizontal buttons. For app-owned scrollable list choices,
+use the shared `Bbos6ListSelectionComposeBridge` backed by the compact
+`Bbos6MediaListRow` with stable choice IDs; native Android AlertDialog
+list selection is no longer needed for the playlist chooser. Keep genuinely
+complex input dialogs native until shared alternatives are verified.
+Never alter deletion authorization,
 file security checks, or the selected music-folder allowlist merely to
 change a dialog's appearance. Popup sizes are set by the shared helper
 using intrinsic dp/sp layout dimensions; never add Music-specific scaling,
