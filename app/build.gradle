@@ -2,6 +2,7 @@ plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android' version '2.4.21'
     id 'org.jetbrains.kotlin.plugin.compose' version '2.4.21'
+    id 'org.jetbrains.kotlin.kapt' version '2.4.21'
 }
 
 android {
@@ -55,9 +56,13 @@ dependencies {
     def media3Version = '1.9.4'
     implementation "androidx.media3:media3-exoplayer:$media3Version"
     implementation "androidx.media3:media3-session:$media3Version"
-    // Durable, private SQLite catalog with Java annotation processing.
+    // Durable, private SQLite catalog; kapt processes Kotlin Room entities/DAOs.
     def roomVersion = '2.8.5'
     implementation "androidx.room:room-runtime:$roomVersion"
-    annotationProcessor "androidx.room:room-compiler:$roomVersion"
+    kapt "androidx.room:room-compiler:$roomVersion"
+    // Room 2.8.5 resolves a pre-2.4 metadata reader on kapt's processor path.
+    // The Kotlin 2.4.21 stubs require a metadata reader with 2.4 support.
+    // Keep this on kapt only; it does not change runtime/database dependencies.
+    kapt 'org.jetbrains.kotlin:kotlin-metadata-jvm:2.4.21'
     testImplementation 'junit:junit:4.13.2'
 }

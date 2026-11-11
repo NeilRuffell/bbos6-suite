@@ -508,3 +508,160 @@ disposable local test tracks on device.
 ## Kotlin Music scanner index contract
 
 LocalMusicSource.kt remains the only app-owned SAF scanner, restricted to currently selected read-authorized trees. Maintain the exact verified-audio-v3-album-tags: cache key, sorted length-prefix tree list, positive MediaExtractor audio verification, absent album as empty string, legacy Unknown Album verification, unchanged file fingerprint policy, 400-row deletion batching and Room delta transaction, serialized worker, request serial cancellation, and on-worker database close. Song and ScanSummary expose @JvmField for Java MusicActivity and related classes. Never scan device-wide MediaStore or clear database as a migration step.
+
+### Kotlin native player-chrome compatibility
+
+`MusicPlayerChrome.kt` replaces the last Java drawable utility without changing
+its native Android `Drawable` rendering algorithms. It retains the previous
+Java-callable static methods through `@JvmStatic`, and original constants
+through `const val`. Existing app and shared Compose Now Playing surfaces
+retain their ownership boundaries; do not add a second shared bevel renderer.
+Before merging, compile both app variants, check native seek/thumb/icon faces
+and separators on the Q25, and confirm Java `MusicActivity` interoperability.
+
+### Kotlin Room database boundary
+
+`MusicLibraryDatabase.kt` retains the exact version-3 SQLite schema, file
+`bbmusic_library.db`, entity/column/index/foreign-key names, SQL statements,
+and original non-destructive v1→v2 and v2→v3 migrations. Entity, projection
+and playlist-row fields use `@JvmField` so remaining Java app code keeps
+direct field access, and `open(Context)` remains Java-callable via
+`@JvmStatic`. The Kotlin Room compiler is run with `kapt` and the processor-only
+`org.jetbrains.kotlin:kotlin-metadata-jvm:2.4.21` compatibility dependency.
+Room 2.8.5's transitive metadata reader rejected Kotlin 2.4.0 metadata
+(`maximum supported version is 2.3.0`) in both debug/release kapt tasks;
+keep the Kotlin metadata reader aligned with Kotlin 2.4.21 until migrating
+Room processing to a verified compatible toolchain. Do not enable
+destructive fallback migration or change the existing database filename.
+Verify an *upgrade in place* on a device with a populated catalog and real
+playlists, followed by cold restart, incremental refresh, full rescan,
+playlist ordering, and playback retention. No uninstall/data clearing.
+
+### Kotlin Activity catalog grouping increment
+
+The remaining `MusicActivity.java` incrementally delegates its app-specific
+artist/album/genre grouping, case-folded group keys, cover-association key,
+song search match and singular/plural row-label rules to
+`MusicLibraryGroupPolicy.kt`. Do not make a competing grouping implementation
+in the Activity or in the app-neutral shared BBOS6 UI module.
+The original Android Activity retains its existing adapter rows, current-page
+state, view focus, search editing, click and Back navigation. The policy keeps
+the original `Locale.ROOT` lowercasing, stable insertion-order grouping,
+case-insensitive group sorting, omission of untagged albums, and album-ID
+fallback. Verify Artists/Albums/Genres grouping and artwork, search,
+keyboard type-to-search and ListView DPAD scroll on Q25 before further porting.
+
+### Kotlin Activity row/page model boundary
+
+`MusicActivityModels.kt` now owns the row-kind integer IDs, immutable
+menu-row factory models, mutable page state, and immutable file-deletion
+snapshot previously nested in `MusicActivity.java`. This is an app-specific
+model, **not** a shared BBOS6 UI helper. Java callers import its nested
+`MenuRow`, `Page` and `DeleteRequest` and still access original row
+fields through `@JvmField`, use original static factories through
+`@JvmStatic`, and use the original two-/three-argument `Page` constructors.
+Empty-state title/message must remain nullable: `setEmptyState(null, null, 0)`
+is how existing pages clear their state. Row IDs and all default sentinels
+(including -1 playlist IDs) are unchanged. The Activity retains all
+navigation, list focus/scroll, deletion authorization and playback methods.
+Run `MusicActivityModelsTest` and verify root entries, playlists, empty
+states, search/Back, Q25 touch and trackpad before merging.
+
+### Kotlin Activity artwork indexing and counts
+
+The app-specific `MusicLibraryGroupPolicy.kt` now owns the old
+`MusicActivity` first-album comparator, `albumKeyForRow`, indexed album
+artwork candidate ordering and four category counters. Preserve the original
+per-album insertion order; candidate tracks sort by positive track number
+(otherwise `Int.MAX_VALUE`), case-insensitive title, and exact URI string.
+Per-album URI lists remain unmodifiable. Untagged tracks receive their own
+`untagged:` URI key; artists/genres select the same earliest alphabetical
+album, never borrow artwork from another album on missing art. Album grouping
+continues to omit only missing tags, not the literal "Unknown Album".
+The Activity retains the authorized `localSongs` snapshot, loader/cache,
+selection, update timing and `list.refreshVisibleRows()` call. The Kotlin
+counter utility must never notify or reset ListView navigation itself.
+Verify artwork on Artists/Albums/Genres and tagless tracks, counts after
+refresh and the physical Q25 trackpad/scroll without a forced rescan.
+
+### Kotlin Activity library row presentation
+
+`MusicLibraryRowPolicy.kt` now owns the app-specific row description
+formerly built by `MusicActivity.rowPresentation()`: original verified
+menu-icon resource IDs, album art key/candidates, album track number,
+subtitle/count strings, duration, enabled/section-header flags and folder
+remove affordance. It is a **Music-only policy** that returns the existing
+`MusicListView.RowData`; it must not duplicate the shared BBOS6 Compose
+`Bbos6MediaListRow` renderer or native ListView event processing.
+The Activity still supplies its existing per-page album-header state,
+authorized artwork index, current loading/counter flags, playlist count
+and auto-refresh setting. Only query auto-refresh preferences for its
+existing settings row. Preserve all menu index/icon pairs as previously
+verified and indexed; do not remap original numbered BBOS6 assets.
+Native focus/trackpad navigation, search editing, album-art binding, list
+viewport and popup routing stay untouched. Run `MusicLibraryRowPolicyTest`
+and verify home labels/icons, artist/album/genre art, album track numbers,
+settings On/Off, playlists, folder subtitles, and Q25 touch/trackpad.
+
+### Kotlin Activity page-row construction and search filtering
+
+`MusicLibraryPageRows.kt` owns only Music-specific settings row order,
+song/category page row creation, and root/nested search result filtering.
+The Activity retains the Q25 physical-keyboard editing/Backspace handling,
+search field, visibleRows assignment, native ListView adapter and selection,
+and search overlay/Back navigation. Preserve the original `MenuRow` factories,
+root search over only the already indexed authorized `localSongs`,
+the original loading/empty strings, no header/message matches on nested
+pages, and `Locale.ROOT` lowercased title matches. The *empty search
+term must return the original `Page.rows` list by identity*; the filtered
+branch must never mutate that list. The settings row names/order are part
+of existing routing, not a shared BBOS6 style component. Regression tests:
+`MusicLibraryPageRowsTest`, plus Q25 typing from home and nested pages,
+search reset/Back position, settings, Artists/Albums/Genres and empty lists.
+
+### Kotlin Activity SAF folder-row projection
+
+`MusicLibraryPageRows.kt` now projects folder-root, Settings > Music
+Folders, and already enumerated folder contents into `MenuRow` objects.
+The underlying `MusicFolders` grant/allowlist logic, Android SAF
+`MusicFolderBrowser` worker/query, and `MusicActivity` row-refresh,
+selection, Back stack and deletion/folder-removal flow are unchanged.
+Preserve saved-vs-authorized distinction: revoked roots remain in Folders
+as unavailable and in Settings with an "Access unavailable - " prefix;
+invisible directories are omitted *only* from the Folders root menu,
+not the Settings management list. Render only audio candidates returned by
+the existing worker and associate indexed songs only when `sourceTree`
+equals the opened page's tree; unindexed files remain unplayable entries.
+A folder with no returned entries displays "Empty folder"; a folder whose
+browser callback has not arrived returns no projected rows (the Activity
+already displays its "Loading folder..." row). Do not move permission
+checks into the UI layer or introduce extra SAF queries. Device-test
+existing folders, nested folders, unindexed audio, empty folders and
+Settings > Music Folders without uninstalling or changing grants.
+
+### Final Kotlin Activity conversion
+
+`MusicActivity.kt` replaces the last production Java controller
+`MusicActivity.java`. It owns the same Android `ComponentActivity`
+lifecycle, Q25 confirm-key long press and physical type-to-search,
+Android SAF folder selection and optional deletion write permission,
+playlist CRUD and SAF M3U8 import/export, media-session Now Playing
+navigation, page/Back-stack restoration and native ListView focus.
+It continues to delegate models, catalog grouping/search, presentation
+rows and folder projection to existing app-owned Kotlin helpers.
+Canonical BBOS6 visual and focus behavior remains in the existing
+`bbos6-shared` Compose helpers and native ListView infrastructure.
+Do not create a parallel Java Activity implementation or change the
+manifest component name, application ID, signing identity, selected-tree
+allowlist, Room version-3 schema, or Media3 queue retention format.
+
+Build with `gradle :bbos6-ui:testDebugUnitTest :app:testDebugUnitTest
+:app:assembleRelease` and **install in place** using the original Q25
+ADB serial; never uninstall/clear user data. Device regression:
+root icons and counts; type-to-search (Shift/ALT, Backspace, selection
+restore); Artist/Album/Genre pages and artwork; folder navigation and
+permission persistence; playlist create/rename/move/delete and M3U8
+import/export; authorized file delete and Cancel; Now Playing seek,
+transport, Stop, metadata links, Back and retained paused playback.
+This all-at-once Activity conversion cannot be considered build- or
+device-verified until the owner reports Gradle and Q25 results.
