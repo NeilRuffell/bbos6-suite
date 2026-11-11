@@ -5,10 +5,14 @@ contains the canonical exported-component list, Kotlin/Compose samples,
 submodule + Gradle setup, legacy fallback rules and the known missing
 reusable abstractions.
 
-This library is a standalone, app-neutral Android Gradle module containing
-Kotlin/Jetpack Compose UI and retained Java/native Android compatibility
-classes. It does not depend on Music business logic, Media3, SAF storage,
-BB UI Vector or LSPosed. It is **not yet a Kotlin-only library**.
+This library is a standalone, app-neutral Android Gradle module with
+**Kotlin-only implementation and test sources**. It contains Jetpack
+Compose components and Kotlin-native Android View/dialog support for
+hardware-verified Q25 focus, keyboard and touch paths. Its existing
+JVM-callable APIs remain available to Android consumers, but no Java source
+files are maintained here. It has no Music business logic, Media3, SAF
+storage, BB UI Vector or LSPosed dependency. This conversion is pending
+consumer build and Q25 verification.
 
 Consumed by the independent [`bb-music`](https://github.com/NeilRuffell/bb-music)
 application through the pinned `assets/bbos6` Git submodule. Other native Android
