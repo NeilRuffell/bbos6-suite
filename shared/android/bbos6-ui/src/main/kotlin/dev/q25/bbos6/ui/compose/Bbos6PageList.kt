@@ -57,13 +57,16 @@ fun Bbos6PageList(
     onMenu: ((String?) -> Unit)? = null,
     artworkForId: (String) -> Painter? = { null },
     textHorizontalPaddingDp: Int = 16,
-    artworkSlotSizeDp: Int = rowHeightDp
+    artworkSlotSizeDp: Int = rowHeightDp,
+    artworkPaddingDp: Int = 8,
+    reserveArtworkSlotForMissing: Boolean = false
 ) {
     require(rowHeightDp > 0) { "Row height must be positive" }
     require(artworkSlotSizeDp > 0 && artworkSlotSizeDp <= rowHeightDp) {
         "Artwork slot must fit inside row height"
     }
     require(textHorizontalPaddingDp >= 0) { "Text padding must not be negative" }
+    require(artworkPaddingDp >= 0) { "Artwork inset must not be negative" }
     require(items.map { it.id }.toSet().size == items.size) {
         "Duplicate list item ID"
     }
@@ -178,7 +181,7 @@ fun Bbos6PageList(
                 subtitle = null,
                 duration = null,
                 trackNumber = null,
-                showArtwork = itemArtwork != null,
+                showArtwork = itemArtwork != null || reserveArtworkSlotForMissing,
                 artwork = itemArtwork,
                 artworkContentDescription = "", // Decorative; row label announces the item.
                 menuArtwork = true,
@@ -217,6 +220,7 @@ fun Bbos6PageList(
                     },
                 rowHeightDp = rowHeightDp,
                 artworkSlotSizeDp = artworkSlotSizeDp,
+                artworkPaddingDp = artworkPaddingDp,
                 textHorizontalPaddingDp = textHorizontalPaddingDp
             )
         }

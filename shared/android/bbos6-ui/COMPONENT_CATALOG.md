@@ -276,6 +276,18 @@ The 36dp / 4dp horizontal dimensions are Q25-tunable approximations, not
 verified historical BBOS SDK constants. Test selection, touch targets,
 trackpad focus and icon alignment on device.
 
+### Icon size and aligned labels
+
+`Bbos6PageList(artworkPaddingDp = 2, reserveArtworkSlotForMissing = true)`
+passes the adjustable image inset into `Bbos6MediaListRow` and keeps an empty
+artwork slot for text-only items. With `artworkSlotSizeDp = 36`, a 2dp inset
+leaves a 32dp artwork viewport instead of the original 20dp viewport at 8dp
+inset. The image is vertically and horizontally centered in the reserved
+36dp slot and every home row label begins at the same horizontal coordinate.
+The default 8dp inset and optional-slot behaviour remain unchanged in other
+consumers, including folder rows and Music. Actual bitmap transparent margins
+can still affect perceived artwork size; verify visually on Q25.
+
 ### Optional list-row icon artwork
 
 `Bbos6PageList(artworkForId = { id -> painterOrNull })` delegates icon

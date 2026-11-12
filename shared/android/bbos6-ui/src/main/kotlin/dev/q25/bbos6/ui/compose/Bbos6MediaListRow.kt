@@ -68,7 +68,8 @@ fun Modifier.bbos6MediaListSelectionFace(highlighted: Boolean): Modifier =
  * default dimensions remain unchanged for existing Music consumers.
  *
  * Passing null for subtitle/duration/trackNumber preserves their absent
- * state; menu artwork gets 8dp padding to make a 52dp visible artwork box.
+ * state; menu artwork defaults to 8dp inset, adjustable independently of
+ * the slot width for compact icon-based lists.
  */
 @Composable
 fun Bbos6MediaListRow(
@@ -86,11 +87,13 @@ fun Bbos6MediaListRow(
     modifier: Modifier = Modifier,
     rowHeightDp: Int = 68,
     artworkSlotSizeDp: Int = 68,
-    textHorizontalPaddingDp: Int = 16
+    textHorizontalPaddingDp: Int = 16,
+    artworkPaddingDp: Int = 8
 ) {
     require(rowHeightDp > 0) { "rowHeightDp must be positive" }
     require(artworkSlotSizeDp > 0) { "artworkSlotSizeDp must be positive" }
     require(textHorizontalPaddingDp >= 0) { "textHorizontalPaddingDp must not be negative" }
+    require(artworkPaddingDp >= 0) { "artworkPaddingDp must not be negative" }
     Row(
         modifier = modifier.fillMaxWidth().height(rowHeightDp.dp)
             .bbos6MediaListSelectionFace(highlighted),
@@ -113,7 +116,7 @@ fun Bbos6MediaListRow(
                         painter = artwork,
                         contentDescription = artworkContentDescription,
                         modifier = Modifier.size(artworkSlotSizeDp.dp)
-                            .then(if (menuArtwork) Modifier.padding(8.dp) else Modifier),
+                            .then(if (menuArtwork) Modifier.padding(artworkPaddingDp.dp) else Modifier),
                         contentScale = if (menuArtwork) ContentScale.Fit else ContentScale.Crop
                     )
                 }
