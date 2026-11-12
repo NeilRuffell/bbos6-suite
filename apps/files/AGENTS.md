@@ -12,6 +12,13 @@ monorepo. Consult `../../AGENTS.md`, `../../shared/AGENTS.md`,
 - `assets/bbos6` is a **monorepo symlink** to one canonical `shared/`, not
   a Git submodule. All reusable BBOS6 components, icon index and assets
   must be modified there; never maintain app-specific copies.
+- Directory lists opt in to the shared `Bbos6PageList` multi-selection
+  controller; it is disabled by default in every other page and app.
+  Directory context menu **Select** enters the mode. Files owns the selected
+  item count, Back-to-exit, BB Menu bulk commands, and each validated batch
+  copy/cut/paste/delete. Shared only owns stable-ID selection, input routing
+  and selection visuals. Do not add this mode to Music, home shortcuts,
+  Favourites or indexed MediaStore views implicitly.
 - `Bbos6PageList` is the common full-page trackpad controller. Shared
   onLongPress and onMenu callbacks own input routing, including an empty list;
   Files owns commands. New Folder and Paste live in the context menus, not
