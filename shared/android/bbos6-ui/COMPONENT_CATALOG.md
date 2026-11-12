@@ -302,6 +302,7 @@ no new historical identification is inferred.
 ### Files home shortcut artwork (verified user assignments)
 
 The Files app uses original numbered icons **only on its home shortcuts**:
+Recent Files `129.png` via `bbos6_files_home_recent`,
 Images `2219.png` via `bbos6_files_home_images`, Videos `2216.png` via
 `bbos6_files_home_videos`, Favourites `950.png` via
 `bbos6_files_home_favourites`, and Audio `1579.png` via
