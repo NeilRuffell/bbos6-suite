@@ -79,7 +79,7 @@ internal object FileOperations {
         if (!FileBrowser.isWithin(targetRoot, target)) {
             return@guarded Result.Failure("Destination is outside the selected storage.")
         }
-        if (target.exists()) return@guarded Result.Failure("An item with this name already exists.")
+        if (target.exists() || Files.isSymbolicLink(target.toPath())) return@guarded Result.Failure("An item with this name already exists.")
         if (Files.isSymbolicLink(source.toPath())) {
             return@guarded Result.Failure("Symbolic links cannot be transferred.")
         }
@@ -89,7 +89,7 @@ internal object FileOperations {
             copyTree(sourceRoot, source, targetRoot, target)
         } catch (error: Exception) {
             // Only a newly created, non-overwriting target is removed.
-            if (target.exists()) deleteTree(targetRoot, target)
+            if (target.exists()) runCatching { deleteTree(targetRoot, target) }
             return@guarded Result.Failure("Copy failed: ${error.message ?: "storage error"}.")
         }
 
