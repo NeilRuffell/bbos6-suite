@@ -286,3 +286,13 @@ The source-owned original Folders icon `shared/icons/112.png` is exposed to
 Android consumers as `dev.q25.bbos6.ui.R.drawable.bbos6_menu_folders` through
 a source symlink in shared UI resources. Its index mapping is already verified;
 no new historical identification is inferred.
+
+### Files home shortcut artwork (verified user assignments)
+
+The Files app uses original numbered icons **only on its home shortcuts**:
+Images `2219.png` via `bbos6_files_home_images`, Videos `2216.png` via
+`bbos6_files_home_videos`, Favourites `950.png` via
+`bbos6_files_home_favourites`, and Audio `348.png` via its existing
+`bbos6_menu_genres` mapping. The shared resource entries are symlinks to
+`shared/icons/`, with one canonical `shared/icon-index.csv`. This does
+not change existing media list artwork or the Files folder icon `112.png`.

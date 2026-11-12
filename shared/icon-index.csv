@@ -7,7 +7,7 @@ filename,name,keywords,android_resource
 339.png,Shuffle Songs,music shuffle random playback,bbos6_menu_shuffle_songs
 341.png,Now Playing,music current track playback paused resume screen shortcut,bbos6_menu_now_playing
 345.png,Artists,music artists performers,bbos6_menu_artists
-348.png,Genres,music genres categories,bbos6_menu_genres
+348.png,Genres,music genres categories files app audio home shortcut,bbos6_menu_genres
 350.png,All Songs,music songs tracks library launcher app icon,bbos6_menu_all_songs
 351.png,Albums,music albums collection,bbos6_menu_albums
 354.png,Empty Playlists Artwork,music playlists empty state no playlists compact disc,bbos6_playlist_empty
@@ -19,6 +19,9 @@ filename,name,keywords,android_resource
 510.png,Shuffle On,music now playing shuffle on enabled,bbos6_shuffle_on
 511.png,Shuffle Available Off,music now playing shuffle available not on off,bbos6_shuffle_off
 543.png,Missing Album Art,music album missing artwork placeholder,bbos6_album_no_art
+950.png,Favourites Shortcut,files app home favourites shortcut user assigned,bbos6_files_home_favourites
+2216.png,Videos Shortcut,files app home videos shortcut user assigned,bbos6_files_home_videos
+2219.png,Images Shortcut,files app home images shortcut user assigned,bbos6_files_home_images
 2486.png,Bottom Panel Gradient Reference,blackberry os 6 dark bottom panel seekbar background top dark border lower bevel silver white bottom separator,
 2513.png,Dark Header Background Reference,blackberry os 6 dark gradient header silver top highlight bottom bevel user supplied 2513 image,
 3246.png,Sound Recorder Controls,blackberry os 6 sound recorder audio recording play folder media buttons toolbar gradient,

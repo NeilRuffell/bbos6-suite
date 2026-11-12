@@ -187,6 +187,10 @@ private fun FilesPage(
 ) {
     val scope = rememberCoroutineScope()
     val folderIcon = painterResource(Bbos6UiR.drawable.bbos6_menu_folders)
+    val imagesHomeIcon = painterResource(Bbos6UiR.drawable.bbos6_files_home_images)
+    val videosHomeIcon = painterResource(Bbos6UiR.drawable.bbos6_files_home_videos)
+    val audioHomeIcon = painterResource(Bbos6UiR.drawable.bbos6_menu_genres)
+    val favouritesHomeIcon = painterResource(Bbos6UiR.drawable.bbos6_files_home_favourites)
     val roots = remember(internalDirectory, removableDirectory) {
         buildList {
             add(StorageRoot("internal", "Internal Storage", internalDirectory))
@@ -520,9 +524,14 @@ private fun FilesPage(
                         artworkSlotSizeDp = 36,
                         textHorizontalPaddingDp = 4,
                         artworkForId = { id ->
-                            if (id == "internal" || id == "removable" ||
-                                id == "downloads" || id == "documents"
-                            ) folderIcon else null
+                            when (id) {
+                                "internal", "removable", "downloads", "documents" -> folderIcon
+                                "images" -> imagesHomeIcon
+                                "videos" -> videosHomeIcon
+                                "audio" -> audioHomeIcon
+                                "favorites" -> favouritesHomeIcon
+                                else -> null
+                            }
                         },
                         onActivate = { id -> openHomeItem(id) }
                     )

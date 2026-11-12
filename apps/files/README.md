@@ -12,6 +12,12 @@ This application lives in `apps/files/` of the `bbos6-suite` monorepo.
   A Files-owned adaptive launcher XML uses that shared drawable as foreground.
 - Home navigation: Internal Storage, SD Card (when mounted), Recent Files,
   **Favourites**, Images, Downloads, Audio, Documents and Videos.
+- Home-only shortcut artwork uses original assets: Images **2219.png**,
+  Videos **2216.png**, Audio **348.png**, and Favourites **950.png**.
+  The original PNGs remain in `shared/icons/`; canonical shared resource
+  symlinks supply them to Android. Audio reuses the existing verified
+  `bbos6_menu_genres` mapping for icon 348; folder icons inside lists
+  remain **112.png** and MediaStore list rows remain unchanged.
 - **Favourites** is one openable home row, with a dedicated list of pinned
   files/folders. Long-press or press the BB Menu key on a file/folder and
   choose **Add to Favorites**. Pinned items keep insertion order and survive
