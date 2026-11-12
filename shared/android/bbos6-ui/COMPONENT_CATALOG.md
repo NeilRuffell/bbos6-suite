@@ -24,7 +24,7 @@ not Java. Their public methods remain callable from Java for existing callers.
 
 | Need | Shared API | What the caller still owns |
 | --- | --- | --- |
-| Section heading | `Bbos6SectionHeader(title)` | Page sections and whether rows are selectable |
+| Section heading | `Bbos6SectionHeader(title, style)` | Page sections, selected style, and window insets |
 | Empty content | `Bbos6EmptyState(heading, description, artwork)` | When empty, artwork selection and viewport sizing |
 | Indeterminate background work | `Bbos6BackgroundLoadingIndicator(modifier, accessibilityLabel)` | Work start/end, screen-bottom placement and whether to reserve layout height |
 | Empty content inside a native layout | `Bbos6EmptyStateComposeView` (*View host*) | Placement outside the selectable list and visibility |
@@ -239,6 +239,23 @@ Related: [COMPOSE_MIGRATION.md](COMPOSE_MIGRATION.md),
 
 `Bbos6BackgroundLoadingIndicator` is a passive, 14dp-high Compose bar with the reference green vertical bevel, translucent slanted stripes and a rightward repeating animation. Show it only while the caller has active background work; removal from composition cancels the animation. Place it at the bottom of the app content area, preferably *below* the scrollable viewport so it never covers list selections. It owns no scanning, notifications, progress percentage, focus, input or navigation. The 14dp dimension and palette are screenshot-derived approximations for Q25 inspection, not verified BBOS6 SDK constants.
 
+## Shared section header styles
+
+`Bbos6SectionHeader` owns both section/header appearances through
+`Bbos6SectionHeaderStyle`:
+
+- `BEVELED` (default): original 36dp gradient, 1dp outline, 16dp horizontal
+  inset, and 14sp bold text. Music/Settings consumers need no changes.
+- `FLAT_BLACK_COMPACT`: 28dp solid black strip with no bevel/outline, 2dp
+  horizontal inset, and 15sp white regular text. Files uses this for its
+  path bar based on the supplied BlackBerry File Folders reference.
+
+Neither style applies system-bar/window padding. Files places its root
+content below the Android status bar with `Modifier.statusBarsPadding()`.
+The shared helper remains independent of the host Activity and preserves
+focus/trackpad neutrality. Height and text metrics are Q25-targeted
+approximations of the supplied reference, pending on-device verification.
+
 ## Full-page trackpad list
 
 `Bbos6PageList(items, onActivate, modifier, rowHeightDp, onLongPress, onMenu, artworkForId)` provides a full-width
@@ -276,17 +293,22 @@ The 36dp / 4dp horizontal dimensions are Q25-tunable approximations, not
 verified historical BBOS SDK constants. Test selection, touch targets,
 trackpad focus and icon alignment on device.
 
-### Icon size and aligned labels
+### Uniform page-list icon sizing
 
-`Bbos6PageList(artworkPaddingDp = 2, reserveArtworkSlotForMissing = true)`
-passes the adjustable image inset into `Bbos6MediaListRow` and keeps an empty
-artwork slot for text-only items. With `artworkSlotSizeDp = 36`, a 2dp inset
-leaves a 32dp artwork viewport instead of the original 20dp viewport at 8dp
-inset. The image is vertically and horizontally centered in the reserved
-36dp slot and every home row label begins at the same horizontal coordinate.
-The default 8dp inset and optional-slot behaviour remain unchanged in other
-consumers, including folder rows and Music. Actual bitmap transparent margins
-can still affect perceived artwork size; verify visually on Q25.
+`Bbos6PageList` now defaults to `artworkPaddingDp = 2` for all pages.
+The Files home, Favourites, folder and indexed-media lists pass the same
+`artworkSlotSizeDp = 36`, giving every displayed icon the same 32dp
+maximum viewport (36dp slot less 2dp on each edge). No Files page sets its
+own icon-padding override. The icon remains centered vertically and
+horizontally without custom per-asset scaling. The home page alone requests
+`reserveArtworkSlotForMissing = true` to keep labels aligned when no icon
+exists; this does not affect icon size or other lists.
+
+`Bbos6MediaListRow` retains its independent 8dp default for consumers
+that use that row directly, such as Music. The page-list default is passed
+explicitly into the row, so no Music artwork geometry is changed. Artwork
+with intrinsic transparent margins may still look smaller; original PNG data
+remains untouched. Verify the appearance on Q25.
 
 ### Optional list-row icon artwork
 
