@@ -298,9 +298,10 @@ private fun FilesPage(
             indexedCategory = category
             return
         }
+        // Downloads remains a native directory shortcut. Documents is
+        // handled by IndexedMediaCategory above, using MediaStore.Files.
         val directoryName = when (id) {
             "downloads" -> Environment.DIRECTORY_DOWNLOADS
-            "documents" -> Environment.DIRECTORY_DOCUMENTS
             else -> return
         }
         val internal = roots.firstOrNull { it.id == "internal" } ?: return
@@ -312,7 +313,7 @@ private fun FilesPage(
         currentRoot = internal
         currentFolder = destination
         shortcutRoot = destination
-        shortcutLabel = if (id == "downloads") "Downloads" else "Documents"
+        shortcutLabel = "Downloads"
         returnToFavorites = false
     }
 
