@@ -56,9 +56,13 @@ fun Bbos6PageList(
     onLongPress: ((String) -> Unit)? = null,
     onMenu: ((String?) -> Unit)? = null,
     artworkForId: (String) -> Painter? = { null },
-    textHorizontalPaddingDp: Int = 16
+    textHorizontalPaddingDp: Int = 16,
+    artworkSlotSizeDp: Int = rowHeightDp
 ) {
     require(rowHeightDp > 0) { "Row height must be positive" }
+    require(artworkSlotSizeDp > 0 && artworkSlotSizeDp <= rowHeightDp) {
+        "Artwork slot must fit inside row height"
+    }
     require(textHorizontalPaddingDp >= 0) { "Text padding must not be negative" }
     require(items.map { it.id }.toSet().size == items.size) {
         "Duplicate list item ID"
@@ -212,7 +216,7 @@ fun Bbos6PageList(
                         }
                     },
                 rowHeightDp = rowHeightDp,
-                artworkSlotSizeDp = rowHeightDp,
+                artworkSlotSizeDp = artworkSlotSizeDp,
                 textHorizontalPaddingDp = textHorizontalPaddingDp
             )
         }
