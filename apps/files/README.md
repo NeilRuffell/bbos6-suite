@@ -130,11 +130,13 @@ adb -s 202512003630 install -r apps/files/app/build/outputs/apk/release/app-rele
 
 ## Q25 device checks
 
-0. Confirm **Settings** is the last home entry with the same list row
-   spacing/selection as other shortcuts. Open with touch and Q25 trackpad;
-   verify the Settings header and empty-state message. Back returns to Files.
-   Repeat without all-files permission: Settings must open directly without
-   Android's storage-access prompt. No existing file operations should change.
+**Settings smoke check:** Confirm Settings is the final home entry with the
+same list-row spacing/selection as the other shortcuts. Open using touch and
+Q25 trackpad; verify the Settings header and empty-state message. Back returns
+to Files home. Repeat with all-files permission denied: Settings must open
+directly without Android's storage-access prompt. Existing file operations
+must remain unchanged.
+
 1. Confirm Favourites is a single home-page entry, between Recent Files
    and Images; category rows follow in Images, Downloads, Audio, Documents,
    Videos order. No individual favorites are pinned directly to home.
