@@ -417,14 +417,102 @@ private fun FilesPage(
         }
     }
 
+    var indexedListing by remember(indexedCategory, accessGranted, resumeCounter, refreshCounter) {
+        mutableStateOf<MediaCategoryBrowser.Listing?>(null)
+    }
+    LaunchedEffect(indexedCategory, accessGranted, resumeCounter, refreshCounter) {
+        val category = indexedCategory
+        if (category != null && accessGranted) {
+            indexedListing = withContext(Dispatchers.IO) {
+                MediaCategoryBrowser.query(context.contentResolver, category)
+            }
+        }
+    }
+
+    val visibleCategory = indexedCategory
     Column(Modifier.fillMaxSize().background(Color.Black)) {
         Bbos6SectionHeader(
-            title = if (root != null && folder != null) {
-                FileBrowser.relativeTitle(root.directory, folder, root.label)
-            } else "Files"
+            title = when {
+                favoritesPage -> "Favourites"
+                visibleCategory != null -> visibleCategory.title
+                root != null && folder != null -> FileBrowser.relativeTitle(
+                    shortcutRoot ?: root.directory, folder, shortcutLabel ?: root.label
+                )
+                else -> "Files"
+            }
         )
         Box(Modifier.weight(1f)) {
-            if (root == null || folder == null) {
+            if (favoritesPage) {
+                if (favorites.isEmpty()) {
+                    Bbos6EmptyState(
+                        heading = "No Favourites",
+                        description = "Long-press a file or folder and select Add to Favorites.",
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    key("favorites") {
+                        Bbos6PageList(
+                            items = favorites.map {
+                                Bbos6ListSelectionItem(it.id, it.name)
+                            },
+                            rowHeightDp = 52,
+                            artworkSlotSizeDp = 36,
+                            textHorizontalPaddingDp = 4,
+                            artworkForId = { id ->
+                                if (favoriteById[id]?.isDirectory == true) folderIcon else null
+                            },
+                            onActivate = { id ->
+                                favoriteById[id]?.let { activateFavorite(it) }
+                            },
+                            onLongPress = { id -> favoriteMenu = favoriteById[id] },
+                            onMenu = { id -> favoriteMenu = favoriteById[id] }
+                        )
+                    }
+                }
+            } else if (visibleCategory != null) {
+                when (val contents = indexedListing) {
+                    null -> Unit
+                    is MediaCategoryBrowser.Listing.Unavailable -> {
+                        Bbos6EmptyState(
+                            heading = "Media Unavailable",
+                            description = contents.reason,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                    is MediaCategoryBrowser.Listing.Available -> {
+                        if (contents.entries.isEmpty()) {
+                            Bbos6EmptyState(
+                                heading = "No ${visibleCategory.title}",
+                                description = "Android's media index contains no matching items.",
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            val byId = remember(contents) {
+                                contents.entries.associateBy { it.id }
+                            }
+                            key(visibleCategory.id) {
+                                Bbos6PageList(
+                                    items = contents.entries.map {
+                                        Bbos6ListSelectionItem(it.id, it.name)
+                                    },
+                                    rowHeightDp = 52,
+                                    artworkSlotSizeDp = 36,
+                                    textHorizontalPaddingDp = 4,
+                                    onActivate = { id ->
+                                        byId[id]?.let { entry ->
+                                            openIndexed(entry, false)?.let {
+                                                popup = InfoPopup(entry.name, it)
+                                            }
+                                        }
+                                    },
+                                    onLongPress = { id -> mediaMenuEntry = byId[id] },
+                                    onMenu = { id -> mediaMenuEntry = byId[id] }
+                                )
+                            }
+                        }
+                    }
+                }
+            } else if (root == null || folder == null) {
                 key("home") {
                     Bbos6PageList(
                         items = homeItems,
@@ -433,24 +521,10 @@ private fun FilesPage(
                         textHorizontalPaddingDp = 4,
                         artworkForId = { id ->
                             if (id == "internal" || id == "removable" ||
-                                favoriteById[id]?.isDirectory == true
+                                id == "downloads" || id == "documents"
                             ) folderIcon else null
                         },
-                        onActivate = { id ->
-                            val favorite = favoriteById[id]
-                            when {
-                                favorite != null -> activateFavorite(favorite)
-                                id == "recent" ->
-                                    popup = InfoPopup("Recent Files", "Recent Files is not implemented yet.")
-                                else -> openRoot(id)
-                            }
-                        },
-                        onLongPress = { id ->
-                            favoriteMenu = favoriteById[id]
-                        },
-                        onMenu = { id ->
-                            if (id != null) favoriteMenu = favoriteById[id]
-                        }
+                        onActivate = { id -> openHomeItem(id) }
                     )
                 }
             } else {
@@ -529,8 +603,11 @@ private fun FilesPage(
                 }
             }
         }
-        if (operationBusy || (root != null && folder != null && listing == null && accessGranted)) {
-            Bbos6BackgroundLoadingIndicator(accessibilityLabel = "File operation in progress")
+        if (operationBusy ||
+            (root != null && folder != null && listing == null && accessGranted) ||
+            (visibleCategory != null && indexedListing == null && accessGranted)
+        ) {
+            Bbos6BackgroundLoadingIndicator(accessibilityLabel = "Loading files")
         }
     }
 
@@ -637,6 +714,23 @@ private fun FilesPage(
                     "open" -> activateFavorite(pinnedShortcut)
                     "remove" ->
                         updateFavorites(FavoritePolicy.remove(favorites, pinnedShortcut))
+                }
+            }
+        )
+    }
+
+    val selectedMedia = mediaMenuEntry
+    if (selectedMedia != null) {
+        Bbos6ContextMenuDialog(
+            groups = listOf(listOf(
+                Bbos6ContextAction.text("open", "Open"),
+                Bbos6ContextAction.text("share", "Share")
+            )),
+            onDismissRequest = { mediaMenuEntry = null },
+            onAction = { action ->
+                mediaMenuEntry = null
+                openIndexed(selectedMedia, action.id == "share")?.let {
+                    popup = InfoPopup(selectedMedia.name, it)
                 }
             }
         )
