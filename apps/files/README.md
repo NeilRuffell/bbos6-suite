@@ -36,16 +36,18 @@ This application lives in `apps/files/` of the `bbos6-suite` monorepo.
 - Selecting a favorite opens the original folder (Back returns to Favourites)
   or opens the original file using the native Android viewer. Long-press a
   pinned entry to **Remove from Favorites** without deleting the original.
-- Images, Audio and Videos use Android's existing `MediaStore` index across
-  available shared-storage volumes, **not** an app-maintained scanner.
+- Images, Audio, Videos and **Documents** use Android's existing `MediaStore`
+  index across mounted shared-storage volumes, **not** an app-maintained scanner.
   Indexed items can be opened and shared using their system content URIs.
+  The Documents category queries `MediaStore.Files` using MIME-type filters
+  for recognized document formats, including PDFs, text, Office, OpenDocument,
+  RTF and e-books. Its results are independent of directory location; files
+  with unknown or non-document MIME types may not appear.
   File management operations and Add to Favorites remain available through
   normal folder browsing, not the indexed category lists.
-- Downloads and Documents open the standard primary shared-storage
-  `Download/` and `Documents/` folders via the existing `FileBrowser`.
-  They are directory shortcuts, not all-device aggregated categories.
-  Back from each shortcut root returns directly to the home page.
-  The app does not create public directories on entry.
+- **Downloads only** opens the primary shared-storage `Download/` folder
+  via the existing `FileBrowser`. Back from that shortcut root goes directly
+  to the home page. The app does not create public directories on entry.
 - Files/folders already pinned show **Remove from Favorites** in their
   original context menu, preventing duplicate pins.
 - Missing, renamed or inaccessible favorites display an explanatory popup
@@ -125,12 +127,17 @@ adb -s 202512003630 install -r apps/files/app/build/outputs/apk/release/app-rele
 3. Force-stop/reopen Files; verify the favorites remain.
 4. Remove a favorite using its Favourites-page long-press/Menu context menu;
    confirm the underlying file still exists.
-5. Open Images, Audio and Videos and verify MediaStore lists items from the
-   mounted shared-storage volumes; tap to open, long-press to Open or Share,
-   and verify Back returns to the Files home page.
-6. Open Downloads and Documents as directory shortcuts. Navigate a nested
-   folder and use Back to return to the category root, then Files home.
-   Empty/unavailable public directories must not crash or be created silently.
+5. Open Images, Audio, Videos and Documents; verify MediaStore lists indexed
+   matches from mounted shared-storage volumes and that Back returns to Files
+   home. Tap to open; long-press for Open or Share.
+6. Check Documents includes indexed PDFs, text, Word/Excel/PowerPoint and
+   OpenDocument files in locations *outside* `Documents/`, including SD Card
+   when mounted. Non-document media and unrelated files should not appear.
+   The category may omit files Android has not indexed or whose MIME types
+   it has not recognized.
+7. Open Downloads as the standard directory shortcut. Navigate a nested
+   folder, then use Back to return to Downloads and Files home. Empty or
+   unavailable directories must not crash or be created silently.
 5. Pin a disposable file, rename or delete the original, then open the stale
    favorite: expect an unavailable message and ability to remove the shortcut.
 6. Revoke storage permission and verify favorites request native Android
