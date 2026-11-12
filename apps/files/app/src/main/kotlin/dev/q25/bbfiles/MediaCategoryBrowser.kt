@@ -65,7 +65,7 @@ internal object MediaCategoryBrowser {
                 }
             }
             Listing.Available(
-                found.sortedWith(compareBy<Entry>(String.CASE_INSENSITIVE_ORDER) { it.name }
+                found.sortedWith(compareBy<Entry, String>(String.CASE_INSENSITIVE_ORDER) { it.name }
                     .thenBy { it.name })
             )
         } catch (_: SecurityException) {
