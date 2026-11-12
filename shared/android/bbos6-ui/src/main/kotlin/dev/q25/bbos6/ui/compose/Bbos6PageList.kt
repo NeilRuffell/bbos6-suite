@@ -174,7 +174,7 @@ fun Bbos6PageList(
                 trackNumber = null,
                 showArtwork = itemArtwork != null,
                 artwork = itemArtwork,
-                artworkContentDescription = if (itemArtwork != null) "Item icon" else "",
+                artworkContentDescription = "", // Decorative; row label announces the item.
                 menuArtwork = true,
                 highlighted = hasFocus && selected == index,
                 showRemoveAction = false,
