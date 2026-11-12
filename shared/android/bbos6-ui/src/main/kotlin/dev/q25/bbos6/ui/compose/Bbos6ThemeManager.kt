@@ -3,10 +3,8 @@ package dev.q25.bbos6.ui.compose
 import android.content.Context
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import java.util.concurrent.CopyOnWriteArraySet
 
@@ -43,15 +41,18 @@ class Bbos6ThemeManager private constructor(context: Context) {
         context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
     private val modeListeners = CopyOnWriteArraySet<(Bbos6ThemeMode) -> Unit>()
 
-    var mode: Bbos6ThemeMode by mutableStateOf(
+    // Backing state is private so Kotlin cannot generate a setMode JVM
+    // accessor that collides with the explicit persistence-aware setMode().
+    private val modeState = mutableStateOf(
         Bbos6ThemeMode.fromStoredValue(preferences.getString(MODE_KEY, null))
     )
-        private set
+    val mode: Bbos6ThemeMode
+        get() = modeState.value
 
     fun setMode(next: Bbos6ThemeMode) {
         if (mode == next) return
         preferences.edit().putString(MODE_KEY, next.name).apply()
-        mode = next
+        modeState.value = next
         modeListeners.forEach { listener -> listener(next) }
     }
 
