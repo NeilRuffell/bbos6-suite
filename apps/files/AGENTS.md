@@ -32,12 +32,13 @@ monorepo. Consult `../../AGENTS.md`, `../../shared/AGENTS.md`,
   entries live in the dedicated Favourites page in saved insertion order.
   Long-press a favorite to remove only the shortcut. Validate saved paths
   and volume roots before opening. Do not duplicate shared list UI.
-- The home-only artwork mappings are Images=2219, Videos=2216, Audio=348,
+- The home-only artwork mappings are Images=2219, Videos=2216, Audio=1579,
   Favourites=950; retain original icon 112 for folder rows and other
   directory shortcuts. Home artwork uses 36dp slot / 2dp inset (32dp icon
   viewport), reserves a blank icon column for text-only home entries and
   keeps 52dp row height. Other lists preserve the shared default 8dp inset. These are resource symlinks in canonical shared
-  resources, not maintained Files copies. Audio reuses `bbos6_menu_genres`.
+  resources, not maintained Files copies. Audio uses `bbos6_files_home_audio`;
+  the existing Genres mapping `bbos6_menu_genres` (348.png) is unaffected.
 - `MediaCategoryBrowser` uses Android `MediaStore` for Images, Audio,
   Videos across shared volumes. These indexed results use content URIs and
   currently support Open/Share; do not build custom media scanners.

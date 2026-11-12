@@ -190,7 +190,7 @@ private fun FilesPage(
     val favouritedFolderIcon = painterResource(Bbos6UiR.drawable.bbos6_favourited_folder)
     val imagesHomeIcon = painterResource(Bbos6UiR.drawable.bbos6_files_home_images)
     val videosHomeIcon = painterResource(Bbos6UiR.drawable.bbos6_files_home_videos)
-    val audioHomeIcon = painterResource(Bbos6UiR.drawable.bbos6_menu_genres)
+    val audioHomeIcon = painterResource(Bbos6UiR.drawable.bbos6_files_home_audio)
     val favouritesHomeIcon = painterResource(Bbos6UiR.drawable.bbos6_files_home_favourites)
     val roots = remember(internalDirectory, removableDirectory) {
         buildList {
