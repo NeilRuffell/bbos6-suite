@@ -29,7 +29,7 @@ not Java. Their public methods remain callable from Java for existing callers.
 | Indeterminate background work | `Bbos6BackgroundLoadingIndicator(modifier, accessibilityLabel)` | Work start/end, screen-bottom placement and whether to reserve layout height |
 | Empty content inside a native layout | `Bbos6EmptyStateComposeView` (*View host*) | Placement outside the selectable list and visibility |
 | Compact modal list selection | `Bbos6ListSelectionPanel` / `Bbos6ListSelectionComposeBridge` | Stable choice IDs/labels, selection action and dialog lifecycle |
-| Media/list row face | `Bbos6MediaListRow(..., rowHeightDp = 68)` | List data, selection, scrolling, event routing and artwork loading |
+| Full-page navigable list | `Bbos6PageList(items, onActivate)` | Stable IDs, data, row selection actions and page navigation |\n| Media/list row face | `Bbos6MediaListRow(..., rowHeightDp = 68)` | List data, selection, scrolling, event routing and artwork loading |
 | Native ListView + Compose row touch routing | `Bbos6MediaListRowTouchHost` (*View host*) | Adapter position, click/long click and scroll owner |
 | Media/detail header | `Bbos6MediaDetailHeader(...)` | Content, artwork loading and navigation |
 | Search panel face | `Bbos6SearchChrome()` | Input field, typing, filtering and results |
@@ -51,7 +51,7 @@ not Java. Their public methods remain callable from Java for existing callers.
 | Blue selection and popup faces | `bbos6MediaListSelectionFace`, `bbos6ContextSelectionFace`, `bbos6PopupButtonFace` | Real focus owner and selected state |
 | Managed native/Compose focus | `Bbos6FocusPolicy`, `Bbos6ManagedFocusEffect` | Which container owns DPAD and what is selected |
 
-**Important:** A shared **row face is not a complete list widget**.
+**Important:** A shared **row face is not a complete list widget**. `Bbos6PageList` now supplies one Compose-only list controller for new applications, pending Q25 verification; it does not replace Music's native list adapter.
 `bb-music` currently owns its own `MusicListView` data source,
 native scrolling, selection restoration and Q25 trackpad policy. Do
 not copy that implementation into future apps. A generic, verified
@@ -238,3 +238,18 @@ Related: [COMPOSE_MIGRATION.md](COMPOSE_MIGRATION.md),
 ### Background loading stripe
 
 `Bbos6BackgroundLoadingIndicator` is a passive, 14dp-high Compose bar with the reference green vertical bevel, translucent slanted stripes and a rightward repeating animation. Show it only while the caller has active background work; removal from composition cancels the animation. Place it at the bottom of the app content area, preferably *below* the scrollable viewport so it never covers list selections. It owns no scanning, notifications, progress percentage, focus, input or navigation. The 14dp dimension and palette are screenshot-derived approximations for Q25 inspection, not verified BBOS6 SDK constants.
+
+## Full-page trackpad list
+
+`Bbos6PageList(items, onActivate, modifier, rowHeightDp)` provides a full-width
+Compose scrolling list for new applications. It reuses `Bbos6MediaListRow`
+for the BBOS6 selection face and `Bbos6ListSelectionItem` for stable IDs.
+The helper owns one DPAD/trackpad focus zone, up/down movement, Enter/center
+activation on key release, touch activation, visible-row scrolling, selection
+retention and the managed-focus policy. Consumers decide labels, available
+entries, navigation destinations, and actions. Compose-only: no copy of
+Music's native `MusicListView` or its data/business logic.
+
+Place `Bbos6SectionHeader` above the list if the page needs a heading.
+Trackpad, keyboard, touch and viewport-edge behavior require Q25 verification
+before this helper is merged to `master`.

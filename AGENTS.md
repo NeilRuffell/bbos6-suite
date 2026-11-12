@@ -372,3 +372,7 @@ until a device test is reported.
 ## Passive background loading bar
 
 The reusable `Bbos6BackgroundLoadingIndicator` lives exclusively in the shared Compose module. Keep its screenshot-derived green bevel, 14dp compact height, rightward diagonal motion and indeterminate semantics in the shared renderer. Host applications decide when work is active and mount it at the bottom of app content; do not place scanner logic or progress estimation in the helper. It must never take DPAD/trackpad focus, overlay selectable list rows, or continue animating when removed from composition. Update the component catalogue and consumer gitlinks whenever it changes.
+
+## Full-page Compose list
+
+`Bbos6PageList` is the shared, app-neutral one-zone controller for full-page Compose lists. Use it instead of copying Music's native list/navigation layer. Keep application-specific row definitions, storage operations, and destinations in the consuming app. Validate Q25 trackpad, Enter, touch and focus policy before merging.
