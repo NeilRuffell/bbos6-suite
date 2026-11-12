@@ -629,9 +629,6 @@ class MusicActivity : ComponentActivity() {
                         else -> false
                     }
                 }
-                if (page.rows.isEmpty()) {
-                    page.rows.add(MenuRow.message("No local music found"))
-                }
             }
         }
         if (!nowPlayingVisible) {
@@ -643,6 +640,7 @@ class MusicActivity : ComponentActivity() {
                 val selected = list.selectedItemPosition
                 val top = list.selectedView?.top ?: 0
                 list.notifyRowsChanged()
+                updateEmptyState()
                 list.post {
                     if (!nowPlayingVisible && !searchOpen && !isFinishing && !isDestroyed) {
                         list.requestFocus()
@@ -692,8 +690,14 @@ class MusicActivity : ComponentActivity() {
             }
             ROW_SETTING -> when (row.title) {
                 "Music Folders" -> {
-                    musicFoldersPage = Page("Music Folders", buildMusicFolderRows())
-                    navigateTo(musicFoldersPage!!)
+                    val page = Page("Music Folders", buildMusicFolderRows())
+                    page.setEmptyState(
+                        "No Music Folders.",
+                        "Select Add folders to choose where Music looks for songs.",
+                        1, R.drawable.bbos6_menu_folders
+                    )
+                    musicFoldersPage = page
+                    navigateTo(page)
                 }
                 "Refresh library" -> startLocalScan(true, true)
                 "Full rescan" -> confirmFullRescan()
@@ -753,9 +757,9 @@ class MusicActivity : ComponentActivity() {
                     page.setEmptyState(
                         "No Playlists.",
                         "You can import or create playlists for music on your device " +
-                            "by selecting Add Playlist", rows.size
+                            "by selecting Add Playlist",
+                        rows.size, R.drawable.bbos6_playlist_empty
                     )
-                    page.emptyArtworkRes = R.drawable.bbos6_playlist_empty
                 }
                 else -> {
                     for (item in items) rows.add(MenuRow.playlist(item))
@@ -801,7 +805,8 @@ class MusicActivity : ComponentActivity() {
                 error != null -> rows.add(MenuRow.message("Unable to load playlist songs"))
                 items.isNullOrEmpty() -> page.setEmptyState(
                     "Empty playlist",
-                    "Long-press the playlist name in Playlists to add songs.", rows.size
+                    "Long-press the playlist name in Playlists to add songs.",
+                    rows.size, R.drawable.bbos6_playlist_empty
                 )
                 localSongs == null -> rows.add(MenuRow.message("Loading music library..."))
                 else -> {
@@ -1002,6 +1007,11 @@ class MusicActivity : ComponentActivity() {
             return
         }
         val page = Page("Add songs", songRows(songs).toMutableList())
+        page.setEmptyState(
+            "No Songs.",
+            "Add a music folder in Settings to make songs available.",
+            0, R.drawable.bbos6_menu_all_songs
+        )
         page.playlistPickerId = playlistId
         navigateTo(page)
     }
@@ -1197,7 +1207,13 @@ class MusicActivity : ComponentActivity() {
     }
 
     private fun openFolders() {
-        navigateTo(Page("Folders", MusicLibraryPageRows.folderRootRows(this)))
+        val page = Page("Folders", MusicLibraryPageRows.folderRootRows(this))
+        page.setEmptyState(
+            "No Folders.",
+            "Add music folders in Settings to browse your music.",
+            0, R.drawable.bbos6_menu_folders
+        )
+        navigateTo(page)
     }
 
     private fun openBrowserDirectory(row: MenuRow) {
@@ -1205,6 +1221,11 @@ class MusicActivity : ComponentActivity() {
         val directoryId = row.folderLocation ?: return
         val page = Page(row.title, ArrayList<MenuRow>())
         page.browserTree = tree
+        page.setEmptyState(
+            "Empty folder",
+            "No indexed music or subfolders are available here.",
+            0, R.drawable.bbos6_menu_folders
+        )
         page.rows.add(MenuRow.message("Loading folder..."))
         navigateTo(page)
         folderBrowser.listChildren(tree, directoryId, object : MusicFolderBrowser.Listener {
@@ -1277,6 +1298,7 @@ class MusicActivity : ComponentActivity() {
         val top = list.selectedView?.top ?: 0
         visibleRows = page.rows
         list.notifyRowsChanged()
+        updateEmptyState()
         list.post {
             if (currentPage === page && !searchOpen && !isFinishing && !isDestroyed) {
                 list.requestFocus()
@@ -1561,7 +1583,7 @@ class MusicActivity : ComponentActivity() {
         pendingMenu = menuIndex
         if (MusicFolders.selectedTrees(this).isEmpty()) {
             pendingMenu = -1
-            navigateTo(Page(MENU[menuIndex], arrayListOf(MenuRow.message("No folders selected"))))
+            navigateTo(categoryPage(menuIndex, emptyList(), true))
             return
         }
         if (localSongs != null) showLocalCategory(menuIndex)
@@ -1652,8 +1674,28 @@ class MusicActivity : ComponentActivity() {
         val songs = localSongs ?: return
         if (category !in 0..3) return
         val rows = if (category == 0) songRows(songs) else groupedRows(category)
-        navigateTo(Page(MENU[category], rows.toMutableList()))
+        navigateTo(categoryPage(category, rows, false))
         pendingMenu = -1
+    }
+
+    private fun categoryPage(category: Int, rows: List<MenuRow>, noFolders: Boolean): Page {
+        val title = when (category) {
+            0 -> "No Songs."
+            1 -> "No Artists."
+            2 -> "No Albums."
+            else -> "No Genres."
+        }
+        val message = if (noFolders) {
+            "Add music folders in Settings to browse your music."
+        } else {
+            "No ${MENU[category].lowercase(Locale.ROOT)} found in selected music folders."
+        }
+        return Page(MENU[category], rows.toMutableList()).apply {
+            setEmptyState(
+                title, message, 0,
+                MusicLibraryRowPolicy.menuIconForRow(MenuRow.root(MENU[category], category))
+            )
+        }
     }
 
     private fun pageForGroup(group: MenuRow): Page {
@@ -1664,7 +1706,14 @@ class MusicActivity : ComponentActivity() {
         return Page(
             group.title, songRows(songs).toMutableList(),
             if (group.groupCategory == 2) group else null
-        )
+        ).apply {
+            setEmptyState(
+                "No Songs.", "There are no songs available in this group.", 0,
+                MusicLibraryRowPolicy.menuIconForRow(
+                    MenuRow.root(MENU[group.groupCategory], group.groupCategory)
+                )
+            )
+        }
     }
 
     private fun songRows(songs: List<LocalMusicSource.Song>): List<MenuRow> =
@@ -1708,7 +1757,7 @@ class MusicActivity : ComponentActivity() {
 
     private fun updateEmptyState() {
         if (!::emptyState.isInitialized || !::currentPage.isInitialized ||
-            searchOpen || nowPlayingVisible || currentPage.emptyTitle == null) {
+            searchOpen || nowPlayingVisible || !currentPage.showsEmptyState()) {
             if (::emptyState.isInitialized) emptyState.visibility = View.GONE
             return
         }
