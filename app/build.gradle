@@ -21,6 +21,11 @@ android {
     buildTypes {
         release {
             signingConfig signingConfigs.debug
+            // Remove unused Compose, AndroidX and application code/resources.
+            // Use the optimized platform rules plus library consumer rules.
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt')
         }
     }
     compileOptions {
