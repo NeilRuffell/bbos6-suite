@@ -1184,12 +1184,13 @@ Do not publish an APK until that exact build has passed on-device validation and
 The reusable `Bbos6EmptyStateView` is owned by `bbos6-shared` and consumed
 through `assets/bbos6`. It is a non-focusable, non-clickable sibling of the
 existing `MusicListView` inside the library viewport, **not an adapter row**.
-Pages opt in through `Page.setEmptyState(title, description, actionRowCount,
-artworkRes)`. `Page.showsEmptyState()` displays content only when the
-underlying list has no content beyond any reserved action rows. The caller
-reserves space above the centred content for existing actions without
-modifying DPAD/trackpad navigation or the ListView row layout. No
-unverified or newly invented artwork is introduced.
+Pages opt in through `Page.setEmptyState(title, description, actionRowCount)`
+which defaults to the same original `354.png` image on every empty page.
+`Page.showsEmptyState()` displays content only when the underlying list
+has no content beyond any reserved action rows. The caller reserves space
+above the centred content for existing actions without modifying
+DPAD/trackpad navigation or the ListView row layout. No unverified or
+newly invented artwork is introduced.
 
 When Playlists contains zero saved playlists, its single **Add Playlist**
 row launches the canonical shared `Bbos6PopupButtonList`. The popup says
@@ -1207,14 +1208,14 @@ actions, instead of an **Empty playlist** menu item. Search hides the
 empty-state panel so search results remain independent. Populated playlists
 do not display the panel.
 
-The same empty-state helper now covers **All Songs**, **Artists**,
-**Albums**, **Genres**, the individual artist/album/genre group pages,
-**Folders**, nested folder browsing, **Settings > Music Folders**, and
-the **Add Songs** picker. Library and group pages use their respective
-already-verified home/category icons (350/345/351/348); folder pages use
-the verified 112.png folder icon. All artwork goes through the existing
-`Bbos6EmptyStateComposeView` and is centred within the otherwise empty
-list viewport, below the **Add folders** action where applicable.
+The same empty-state helper and **354.png illustration** now cover
+**All Songs**, **Artists**, **Albums**, **Genres**, individual
+artist/album/genre group pages, **Folders**, nested folder browsing,
+**Settings > Music Folders**, and the **Add Songs** picker. All empty
+artwork is sourced from the single existing
+`R.drawable.bbos6_playlist_empty` default in `Page.setEmptyState`
+and goes through `Bbos6EmptyStateComposeView`, centered within the
+otherwise empty list viewport below **Add folders** where applicable.
 
 Truly empty page adapters contain no fake placeholder rows; the shared
 empty-state view owns heading, illustration and description. Loading,

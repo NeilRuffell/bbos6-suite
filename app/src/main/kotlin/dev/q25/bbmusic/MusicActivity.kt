@@ -694,7 +694,7 @@ class MusicActivity : ComponentActivity() {
                     page.setEmptyState(
                         "No Music Folders.",
                         "Select Add folders to choose where Music looks for songs.",
-                        1, R.drawable.bbos6_menu_folders
+                        1
                     )
                     musicFoldersPage = page
                     navigateTo(page)
@@ -758,7 +758,7 @@ class MusicActivity : ComponentActivity() {
                         "No Playlists.",
                         "You can import or create playlists for music on your device " +
                             "by selecting Add Playlist",
-                        rows.size, R.drawable.bbos6_playlist_empty
+                        rows.size
                     )
                 }
                 else -> {
@@ -806,7 +806,7 @@ class MusicActivity : ComponentActivity() {
                 items.isNullOrEmpty() -> page.setEmptyState(
                     "Empty playlist",
                     "Long-press the playlist name in Playlists to add songs.",
-                    rows.size, R.drawable.bbos6_playlist_empty
+                    rows.size
                 )
                 localSongs == null -> rows.add(MenuRow.message("Loading music library..."))
                 else -> {
@@ -1010,7 +1010,7 @@ class MusicActivity : ComponentActivity() {
         page.setEmptyState(
             "No Songs.",
             "Add a music folder in Settings to make songs available.",
-            0, R.drawable.bbos6_menu_all_songs
+            0
         )
         page.playlistPickerId = playlistId
         navigateTo(page)
@@ -1211,7 +1211,7 @@ class MusicActivity : ComponentActivity() {
         page.setEmptyState(
             "No Folders.",
             "Add music folders in Settings to browse your music.",
-            0, R.drawable.bbos6_menu_folders
+            0
         )
         navigateTo(page)
     }
@@ -1224,7 +1224,7 @@ class MusicActivity : ComponentActivity() {
         page.setEmptyState(
             "Empty folder",
             "No indexed music or subfolders are available here.",
-            0, R.drawable.bbos6_menu_folders
+            0
         )
         page.rows.add(MenuRow.message("Loading folder..."))
         navigateTo(page)
@@ -1697,8 +1697,7 @@ class MusicActivity : ComponentActivity() {
         }
         return Page(MENU[category], rows.toMutableList()).apply {
             setEmptyState(
-                title, message, 0,
-                MusicLibraryRowPolicy.menuIconForRow(MenuRow.root(MENU[category], category))
+                title, message, 0
             )
         }
     }
@@ -1713,10 +1712,7 @@ class MusicActivity : ComponentActivity() {
             if (group.groupCategory == 2) group else null
         ).apply {
             setEmptyState(
-                "No Songs.", "There are no songs available in this group.", 0,
-                MusicLibraryRowPolicy.menuIconForRow(
-                    MenuRow.root(MENU[group.groupCategory], group.groupCategory)
-                )
+                "No Songs.", "There are no songs available in this group.", 0
             )
         }
     }

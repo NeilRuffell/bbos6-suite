@@ -104,22 +104,22 @@ only presentation; each application determines emptiness and placement
 outside the ListView adapter. Artwork is absent unless supplied and
 identified; do not create replacements.
 
-For Music, `MusicActivity.Page.setEmptyState(title, message, reservedRows,
-artworkRes)` configures content and original artwork. `Page.showsEmptyState()`
+For Music, `MusicActivity.Page.setEmptyState(title, message, reservedRows)`
+configures content with the original `354.png` artwork by default. `Page.showsEmptyState()`
 checks actual row counts before `updateEmptyState()` shows the shared
 Compose view, so populated pages and loading/error statuses never display
 a false empty state. The overlay is positioned below existing action rows
 without introducing a selectable placeholder row. The underlying
 `MusicListView` retains scrolling/trackpad selection.
 
-Use this same helper for empty All Songs, Artists, Albums, Genres, group
-detail, Folders, nested folder browser, Settings > Music Folders, Add Songs
-picker, Playlists and playlist detail. Original, already-indexed home/category
-icons (350/345/351/348/112) provide the non-playlist artwork; both playlist
-empty states reuse the verified `354.png` illustration packaged as
-`bbos6_playlist_empty.png`. Loading, SAF errors and unavailable content
-remain real status rows, not empty states. Search continues to use the shared
-`Bbos6SearchEmptyFeedbackView` and hides normal page empty states.
+Use this same helper and the **same verified original `354.png` artwork**
+for empty All Songs, Artists, Albums, Genres, group detail, Folders,
+nested folder browser, Settings > Music Folders, Add Songs picker,
+Playlists and playlist detail. Music centralizes the default drawable
+`R.drawable.bbos6_playlist_empty` in `Page.setEmptyState`: pages must not
+assign different artwork individually. Loading, SAF errors and unavailable
+content remain real status rows, not empty states. Search continues to use
+the shared `Bbos6SearchEmptyFeedbackView` and hides normal page empty states.
 Only the app-owned empty-data policy changes; do not modify or duplicate the
 shared rendering helper.
 Its **Add Playlist** row opens the canonical shared `Bbos6PopupButtonList`

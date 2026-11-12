@@ -151,7 +151,8 @@ internal object MusicActivityModels {
 
         @JvmOverloads
         fun setEmptyState(
-            title: String?, message: String?, afterRows: Int, artworkRes: Int = 0
+            title: String?, message: String?, afterRows: Int,
+            artworkRes: Int = R.drawable.bbos6_playlist_empty
         ) {
             emptyTitle = title
             emptyMessage = message
