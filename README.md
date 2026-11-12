@@ -50,6 +50,10 @@ in the visible viewport. The previous two-column Recents hook was
 replacement is opt-in for Q25 verification; see the
 [Recents replacement plan](docs/RECENTS_REPLACEMENT.md).
 
+### Canonical background-work indicator availability
+
+This branch advances the `assets/bbos6` submodule to the shared Kotlin/Compose `Bbos6BackgroundLoadingIndicator` commit, including its component catalogue and tests. The passive 14dp green beveled striped bar is available for future Android/LineageOS UI integrations; the current BB UI Gradle project does **not** include `:bbos6-ui`, so this gitlink update introduces **no new BB UI runtime control or display behavior**. Music integrates the shared renderer in its own repository; do not copy it into Vector/SystemUI.
+
 The BBOS6 shade now supports downward/upward slide animations and
 finger-following drag-to-open/close, while retaining keyboard/trackpad
 navigation and Android's existing shade window. See
