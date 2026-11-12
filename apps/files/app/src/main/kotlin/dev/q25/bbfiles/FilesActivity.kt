@@ -218,6 +218,7 @@ private fun FilesPage(
             add(Bbos6ListSelectionItem("audio", "Audio"))
             add(Bbos6ListSelectionItem("documents", "Documents"))
             add(Bbos6ListSelectionItem("videos", "Videos"))
+            add(Bbos6ListSelectionItem("settings", "Settings"))
         }
     }
 
@@ -227,6 +228,7 @@ private fun FilesPage(
     var shortcutLabel by remember { mutableStateOf<String?>(null) }
     var returnToFavorites by remember { mutableStateOf(false) }
     var favoritesPage by remember { mutableStateOf(false) }
+    var settingsPage by remember { mutableStateOf(false) }
     var indexedCategory by remember { mutableStateOf<IndexedMediaCategory?>(null) }
     var mediaMenuEntry by remember { mutableStateOf<MediaCategoryBrowser.Entry?>(null) }
     var accessTarget by remember { mutableStateOf<String?>(null) }
@@ -275,6 +277,11 @@ private fun FilesPage(
     }
 
     fun openHomeItem(id: String) {
+        if (id == "settings") {
+            // Settings is an app page, not a storage destination.
+            settingsPage = true
+            return
+        }
         if (id == "favorites") {
             favoritesPage = true
             return
@@ -399,7 +406,7 @@ private fun FilesPage(
     }
 
     BackHandler(
-        enabled = (currentFolder != null || favoritesPage || indexedCategory != null) &&
+        enabled = (currentFolder != null || favoritesPage || settingsPage || indexedCategory != null) &&
             accessTarget == null && popup == null && menuEntry == null &&
             favoriteMenu == null && mediaMenuEntry == null &&
             !folderMenu && deleteTarget == null && !operationBusy
@@ -408,6 +415,7 @@ private fun FilesPage(
             currentFolder != null -> navigateUp()
             indexedCategory != null -> indexedCategory = null
             favoritesPage -> favoritesPage = false
+            settingsPage -> settingsPage = false
         }
     }
 
@@ -457,6 +465,7 @@ private fun FilesPage(
     Column(Modifier.fillMaxSize().background(Color.Black).statusBarsPadding()) {
         Bbos6SectionHeader(
             title = when {
+                settingsPage -> "Settings"
                 favoritesPage -> "Favourites"
                 visibleCategory != null -> visibleCategory.title
                 root != null && folder != null -> FileBrowser.relativeTitle(
@@ -467,7 +476,13 @@ private fun FilesPage(
             style = Bbos6SectionHeaderStyle.FLAT_BLACK_COMPACT
         )
         Box(Modifier.weight(1f)) {
-            if (favoritesPage) {
+            if (settingsPage) {
+                Bbos6EmptyState(
+                    heading = "No Settings Yet",
+                    description = "Settings will appear here when added.",
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else if (favoritesPage) {
                 if (favorites.isEmpty()) {
                     Bbos6EmptyState(
                         heading = "No Favourites",
