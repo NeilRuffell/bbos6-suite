@@ -276,17 +276,22 @@ The 36dp / 4dp horizontal dimensions are Q25-tunable approximations, not
 verified historical BBOS SDK constants. Test selection, touch targets,
 trackpad focus and icon alignment on device.
 
-### Icon size and aligned labels
+### Uniform page-list icon sizing
 
-`Bbos6PageList(artworkPaddingDp = 2, reserveArtworkSlotForMissing = true)`
-passes the adjustable image inset into `Bbos6MediaListRow` and keeps an empty
-artwork slot for text-only items. With `artworkSlotSizeDp = 36`, a 2dp inset
-leaves a 32dp artwork viewport instead of the original 20dp viewport at 8dp
-inset. The image is vertically and horizontally centered in the reserved
-36dp slot and every home row label begins at the same horizontal coordinate.
-The default 8dp inset and optional-slot behaviour remain unchanged in other
-consumers, including folder rows and Music. Actual bitmap transparent margins
-can still affect perceived artwork size; verify visually on Q25.
+`Bbos6PageList` now defaults to `artworkPaddingDp = 2` for all pages.
+The Files home, Favourites, folder and indexed-media lists pass the same
+`artworkSlotSizeDp = 36`, giving every displayed icon the same 32dp
+maximum viewport (36dp slot less 2dp on each edge). No Files page sets its
+own icon-padding override. The icon remains centered vertically and
+horizontally without custom per-asset scaling. The home page alone requests
+`reserveArtworkSlotForMissing = true` to keep labels aligned when no icon
+exists; this does not affect icon size or other lists.
+
+`Bbos6MediaListRow` retains its independent 8dp default for consumers
+that use that row directly, such as Music. The page-list default is passed
+explicitly into the row, so no Music artwork geometry is changed. Artwork
+with intrinsic transparent margins may still look smaller; original PNG data
+remains untouched. Verify the appearance on Q25.
 
 ### Optional list-row icon artwork
 

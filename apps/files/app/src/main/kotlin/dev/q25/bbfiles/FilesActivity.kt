@@ -537,7 +537,6 @@ private fun FilesPage(
                         items = homeItems,
                         rowHeightDp = 52,
                         artworkSlotSizeDp = 36,
-                        artworkPaddingDp = 2,
                         reserveArtworkSlotForMissing = true,
                         textHorizontalPaddingDp = 4,
                         artworkForId = { id ->

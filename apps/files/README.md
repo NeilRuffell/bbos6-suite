@@ -15,11 +15,11 @@ This application lives in `apps/files/` of the `bbos6-suite` monorepo.
 - Home-only shortcut artwork uses original assets: Recent Files **129.png**,
   Images **2219.png**, Videos **2216.png**, Audio **1579.png**, and
   Favourites **950.png**.
-  The home list retains 52dp row height and a compact 36dp icon column,
-  but reduces icon inset from 8dp to 2dp (32dp artwork viewport). Empty
-  icon slots are reserved, keeping labels aligned even when an entry has no
-  mapped icon. Other screens retain their default icon
-  insets and existing layout.
+  All Files lists use the same shared `Bbos6PageList` icon sizing:
+  36dp slot with a default 2dp inset (32dp artwork viewport) and 52dp rows.
+  No per-screen icon-size overrides are used. The home list reserves empty
+  icon slots to align labels; that does not change icon size. Music's
+  independent media-row layout remains unchanged.
   The original PNGs remain in `shared/icons/`; canonical shared resource
   symlinks supply them to Android. Audio uses its dedicated home shortcut
   mapping `bbos6_files_home_audio`; the original Genres icon **348.png**

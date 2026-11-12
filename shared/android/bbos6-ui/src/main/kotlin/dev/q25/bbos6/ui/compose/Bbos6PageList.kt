@@ -58,7 +58,7 @@ fun Bbos6PageList(
     artworkForId: (String) -> Painter? = { null },
     textHorizontalPaddingDp: Int = 16,
     artworkSlotSizeDp: Int = rowHeightDp,
-    artworkPaddingDp: Int = 8,
+    artworkPaddingDp: Int = 2,
     reserveArtworkSlotForMissing: Boolean = false
 ) {
     require(rowHeightDp > 0) { "Row height must be positive" }
