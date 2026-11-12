@@ -199,18 +199,28 @@ private fun FilesPage(
     val favoritesStore = remember(context) { FavoritesStore(context) }
     var favorites by remember(favoritesStore) { mutableStateOf(favoritesStore.load()) }
     val favoriteById = remember(favorites) { favorites.associateBy { it.id } }
-    val homeItems = remember(roots, favorites) {
+    // Home is navigation only. Pinned shortcuts appear inside Favourites.
+    val homeItems = remember(roots) {
         buildList {
             roots.forEach { add(Bbos6ListSelectionItem(it.id, it.label)) }
             add(Bbos6ListSelectionItem("recent", "Recent Files"))
-            favorites.forEach { favorite ->
-                add(Bbos6ListSelectionItem(favorite.id, favorite.name))
-            }
+            add(Bbos6ListSelectionItem("favorites", "Favourites"))
+            add(Bbos6ListSelectionItem("images", "Images"))
+            add(Bbos6ListSelectionItem("downloads", "Downloads"))
+            add(Bbos6ListSelectionItem("audio", "Audio"))
+            add(Bbos6ListSelectionItem("documents", "Documents"))
+            add(Bbos6ListSelectionItem("videos", "Videos"))
         }
     }
 
     var currentRoot by remember { mutableStateOf<StorageRoot?>(null) }
     var currentFolder by remember { mutableStateOf<File?>(null) }
+    var shortcutRoot by remember { mutableStateOf<File?>(null) }
+    var shortcutLabel by remember { mutableStateOf<String?>(null) }
+    var returnToFavorites by remember { mutableStateOf(false) }
+    var favoritesPage by remember { mutableStateOf(false) }
+    var indexedCategory by remember { mutableStateOf<IndexedMediaCategory?>(null) }
+    var mediaMenuEntry by remember { mutableStateOf<MediaCategoryBrowser.Entry?>(null) }
     var accessTarget by remember { mutableStateOf<String?>(null) }
     var pendingAfterPermission by remember { mutableStateOf<String?>(null) }
     var popup by remember { mutableStateOf<InfoPopup?>(null) }
@@ -238,18 +248,67 @@ private fun FilesPage(
             popup = InfoPopup(
                 "Favorite Unavailable",
                 "The original file or folder cannot be accessed. " +
-                    "Long-press this favorite on the home page to remove the shortcut."
+                    "Long-press this shortcut in Favourites to remove it."
             )
             return
         }
         if (favorite.isDirectory) {
             currentRoot = volume
             currentFolder = file
+            shortcutRoot = file
+            shortcutLabel = favorite.name
+            returnToFavorites = favoritesPage
+            favoritesPage = false
         } else {
             openOrShare(volume.directory, file, false)?.let {
                 popup = InfoPopup(favorite.name, it)
             }
         }
+    }
+
+    fun openHomeItem(id: String) {
+        if (id == "favorites") {
+            favoritesPage = true
+            return
+        }
+        if (id == "recent") {
+            popup = InfoPopup("Recent Files", "Recent Files is not implemented yet.")
+            return
+        }
+        if (!accessGranted) {
+            accessTarget = id
+            return
+        }
+        val volume = roots.firstOrNull { it.id == id }
+        if (volume != null) {
+            currentRoot = volume
+            currentFolder = volume.directory
+            shortcutRoot = null
+            shortcutLabel = null
+            returnToFavorites = false
+            return
+        }
+        val category = IndexedMediaCategory.fromId(id)
+        if (category != null) {
+            indexedCategory = category
+            return
+        }
+        val directoryName = when (id) {
+            "downloads" -> Environment.DIRECTORY_DOWNLOADS
+            "documents" -> Environment.DIRECTORY_DOCUMENTS
+            else -> return
+        }
+        val internal = roots.firstOrNull { it.id == "internal" } ?: return
+        val destination = File(internal.directory, directoryName)
+        if (!FileBrowser.isWithin(internal.directory, destination)) {
+            popup = InfoPopup("Storage Access", "This directory is outside internal storage.")
+            return
+        }
+        currentRoot = internal
+        currentFolder = destination
+        shortcutRoot = destination
+        shortcutLabel = if (id == "downloads") "Downloads" else "Documents"
+        returnToFavorites = false
     }
 
     LaunchedEffect(accessGranted, pendingAfterPermission, roots, favorites) {
@@ -258,39 +317,38 @@ private fun FilesPage(
             pendingAfterPermission = null
             val bookmarked = favoriteById[requested]
             if (bookmarked != null) activateFavorite(bookmarked)
-            else roots.firstOrNull { it.id == requested }?.let {
-                currentRoot = it
-                currentFolder = it.directory
-            }
+            else openHomeItem(requested)
         }
         if (!accessGranted && currentRoot != null) {
             currentRoot = null
             currentFolder = null
+            shortcutRoot = null
+            shortcutLabel = null
             clipboard = null
+            returnToFavorites = false
         }
+        if (!accessGranted) indexedCategory = null
         if (currentRoot?.id == "removable" && removableDirectory == null) {
             currentRoot = null
             currentFolder = null
-        }
-    }
-
-    fun openRoot(id: String) {
-        val root = roots.firstOrNull { it.id == id } ?: return
-        if (accessGranted) {
-            currentRoot = root
-            currentFolder = root.directory
-        } else {
-            accessTarget = id
+            shortcutRoot = null
+            shortcutLabel = null
+            returnToFavorites = false
         }
     }
 
     fun navigateUp() {
         val root = currentRoot ?: return
         val folder = currentFolder ?: return
-        val parent = FileBrowser.parentWithin(root.directory, folder)
+        val boundary = shortcutRoot ?: root.directory
+        val parent = FileBrowser.parentWithin(boundary, folder)
         if (parent == null) {
             currentRoot = null
             currentFolder = null
+            shortcutRoot = null
+            shortcutLabel = null
+            favoritesPage = returnToFavorites
+            returnToFavorites = false
         } else currentFolder = parent
     }
 
@@ -332,11 +390,16 @@ private fun FilesPage(
     }
 
     BackHandler(
-        enabled = currentFolder != null && accessTarget == null &&
-            popup == null && menuEntry == null && favoriteMenu == null &&
+        enabled = (currentFolder != null || favoritesPage || indexedCategory != null) &&
+            accessTarget == null && popup == null && menuEntry == null &&
+            favoriteMenu == null && mediaMenuEntry == null &&
             !folderMenu && deleteTarget == null && !operationBusy
     ) {
-        navigateUp()
+        when {
+            currentFolder != null -> navigateUp()
+            indexedCategory != null -> indexedCategory = null
+            favoritesPage -> favoritesPage = false
+        }
     }
 
     val root = currentRoot
