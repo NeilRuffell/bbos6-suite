@@ -27,6 +27,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.core.content.FileProvider
 import dev.q25.bbos6.ui.Bbos6PopupButtonList
@@ -179,9 +180,18 @@ private fun FilesPage(
             )
         }
     }
-    val homeItems = remember(roots) {
-        roots.map { Bbos6ListSelectionItem(it.id, it.label) } +
-            Bbos6ListSelectionItem("recent", "Recent Files")
+    val context = LocalContext.current
+    val favoritesStore = remember(context) { FavoritesStore(context) }
+    var favorites by remember(favoritesStore) { mutableStateOf(favoritesStore.load()) }
+    val favoriteById = remember(favorites) { favorites.associateBy { it.id } }
+    val homeItems = remember(roots, favorites) {
+        buildList {
+            roots.forEach { add(Bbos6ListSelectionItem(it.id, it.label)) }
+            add(Bbos6ListSelectionItem("recent", "Recent Files"))
+            favorites.forEach { favorite ->
+                add(Bbos6ListSelectionItem(favorite.id, favorite.name))
+            }
+        }
     }
 
     var currentRoot by remember { mutableStateOf<StorageRoot?>(null) }
@@ -190,19 +200,53 @@ private fun FilesPage(
     var pendingAfterPermission by remember { mutableStateOf<String?>(null) }
     var popup by remember { mutableStateOf<InfoPopup?>(null) }
     var menuEntry by remember { mutableStateOf<FileBrowser.Entry?>(null) }
+    var favoriteMenu by remember { mutableStateOf<FileFavorite?>(null) }
     var folderMenu by remember { mutableStateOf(false) }
     var deleteTarget by remember { mutableStateOf<FileBrowser.Entry?>(null) }
     var clipboard by remember { mutableStateOf<ClipboardItem?>(null) }
     var refreshCounter by remember { mutableIntStateOf(0) }
     var operationBusy by remember { mutableStateOf(false) }
 
-    LaunchedEffect(accessGranted, pendingAfterPermission, roots) {
+    fun updateFavorites(items: List<FileFavorite>) {
+        favoritesStore.save(items)
+        favorites = items
+    }
+
+    fun activateFavorite(favorite: FileFavorite) {
+        if (!accessGranted) {
+            accessTarget = favorite.id
+            return
+        }
+        val volume = roots.firstOrNull { it.id == favorite.storageId }
+        val file = volume?.let { FavoritePolicy.resolve(it.directory, favorite) }
+        if (volume == null || file == null) {
+            popup = InfoPopup(
+                "Favorite Unavailable",
+                "The original file or folder cannot be accessed. " +
+                    "Long-press this favorite on the home page to remove the shortcut."
+            )
+            return
+        }
+        if (favorite.isDirectory) {
+            currentRoot = volume
+            currentFolder = file
+        } else {
+            openOrShare(volume.directory, file, false)?.let {
+                popup = InfoPopup(favorite.name, it)
+            }
+        }
+    }
+
+    LaunchedEffect(accessGranted, pendingAfterPermission, roots, favorites) {
         if (accessGranted && pendingAfterPermission != null) {
-            roots.firstOrNull { it.id == pendingAfterPermission }?.let {
+            val requested = pendingAfterPermission
+            pendingAfterPermission = null
+            val bookmarked = favoriteById[requested]
+            if (bookmarked != null) activateFavorite(bookmarked)
+            else roots.firstOrNull { it.id == requested }?.let {
                 currentRoot = it
                 currentFolder = it.directory
             }
-            pendingAfterPermission = null
         }
         if (!accessGranted && currentRoot != null) {
             currentRoot = null
@@ -274,8 +318,8 @@ private fun FilesPage(
 
     BackHandler(
         enabled = currentFolder != null && accessTarget == null &&
-            popup == null && menuEntry == null && !folderMenu &&
-            deleteTarget == null && !operationBusy
+            popup == null && menuEntry == null && favoriteMenu == null &&
+            !folderMenu && deleteTarget == null && !operationBusy
     ) {
         navigateUp()
     }
@@ -310,12 +354,24 @@ private fun FilesPage(
                         artworkSlotSizeDp = 36,
                         textHorizontalPaddingDp = 4,
                         artworkForId = { id ->
-                            if (id == "internal" || id == "removable") folderIcon else null
+                            if (id == "internal" || id == "removable" ||
+                                favoriteById[id]?.isDirectory == true
+                            ) folderIcon else null
                         },
                         onActivate = { id ->
-                            if (id == "recent") {
-                                popup = InfoPopup("Recent Files", "Recent Files is not implemented yet.")
-                            } else openRoot(id)
+                            val favorite = favoriteById[id]
+                            when {
+                                favorite != null -> activateFavorite(favorite)
+                                id == "recent" ->
+                                    popup = InfoPopup("Recent Files", "Recent Files is not implemented yet.")
+                                else -> openRoot(id)
+                            }
+                        },
+                        onLongPress = { id ->
+                            favoriteMenu = favoriteById[id]
+                        },
+                        onMenu = { id ->
+                            if (id != null) favoriteMenu = favoriteById[id]
                         }
                     )
                 }
@@ -429,6 +485,10 @@ private fun FilesPage(
 
     val selected = menuEntry
     if (selected != null) {
+        val bookmark = root?.let {
+            FavoritePolicy.create(it.id, it.directory, selected.file)
+        }
+        val alreadyPinned = bookmark != null && FavoritePolicy.contains(favorites, bookmark)
         val actions = buildList {
             add(Bbos6ContextAction.text("open", "Open"))
             if (!selected.isDirectory) add(Bbos6ContextAction.text("share", "Share"))
@@ -436,6 +496,12 @@ private fun FilesPage(
             add(Bbos6ContextAction.text("cut", "Cut"))
             add(Bbos6ContextAction.text("rename", "Rename"))
             add(Bbos6ContextAction.text("delete", "Delete"))
+            if (bookmark != null) {
+                add(Bbos6ContextAction.text(
+                    if (alreadyPinned) "unfavorite" else "favorite",
+                    if (alreadyPinned) "Remove from Favorites" else "Add to Favorites"
+                ))
+            }
             // Directory-level actions remain available when an item is selected.
             add(Bbos6ContextAction.text("new", "New Folder"))
             if (clipboard != null) add(Bbos6ContextAction.text("paste", "Paste"))
@@ -466,8 +532,33 @@ private fun FilesPage(
                         mutate({ FileOperations.rename(selectedRoot.directory, selected.file, newName) })
                     }
                     "delete" -> deleteTarget = selected
+                    "favorite" -> if (bookmark != null) {
+                        updateFavorites(FavoritePolicy.add(favorites, bookmark))
+                    }
+                    "unfavorite" -> if (bookmark != null) {
+                        updateFavorites(FavoritePolicy.remove(favorites, bookmark))
+                    }
                     "new" -> createFolder()
                     "paste" -> pasteItem()
+                }
+            }
+        )
+    }
+
+    val pinnedShortcut = favoriteMenu
+    if (pinnedShortcut != null) {
+        Bbos6ContextMenuDialog(
+            groups = listOf(listOf(
+                Bbos6ContextAction.text("open", "Open"),
+                Bbos6ContextAction.text("remove", "Remove from Favorites")
+            )),
+            onDismissRequest = { favoriteMenu = null },
+            onAction = { action ->
+                favoriteMenu = null
+                when (action.id) {
+                    "open" -> activateFavorite(pinnedShortcut)
+                    "remove" ->
+                        updateFavorites(FavoritePolicy.remove(favorites, pinnedShortcut))
                 }
             }
         )
