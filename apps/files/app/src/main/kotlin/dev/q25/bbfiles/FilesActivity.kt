@@ -12,7 +12,6 @@ import android.webkit.MimeTypeMap
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -27,7 +26,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.core.content.FileProvider
@@ -44,6 +42,7 @@ import dev.q25.bbos6.ui.compose.Bbos6PopupButtonDialog
 import dev.q25.bbos6.ui.compose.Bbos6SectionHeader
 import dev.q25.bbos6.ui.compose.Bbos6SectionHeaderStyle
 import dev.q25.bbos6.ui.compose.Bbos6ThemeSelector
+import dev.q25.bbos6.ui.compose.Bbos6ThemeSurface
 import java.io.File
 import java.io.IOException
 import java.util.Locale
@@ -463,7 +462,8 @@ private fun FilesPage(
     // The activity's root consumes the system status-bar inset so the
     // shared header and every Files screen start below clock/notification icons.
     // Keep system-bar policy at the window boundary, not in Bbos6SectionHeader.
-    Column(Modifier.fillMaxSize().background(Color.Black).statusBarsPadding()) {
+    Bbos6ThemeSurface(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
+        Column(Modifier.fillMaxSize()) {
         Bbos6SectionHeader(
             title = when {
                 settingsPage -> "Settings"
@@ -657,6 +657,7 @@ private fun FilesPage(
             (visibleCategory != null && indexedListing == null && accessGranted)
         ) {
             Bbos6BackgroundLoadingIndicator(accessibilityLabel = "Loading files")
+        }
         }
     }
 
