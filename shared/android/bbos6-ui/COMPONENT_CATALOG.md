@@ -97,14 +97,26 @@ For example:
 Bbos6ThemeSelector(modifier = Modifier.fillMaxSize())
 ```
 
-Theme-aware shared components opt in by reading the manager's effective
-theme. **Nothing is automatically recolored solely by creating the manager**:
-existing components keep their current hard-coded/default styles until
-explicitly enabled to use the manager. The previously proposed
-`Bbos6MediaListRowColorScheme` API from the separate light-row PR is not
-changed here; those changes need a distinct integration once both
-shared-helper PRs are approved. No Files/Music/SystemUI code is modified by
-this theme infrastructure PR.
+A consuming app opts in once by wrapping its screen in
+`Bbos6ThemeSurface(modifier = ...)`. This reads the saved app preference,
+resolves `SYSTEM` with Android night mode, supplies a Compose-local effective
+theme to descendants, and paints the outer surface black or white. The scope
+does not take focus, intercept input or add system-bar padding.
+
+The shared `Bbos6PageList` opts in to this scope: its canvas and its canonical
+`Bbos6MediaListRow` entries automatically use a matching background and text
+colors. `Bbos6EmptyState` also uses dark text on a light scoped surface. With
+no containing theme surface, these helpers retain their existing dark styling
+for Music and other consumers. Standalone media rows retain explicit
+`Bbos6MediaListRowColorScheme.DARK`, `LIGHT` and `SYSTEM` options; the
+page-list is the theme-aware full-list controller. Other helpers can opt into
+the scope in future without changing Files' Settings code.
+
+Files uses this scope at its root, preserving its existing system status-bar
+insets. Its deliberate `FLAT_BLACK_COMPACT` path/header bar and existing
+dark modal/menu helpers remain unchanged until separately made theme-aware.
+This branch includes the canonical media-row color option introduced in PR #6.
+Music, System UI and their existing hard-coded appearances are untouched.
 
 ## Set up a new application (one canonical dependency)
 
