@@ -40,11 +40,14 @@ monorepo. Consult `../../AGENTS.md`, `../../shared/AGENTS.md`,
   resources, not maintained Files copies. Audio uses `bbos6_files_home_audio`;
   the existing Genres mapping `bbos6_menu_genres` (348.png) is unaffected.
 - `MediaCategoryBrowser` uses Android `MediaStore` for Images, Audio,
-  Videos across shared volumes. These indexed results use content URIs and
-  currently support Open/Share; do not build custom media scanners.
-  Downloads and Documents are simple links to Android public directories
-  via the existing `FileBrowser`. Preserve Back-to-home navigation and
-  the current 52dp rows / 36dp icon slot / 4dp text inset.
+  Videos **and Documents** across shared volumes. Documents queries
+  `MediaStore.Files` with `DocumentMimePolicy` MIME filters rather than
+  resolving the literal `Documents/` directory. These indexed results use
+  content URIs and currently support Open/Share; do not build custom
+  media scanners. Unknown/non-document MIME types may be excluded.
+  Only Downloads remains a native public-directory shortcut through
+  `FileBrowser`. Preserve Back-to-home navigation and the current 52dp
+  rows / 36dp icon slot / 4dp text inset.
 - Keep shared list controller and context menu app-neutral.
 - Delete always prompts with Cancel selected and has no undo.
 - Keep trackpad, physical keyboard, DPAD, Menu and touch parity.
