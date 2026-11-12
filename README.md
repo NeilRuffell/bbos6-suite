@@ -376,14 +376,40 @@ Vector/LSPosed, a custom ROM, or another music app.
 
 ### Track Properties (long press)
 
-Track rows in All Songs, Artists, Albums, Genres, Folders and search results
+Track rows in All Songs, Artists, Albums, Genres, Folders, Playlists and search results
 open the shared `Bbos6ContextMenu` on touchscreen or Q25 trackpad long press.
-Their actions are **Properties** (existing `Bbos6PropertiesPopup`) and
-**Delete** (native Storage Access Framework deletion). Artist, Album and Genre
-group rows display only **Delete**: it operates on all songs in that specific
-indexed group, never on album, artist, or directory containers. Folder entries
-still have no long-press actions. Normal short presses still play/open tracks;
-nothing on Now Playing, Home or Settings acquires long-press behavior.
+Song actions are **Properties**, **Add to playlist**, **Share**, **Set as ringtone**
+and **Delete audio file**, plus existing move/remove actions inside playlists.
+Long-pressing an **artist or album group** offers **Play** and **Shuffle** for
+every song in that exact indexed group, followed by the existing Add to playlist
+and Delete audio files actions. Genre groups retain Add to playlist and Delete.
+Album playback uses the same track-number order as its opened album page;
+artist playback uses the existing indexed group order. Both submit one
+Media3 queue; Shuffle enables the same native player shuffle mode used by
+playlist playback. Group deletion still targets only the selected group.
+Folder containers have no long-press menu. Normal short presses and existing
+navigation/focus behavior are unchanged.
+
+**Share** uses Android `ACTION_SEND` / Sharesheet with the original
+authorized SAF `content://` document, MIME type, `EXTRA_STREAM` and a
+temporary per-URI read grant. No file is copied or exposed by a permanent
+provider. **Set as ringtone** is a separate user-requested native operation:
+Android's `WRITE_SETTINGS` special access is requested through the system
+settings screen only when needed. Once approved, a background worker copies
+the exact authorized song into `MediaStore.Audio` under `Ringtones/`, clears
+`IS_PENDING` and uses `RingtoneManager.setActualDefaultRingtoneUri`.
+The original SAF document is never modified. A failed copy/assignment attempts
+to delete its new MediaStore item; a successful ringtone copy remains available
+to the system. No general music-library storage permission or full-device scan
+is added. Android/OEM codec support, provider access and special-access approval
+can prevent the operation; failure is reported rather than silently substituting
+a different song.
+
+Q25 acceptance: long-press album, artist, genre and song by touch and trackpad;
+verify each menu's labels and icon focus, Play/Shuffle queue membership and
+album order, share from folders/playlists/search with a receiving app, no
+unintended source writes, system permission denial/re-entry, a successful
+ringtone change, and handling of revoked SAF access or unsupported files.
 
 `MusicTrackPropertiesReader` reads metadata asynchronously for the exact
 selected song's `content://` SAF document, checking that its source folder
@@ -415,9 +441,10 @@ search changes or Activity stop. Back dismisses the context menu first;
 when Properties is open, Back dismisses the Properties dialog. The underlying
 list selection, scroll position and playback remain unchanged.
 
-The context menu uses the shared builder with Android-provided information
-and delete icons (`android.R.drawable.ic_menu_info_details` and
-`android.R.drawable.ic_menu_delete`), not unverified BlackBerry assets.
+The context menu uses the canonical shared builder and existing verified
+Play all / Shuffle resource mappings for group playback; Android supplies
+the standard information, share, set-as and delete action icons. No shared
+renderer, new BBOS6 asset mapping, or extra menu implementation is created.
 Adding future actions or groups requires editing the Music caller's
 menu definition, not the shared renderer.
 
