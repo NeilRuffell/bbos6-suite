@@ -36,6 +36,17 @@ public final class MusicLibraryGroupPolicyTest {
         assertEquals(0, counts[3]);
     }
 
+    @Test public void playbackOrderingOnlyAcceptsGroupRows() {
+        assertTrue(MusicLibraryGroupPolicy.orderedGroupSongs(
+                MusicActivityModels.MenuRow.setting("Refresh library")).isEmpty());
+        assertTrue(MusicLibraryGroupPolicy.orderedGroupSongs(
+                MusicActivityModels.MenuRow.group("Empty album", 2, Collections.emptyList())
+        ).isEmpty());
+        assertTrue(MusicLibraryGroupPolicy.orderedGroupSongs(
+                MusicActivityModels.MenuRow.group("Empty artist", 1, Collections.emptyList())
+        ).isEmpty());
+    }
+
     @Test public void nonMediaRowsDoNotResolveArtworkKeys() {
         assertEquals(null, MusicLibraryGroupPolicy.albumKeyForRow(
                 MusicActivityModels.MenuRow.setting("Refresh library")));
