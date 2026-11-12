@@ -26,6 +26,7 @@ not Java. Their public methods remain callable from Java for existing callers.
 | --- | --- | --- |
 | Section heading | `Bbos6SectionHeader(title)` | Page sections and whether rows are selectable |
 | Empty content | `Bbos6EmptyState(heading, description, artwork)` | When empty, artwork selection and viewport sizing |
+| Indeterminate background work | `Bbos6BackgroundLoadingIndicator(modifier, accessibilityLabel)` | Work start/end, screen-bottom placement and whether to reserve layout height |
 | Empty content inside a native layout | `Bbos6EmptyStateComposeView` (*View host*) | Placement outside the selectable list and visibility |
 | Compact modal list selection | `Bbos6ListSelectionPanel` / `Bbos6ListSelectionComposeBridge` | Stable choice IDs/labels, selection action and dialog lifecycle |
 | Media/list row face | `Bbos6MediaListRow(..., rowHeightDp = 68)` | List data, selection, scrolling, event routing and artwork loading |
@@ -233,3 +234,7 @@ in its own PR. Do not merge either PR without explicit approval.
 Related: [COMPOSE_MIGRATION.md](COMPOSE_MIGRATION.md),
 [CONTEXT_MENU.md](CONTEXT_MENU.md),
 [repository workflow](../../AGENTS.md).
+
+### Background loading stripe
+
+`Bbos6BackgroundLoadingIndicator` is a passive, 14dp-high Compose bar with the reference green vertical bevel, translucent slanted stripes and a rightward repeating animation. Show it only while the caller has active background work; removal from composition cancels the animation. Place it at the bottom of the app content area, preferably *below* the scrollable viewport so it never covers list selections. It owns no scanning, notifications, progress percentage, focus, input or navigation. The 14dp dimension and palette are screenshot-derived approximations for Q25 inspection, not verified BBOS6 SDK constants.

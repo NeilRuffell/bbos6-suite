@@ -18,6 +18,10 @@ Consumed by the independent [`bb-music`](https://github.com/NeilRuffell/bb-music
 application through the pinned `assets/bbos6` Git submodule. Other native Android
 applications can use the same module without maintaining their own copy.
 
+## Background operations
+
+`dev.q25.bbos6.ui.compose.Bbos6BackgroundLoadingIndicator` displays a compact, non-focusable green striped progress bar for any caller-owned indeterminate background operation. Use it in the app's Compose container at the bottom edge while work is active; hide it when that work stops or fails. The composable animates rightward while mounted, with no app-specific scanner, Media3 or service dependencies. See [component catalogue](COMPONENT_CATALOG.md) for placement and sizing.
+
 ## Components
 
 For a complete current component inventory, refer to the [catalogue](COMPONENT_CATALOG.md). The native helpers below are one part of the shared module; they are not its entire public API.

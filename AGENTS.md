@@ -368,3 +368,7 @@ artwork/navigation. No Java source, compatibility fork or per-screen
 copy may be reintroduced to fix a regression; correct the common Kotlin
 helper instead. This branch and its new focus-sensitive code are unverified
 until a device test is reported.
+
+## Passive background loading bar
+
+The reusable `Bbos6BackgroundLoadingIndicator` lives exclusively in the shared Compose module. Keep its screenshot-derived green bevel, 14dp compact height, rightward diagonal motion and indeterminate semantics in the shared renderer. Host applications decide when work is active and mount it at the bottom of app content; do not place scanner logic or progress estimation in the helper. It must never take DPAD/trackpad focus, overlay selectable list rows, or continue animating when removed from composition. Update the component catalogue and consumer gitlinks whenever it changes.
