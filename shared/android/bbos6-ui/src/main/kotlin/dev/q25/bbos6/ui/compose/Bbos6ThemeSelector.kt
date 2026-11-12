@@ -1,7 +1,6 @@
 package dev.q25.bbos6.ui.compose
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.weight
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 
