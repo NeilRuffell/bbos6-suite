@@ -21,6 +21,7 @@ filename,name,keywords,android_resource
 543.png,Missing Album Art,music album missing artwork placeholder,bbos6_album_no_art
 950.png,Favourites Shortcut,files app home favourites shortcut user assigned,bbos6_files_home_favourites
 1050.png,Music Folder Icon,music folder directory original icon user identified,
+1338.png,Favourited Folder,files app favourite folder bookmarked pinned folder icon user identified,bbos6_favourited_folder
 2216.png,Videos Shortcut,files app home videos shortcut user assigned,bbos6_files_home_videos
 2219.png,Images Shortcut,files app home images shortcut user assigned,bbos6_files_home_images
 2486.png,Bottom Panel Gradient Reference,blackberry os 6 dark bottom panel seekbar background top dark border lower bevel silver white bottom separator,

@@ -308,3 +308,12 @@ Images `2219.png` via `bbos6_files_home_images`, Videos `2216.png` via
 `bbos6_menu_genres` mapping. The shared resource entries are symlinks to
 `shared/icons/`, with one canonical `shared/icon-index.csv`. This does
 not change existing media list artwork or the Files folder icon `112.png`.
+
+### Favourited folder artwork
+
+Original `shared/icons/1338.png` is the user-confirmed **favourited folder**
+artwork. The canonical drawable resource `bbos6_favourited_folder` is a
+symlink to that original. Files uses it for bookmarked directory entries both
+inside the Favourites list and in regular directory browsing when pinned;
+ordinary folders continue to use `112.png`. This is app-owned icon selection,
+not a change to shared list-row behaviour.
