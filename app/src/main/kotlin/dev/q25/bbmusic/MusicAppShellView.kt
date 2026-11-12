@@ -39,7 +39,7 @@ class MusicAppShellView(
     private class Screen(val view: View, val attached: Runnable?)
 
     private var screen by mutableStateOf(Screen(library, null))
-    private var libraryScanActive by mutableStateOf(false)
+    private var scanIndicatorVisible by mutableStateOf(false)
 
     init {
         setBackgroundColor(Color.BLACK)
@@ -53,7 +53,7 @@ class MusicAppShellView(
     }
 
     fun setLibraryScanActive(active: Boolean) {
-        libraryScanActive = active
+        scanIndicatorVisible = active
     }
 
     fun showNowPlaying(player: View, afterAttached: Runnable) {
@@ -67,7 +67,7 @@ class MusicAppShellView(
     @Composable
     override fun Content() {
         val current = screen
-        val scanning = libraryScanActive
+        val scanning = scanIndicatorVisible
         val enqueued = remember(current) { booleanArrayOf(false) }
         Column(modifier = Modifier.fillMaxSize()) {
             AndroidView(
