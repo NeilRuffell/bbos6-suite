@@ -69,6 +69,7 @@ class FilesActivity : ComponentActivity() {
                 resumeCounter = resumeCounter,
                 requestPermission = ::openAllFilesSettings,
                 openOrShare = ::openOrShareFile,
+                openIndexed = ::openOrShareIndexed,
                 promptName = ::promptForName
             )
         }
@@ -120,16 +121,30 @@ class FilesActivity : ComponentActivity() {
             ?: "application/octet-stream"
         return try {
             val uri = FileProvider.getUriForFile(this, "$packageName.files", file)
+            launchFileIntent(uri, file.name, mime, share)
+        } catch (_: SecurityException) {
+            "Android prevented access to this file."
+        } catch (_: IllegalArgumentException) {
+            "This file cannot be shared using Android's file provider."
+        }
+    }
+
+    /** Indexed MediaStore files already have Android-managed content URIs. */
+    private fun openOrShareIndexed(entry: MediaCategoryBrowser.Entry, share: Boolean): String? {
+        if (!Environment.isExternalStorageManager()) return "Storage access was revoked."
+        return launchFileIntent(entry.uri, entry.name, entry.mime, share)
+    }
+
+    private fun launchFileIntent(uri: Uri, name: String, mime: String, share: Boolean): String? =
+        try {
             val intent = if (share) {
                 Intent(Intent.ACTION_SEND).apply {
                     type = mime
                     putExtra(Intent.EXTRA_STREAM, uri)
                 }
-            } else {
-                Intent(Intent.ACTION_VIEW).apply { setDataAndType(uri, mime) }
-            }
+            } else Intent(Intent.ACTION_VIEW).apply { setDataAndType(uri, mime) }
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            intent.clipData = ClipData.newUri(contentResolver, file.name, uri)
+            intent.clipData = ClipData.newUri(contentResolver, name, uri)
             if (share) startActivity(Intent.createChooser(intent, "Share file"))
             else startActivity(intent)
             null
@@ -138,9 +153,8 @@ class FilesActivity : ComponentActivity() {
         } catch (_: SecurityException) {
             "Android prevented access to this file."
         } catch (_: IllegalArgumentException) {
-            "This file cannot be shared using Android's file provider."
+            "Android could not open this file URI."
         }
-    }
 
     /** Shared Q25-tested native text-field popup; storage actions remain in Files. */
     private fun promptForName(
@@ -168,6 +182,7 @@ private fun FilesPage(
     resumeCounter: Int,
     requestPermission: () -> Boolean,
     openOrShare: (File, File, Boolean) -> String?,
+    openIndexed: (MediaCategoryBrowser.Entry, Boolean) -> String?,
     promptName: (String, String, (String) -> Unit) -> Unit
 ) {
     val scope = rememberCoroutineScope()
