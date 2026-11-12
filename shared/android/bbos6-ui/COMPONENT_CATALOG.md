@@ -304,8 +304,8 @@ no new historical identification is inferred.
 The Files app uses original numbered icons **only on its home shortcuts**:
 Images `2219.png` via `bbos6_files_home_images`, Videos `2216.png` via
 `bbos6_files_home_videos`, Favourites `950.png` via
-`bbos6_files_home_favourites`, and Audio `348.png` via its existing
-`bbos6_menu_genres` mapping. The shared resource entries are symlinks to
+`bbos6_files_home_favourites`, and Audio `1579.png` via
+`bbos6_files_home_audio`. The shared resource entries are symlinks to
 `shared/icons/`, with one canonical `shared/icon-index.csv`. This does
 not change existing media list artwork or the Files folder icon `112.png`.
 

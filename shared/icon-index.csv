@@ -7,7 +7,7 @@ filename,name,keywords,android_resource
 339.png,Shuffle Songs,music shuffle random playback,bbos6_menu_shuffle_songs
 341.png,Now Playing,music current track playback paused resume screen shortcut,bbos6_menu_now_playing
 345.png,Artists,music artists performers,bbos6_menu_artists
-348.png,Genres,music genres categories files app audio home shortcut,bbos6_menu_genres
+348.png,Genres,music genres categories,bbos6_menu_genres
 350.png,All Songs,music songs tracks library launcher app icon,bbos6_menu_all_songs
 351.png,Albums,music albums collection,bbos6_menu_albums
 354.png,Empty Playlists Artwork,music playlists empty state no playlists compact disc,bbos6_playlist_empty
@@ -22,6 +22,7 @@ filename,name,keywords,android_resource
 950.png,Favourites Shortcut,files app home favourites shortcut user assigned,bbos6_files_home_favourites
 1050.png,Music Folder Icon,music folder directory original icon user identified,
 1338.png,Favourited Folder,files app favourite folder bookmarked pinned folder icon user identified,bbos6_favourited_folder
+1579.png,Audio Shortcut,files app home audio shortcut user assigned,bbos6_files_home_audio
 2216.png,Videos Shortcut,files app home videos shortcut user assigned,bbos6_files_home_videos
 2219.png,Images Shortcut,files app home images shortcut user assigned,bbos6_files_home_images
 2486.png,Bottom Panel Gradient Reference,blackberry os 6 dark bottom panel seekbar background top dark border lower bevel silver white bottom separator,
