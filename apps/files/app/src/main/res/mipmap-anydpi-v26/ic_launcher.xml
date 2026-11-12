@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Android sizes the unmodified, user-selected original BBOS6 211.png,
+         following the same launcher approach as Music. -->
+    <background android:drawable="@android:color/transparent" />
+    <foreground android:drawable="@drawable/bbos6_files_app_icon" />
+</adaptive-icon>

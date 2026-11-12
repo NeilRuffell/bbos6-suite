@@ -6,6 +6,10 @@ This application lives in `apps/files/` of the `bbos6-suite` monorepo.
 ## Implemented
 
 - Real Internal Storage and mounted SD Card folder browsing with folders-first sorting.
+- Android launcher icon uses original `shared/icons/211.png`, mapped to
+  `bbos6_files_app_icon` in the canonical shared icon index. The original
+  bytes remain untouched; the shared drawable is a symlink to that source.
+  A Files-owned adaptive launcher XML uses that shared drawable as foreground.
 - Home navigation: Internal Storage, SD Card (when mounted), Recent Files,
   **Favourites**, Images, Downloads, Audio, Documents and Videos.
 - **Favourites** is one openable home row, with a dedicated list of pinned

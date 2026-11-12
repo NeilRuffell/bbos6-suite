@@ -6,6 +6,9 @@ monorepo. Consult `../../AGENTS.md`, `../../shared/AGENTS.md`,
 `README.md` before changing shared UI or file operations.
 
 - Kotlin + Jetpack Compose; application ID: `dev.q25.bbfiles`.
+- Launcher icon: user-selected original `shared/icons/211.png`, canonical
+  index mapping `bbos6_files_app_icon`, exposed through shared UI resources.
+  Files references it in its adaptive launcher XML; do not duplicate PNG data.
 - `assets/bbos6` is a **monorepo symlink** to one canonical `shared/`, not
   a Git submodule. All reusable BBOS6 components, icon index and assets
   must be modified there; never maintain app-specific copies.
