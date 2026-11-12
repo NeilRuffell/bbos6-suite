@@ -56,6 +56,11 @@ monorepo. Consult `../../AGENTS.md`, `../../shared/AGENTS.md`,
   Only Downloads remains a native public-directory shortcut through
   `FileBrowser`. Preserve Back-to-home navigation and the current 52dp
   rows / 36dp icon slot / 4dp text inset.
+- Files has a Settings home shortcut as the final list row. This opens an
+  app-specific Settings scaffold using the existing shared section header
+  and empty-state presentation, without prompting for all-files permission.
+  Back returns to home; no settings options or saved preferences exist yet.
+  Keep future Files settings business logic in this app, not shared UI.
 - Keep shared list controller and context menu app-neutral.
 - Delete always prompts with Cancel selected and has no undo.
 - Keep trackpad, physical keyboard, DPAD, Menu and touch parity.
