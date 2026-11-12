@@ -64,7 +64,8 @@ fun Modifier.bbos6MediaListSelectionFace(highlighted: Boolean): Modifier =
  * The host owns recycling, current selection, artwork requests and caches,
  * data, focus, row activation, and long-press detection. This composable
  * supplies only the visible row and optional right-side touch action.
- * Use a smaller rowHeightDp for single-line, artwork-free list choices.
+ * Use a smaller rowHeightDp and artworkSlotSizeDp for compact icon lists;
+ * default dimensions remain unchanged for existing Music consumers.
  *
  * Passing null for subtitle/duration/trackNumber preserves their absent
  * state; menu artwork gets 8dp padding to make a 52dp visible artwork box.
@@ -83,9 +84,13 @@ fun Bbos6MediaListRow(
     showRemoveAction: Boolean,
     onRemove: (() -> Unit)?,
     modifier: Modifier = Modifier,
-    rowHeightDp: Int = 68
+    rowHeightDp: Int = 68,
+    artworkSlotSizeDp: Int = 68,
+    textHorizontalPaddingDp: Int = 16
 ) {
     require(rowHeightDp > 0) { "rowHeightDp must be positive" }
+    require(artworkSlotSizeDp > 0) { "artworkSlotSizeDp must be positive" }
+    require(textHorizontalPaddingDp >= 0) { "textHorizontalPaddingDp must not be negative" }
     Row(
         modifier = modifier.fillMaxWidth().height(rowHeightDp.dp)
             .bbos6MediaListSelectionFace(highlighted),
@@ -102,12 +107,12 @@ fun Bbos6MediaListRow(
             }
         }
         if (showArtwork) {
-            Box(Modifier.size(68.dp), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(artworkSlotSizeDp.dp), contentAlignment = Alignment.Center) {
                 if (artwork != null) {
                     Image(
                         painter = artwork,
                         contentDescription = artworkContentDescription,
-                        modifier = Modifier.size(68.dp)
+                        modifier = Modifier.size(artworkSlotSizeDp.dp)
                             .then(if (menuArtwork) Modifier.padding(8.dp) else Modifier),
                         contentScale = if (menuArtwork) ContentScale.Fit else ContentScale.Crop
                     )
@@ -124,7 +129,7 @@ fun Bbos6MediaListRow(
             ) {
                 BasicText(
                     text = title,
-                    modifier = Modifier.weight(1f).padding(horizontal = 16.dp),
+                    modifier = Modifier.weight(1f).padding(horizontal = textHorizontalPaddingDp.dp),
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                     style = TextStyle(color = Color.White, fontSize = 15.sp,
                         platformStyle = PlatformTextStyle(includeFontPadding = true))
@@ -142,7 +147,7 @@ fun Bbos6MediaListRow(
             if (subtitle != null) {
                 BasicText(
                     text = subtitle,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = textHorizontalPaddingDp.dp),
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                     style = TextStyle(
                         color = if (highlighted) Color(0xFFEDF4FF)
