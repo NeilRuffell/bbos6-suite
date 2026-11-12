@@ -61,6 +61,17 @@ public final class MusicActivityModelsTest {
         assertFalse(page.showsEmptyState());
     }
 
+    @Test public void zeroContentEmptyStateDoesNotConfuseLoadingWithEmptiness() {
+        Page empty = new Page("Artists", new ArrayList<>());
+        empty.setEmptyState("No Artists.", "No artists found", 0, 42);
+        assertTrue(empty.showsEmptyState());
+        empty.rows.add(MenuRow.message("Loading library..."));
+        assertFalse(empty.showsEmptyState());
+        empty.rows.clear();
+        assertTrue(empty.showsEmptyState());
+        assertEquals(42, empty.emptyArtworkRes);
+    }
+
     @Test public void folderAndPlaylistActionRowsPreserveIdentifiers() {
         MenuRow action = MenuRow.playlistAction("Add songs", "add", 49L);
         assertEquals(MusicActivityModels.ROW_PLAYLIST_ACTION, action.kind);

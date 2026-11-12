@@ -29,8 +29,11 @@ public final class MusicLibraryPageRowsTest {
     @Test public void emptyLibraryLeavesRowsEmptyForSharedIllustratedState() {
         List<MenuRow> rows = MusicLibraryPageRows.songRows(Collections.emptyList());
         assertTrue(rows.isEmpty());
-        List<MenuRow> groups = MusicLibraryPageRows.groupedRows(Collections.emptyList(), 2);
-        assertTrue(groups.isEmpty());
+        for (int category = 1; category <= 3; category++) {
+            List<MenuRow> groups = MusicLibraryPageRows.groupedRows(
+                    Collections.emptyList(), category);
+            assertTrue(groups.isEmpty());
+        }
     }
 
     @Test public void clearingSearchReturnsExistingPageRowsByIdentity() {

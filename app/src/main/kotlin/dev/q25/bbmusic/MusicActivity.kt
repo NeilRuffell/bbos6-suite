@@ -1688,7 +1688,12 @@ class MusicActivity : ComponentActivity() {
         val message = if (noFolders) {
             "Add music folders in Settings to browse your music."
         } else {
-            "No ${MENU[category].lowercase(Locale.ROOT)} found in selected music folders."
+            when (category) {
+                0 -> "No songs found in selected music folders."
+                1 -> "No artists found in selected music folders."
+                2 -> "No albums found in selected music folders."
+                else -> "No genres found in selected music folders."
+            }
         }
         return Page(MENU[category], rows.toMutableList()).apply {
             setEmptyState(
