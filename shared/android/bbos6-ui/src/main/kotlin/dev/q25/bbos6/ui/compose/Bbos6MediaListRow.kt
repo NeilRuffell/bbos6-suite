@@ -51,9 +51,19 @@ private val removeFace = Brush.verticalGradient(
 )
 
 /** Unselected row colors. Highlighted rows always retain the canonical blue face. */
-enum class Bbos6MediaListRowColorScheme { DARK, LIGHT }
+enum class Bbos6MediaListRowColorScheme { DARK, LIGHT, SYSTEM }
 
 internal object Bbos6MediaListRowPalette {
+    fun resolve(
+        scheme: Bbos6MediaListRowColorScheme,
+        systemDark: Boolean
+    ): Bbos6MediaListRowColorScheme = when (scheme) {
+        Bbos6MediaListRowColorScheme.SYSTEM ->
+            if (systemDark) Bbos6MediaListRowColorScheme.DARK
+            else Bbos6MediaListRowColorScheme.LIGHT
+        else -> scheme
+    }
+
     fun background(scheme: Bbos6MediaListRowColorScheme): Color =
         if (scheme == Bbos6MediaListRowColorScheme.LIGHT) Color.White else Color.Black
 
@@ -100,7 +110,8 @@ fun Modifier.bbos6MediaListSelectionFace(
  * state; menu artwork defaults to 8dp inset, adjustable independently of
  * the slot width for compact icon-based lists.
  * colorScheme affects only unselected row background/text; highlighted
- * rows keep the existing blue gradient and light text.
+ * rows keep the existing blue gradient and light text. SYSTEM follows
+ * Android's current light/dark theme, while DARK remains the default.
  */
 @Composable
 fun Bbos6MediaListRow(
@@ -126,10 +137,13 @@ fun Bbos6MediaListRow(
     require(artworkSlotSizeDp > 0) { "artworkSlotSizeDp must be positive" }
     require(textHorizontalPaddingDp >= 0) { "textHorizontalPaddingDp must not be negative" }
     require(artworkPaddingDp >= 0) { "artworkPaddingDp must not be negative" }
+    val resolvedColorScheme = Bbos6MediaListRowPalette.resolve(
+        colorScheme, isSystemInDarkTheme()
+    )
     Row(
         modifier = modifier.fillMaxWidth().height(rowHeightDp.dp)
             .bbos6MediaListSelectionFace(
-                highlighted, Bbos6MediaListRowPalette.background(colorScheme)
+                highlighted, Bbos6MediaListRowPalette.background(resolvedColorScheme)
             ),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -138,7 +152,7 @@ fun Bbos6MediaListRow(
                 BasicText(
                     text = trackNumber,
                     style = TextStyle(
-                        color = Bbos6MediaListRowPalette.trackNumberText(colorScheme, highlighted),
+                        color = Bbos6MediaListRowPalette.trackNumberText(resolvedColorScheme, highlighted),
                         fontSize = 15.sp,
                         platformStyle = PlatformTextStyle(includeFontPadding = true))
                 )
@@ -170,7 +184,7 @@ fun Bbos6MediaListRow(
                     modifier = Modifier.weight(1f).padding(horizontal = textHorizontalPaddingDp.dp),
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                     style = TextStyle(
-                        color = Bbos6MediaListRowPalette.primaryText(colorScheme, highlighted),
+                        color = Bbos6MediaListRowPalette.primaryText(resolvedColorScheme, highlighted),
                         fontSize = 15.sp,
                         platformStyle = PlatformTextStyle(includeFontPadding = true))
                 )
@@ -180,7 +194,7 @@ fun Bbos6MediaListRow(
                         modifier = Modifier.padding(end = 16.dp),
                         maxLines = 1,
                         style = TextStyle(
-                            color = Bbos6MediaListRowPalette.primaryText(colorScheme, highlighted),
+                            color = Bbos6MediaListRowPalette.primaryText(resolvedColorScheme, highlighted),
                             fontSize = 15.sp,
                             platformStyle = PlatformTextStyle(includeFontPadding = true))
                     )
@@ -192,7 +206,7 @@ fun Bbos6MediaListRow(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = textHorizontalPaddingDp.dp),
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                     style = TextStyle(
-                        color = Bbos6MediaListRowPalette.secondaryText(colorScheme, highlighted),
+                        color = Bbos6MediaListRowPalette.secondaryText(resolvedColorScheme, highlighted),
                         fontSize = 12.sp,
                         platformStyle = PlatformTextStyle(includeFontPadding = true)
                     )
