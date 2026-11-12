@@ -340,3 +340,14 @@ symlink to that original. Files uses it for bookmarked directory entries both
 inside the Favourites list and in regular directory browsing when pinned;
 ordinary folders continue to use `112.png`. This is app-owned icon selection,
 not a change to shared list-row behaviour.
+
+### Media list row light/dark color schemes
+
+`Bbos6MediaListRow(..., colorScheme = Bbos6MediaListRowColorScheme.DARK)` keeps
+the existing black background, white primary text and legacy secondary-text
+colors by default. Callers may opt in to `Bbos6MediaListRowColorScheme.LIGHT`
+for white unselected rows, black primary/track-number text and dark-grey
+secondary text. Both modes retain the existing blue highlighted gradient with
+light foreground text, artwork sizing, Remove action, focus and input behavior.
+This option belongs to the row renderer only: `Bbos6PageList`, Music and Files
+do not change their defaults or pass the option until explicitly requested.
