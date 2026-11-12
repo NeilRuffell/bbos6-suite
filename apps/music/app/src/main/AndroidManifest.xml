@@ -1,0 +1,45 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Media3's background audio session; no general storage permission. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- Special user-approved capability, requested only for Set as ringtone. -->
+    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
+    <!-- Music reads only selected SAF trees; confirmed deletes use their
+         separately granted narrow SAF write permission. -->
+    <!-- Narrow package visibility; no QUERY_ALL_PACKAGES or privileged access. -->
+    <queries>
+        <package android:name="app.symfonik.music.player" />
+    </queries>
+    <application
+        android:icon="@mipmap/ic_launcher"
+        android:label="Music"
+        android:allowBackup="false"
+        android:enableOnBackInvokedCallback="true"
+        android:theme="@android:style/Theme.Material.NoActionBar">
+        <service
+            android:name=".MusicPlaybackService"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaLibraryService" />
+                <action android:name="android.media.browse.MediaBrowserService" />
+            </intent-filter>
+        </service>
+        <!-- Native Bluetooth/media-button and Android playback resumption. -->
+        <receiver
+            android:name="androidx.media3.session.MediaButtonReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_BUTTON" />
+            </intent-filter>
+        </receiver>
+        <activity
+            android:name=".MusicActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
