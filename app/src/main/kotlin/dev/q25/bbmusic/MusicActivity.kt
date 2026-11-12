@@ -370,7 +370,7 @@ class MusicActivity : ComponentActivity() {
                         "share", "Share", android.R.drawable.ic_menu_share
                     ),
                     Bbos6ContextMenuItem.resource(
-                        "set-ringtone", "Set as ringtone", android.R.drawable.ic_menu_set_as
+                        "set-ringtone", "Set as Ringtone", android.R.drawable.ic_menu_set_as
                     )
                 )
                 menu.addGroup(
@@ -1454,6 +1454,7 @@ class MusicActivity : ComponentActivity() {
     }
 
     private fun assignSongRingtone(song: LocalMusicSource.Song) {
+        Toast.makeText(this, "Setting ringtone...", Toast.LENGTH_SHORT).show()
         trackActions.setAsRingtone(song) { error ->
             if (isFinishing || isDestroyed) return@setAsRingtone
             Toast.makeText(
