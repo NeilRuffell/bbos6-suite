@@ -1,0 +1,151 @@
+# BB UI
+
+> **Separate application:** [BB Music](https://github.com/NeilRuffell/bb-music)
+> now has its own GitHub repository, independent Gradle project, documentation,
+> releases and APK (`dev.q25.bbmusic`). It does not depend on this
+> Vector/LSPosed module, root or SystemUI.
+>
+> **Canonical shared assets and reusable widgets:**
+> [bbos6-shared](https://github.com/NeilRuffell/bbos6-shared) is included at
+> `assets/bbos6/` as a pinned Git submodule. Its original PNGs, icon index,
+> Android popup helpers and AI rules have one authoritative source.
+
+BlackBerry OS 6/7-inspired interface and hardware-keyboard navigation for
+Android on the Zinwa Q25. The current test build is a single **Vector/LSPosed
+APK** that integrates with LineageOS SystemUI. The long-term target is a
+native LineageOS SystemUI implementation.
+
+**Current APK version:** `0.9.124-recents-scrim-host-independent`
+(versionCode 154). The native shade integration and its slide animation
+remain **opt-in** while the remaining presentation work continues.
+
+This Recents branch **replaces the Quickstep Overview host's entire drawing
+pass** with one BBUI-owned 4x2 grid of application icons (8 per page). Horizontal
+touch swipes and Left/Right at grid edges change pages; Up/Down stays
+within the current page. A small current/total page counter is centered
+beneath the grid when multiple pages exist (e.g. 1/2 or 2/2).
+The Recents selection highlight uses the reusable
+`GridSelectionHighlight` helper: top `#088EEF`, bottom `#0851B5`,
+6dp rounded corners ([shared selection style](docs/GRID_SELECTION_HIGHLIGHT.md)). The complete
+two-row grid is centered vertically
+within the visible Recents viewport, with compact 82dp icon cells and
+6dp gaps; the icon image sizes are unchanged. The Recents painter uses
+black with 85% opacity (15% transparency; alpha 217/255),
+instead of the former opaque gray. No native
+TaskView drawing occurs: no card geometry, thumbnails, header chips or
+labels. Native TaskViews remain headless Quickstep task-data/action handles
+only. BBUI owns its grid's touch/keyboard interaction and selection.
+A recycled TaskView no longer causes stale icons: package-icon caching is
+keyed by the *current bound application and user*, not by TaskView identity.
+The selected application's name is shown once, centered above the icon grid,
+with a thin gray separator below it; per-icon labels are removed. Selection
+and launch diagnostics still log the native task identity for Q25 verification.
+The renderer suppresses Launcher3's native Overview depth blur and uses its
+existing native Overview `ScrimView` to tint the wallpaper black at 85%
+opacity (15% transparency). The icons-only Recents Canvas no longer paints
+any background. Normal Launcher3 states retain their original appearance.
+The renderer cancels the native pager's canvas scroll offset so icons stay
+in the visible viewport. The previous two-column Recents hook was
+**deleted**, not merely disabled. The
+replacement is opt-in for Q25 verification; see the
+[Recents replacement plan](docs/RECENTS_REPLACEMENT.md).
+
+### Canonical background-work indicator availability
+
+This branch advances the `assets/bbos6` submodule to the shared Kotlin/Compose `Bbos6BackgroundLoadingIndicator` commit, including its component catalogue and tests. The passive 14dp green beveled striped bar is available for future Android/LineageOS UI integrations; the current BB UI Gradle project does **not** include `:bbos6-ui`, so this gitlink update introduces **no new BB UI runtime control or display behavior**. Music integrates the shared renderer in its own repository; do not copy it into Vector/SystemUI.
+
+The BBOS6 shade now supports downward/upward slide animations and
+finger-following drag-to-open/close, while retaining keyboard/trackpad
+navigation and Android's existing shade window. See
+[shade slide](docs/NATIVE_SHADE_SLIDE.md) and
+[touch drag](docs/NATIVE_SHADE_TOUCH_DRAG.md) for behaviour, testing and
+independent rollback settings.
+
+## Start here
+
+- [Design philosophy and architecture](docs/DESIGN_PHILOSOPHY.md) —
+  what Android owns, what BB UI changes, and how we avoid redundant systems.
+- [Recents replacement plan](docs/RECENTS_REPLACEMENT.md) —
+  the clean native Quickstep baseline, exclusive BBOS6 icon-grid target,
+  Vector/ROM integration boundary, and first device test.
+- [Canonical BBOS6 icon reference](assets/bbos6/icon-index.csv) —
+  verified original numbered icon mappings, owned only by
+  [bbos6-shared](https://github.com/NeilRuffell/bbos6-shared).
+  **Update the shared repository's index first** for every new verified
+  asset identification or resource mapping, then advance this repository's
+  submodule SHA. Read [AGENTS.md](AGENTS.md) and the
+  [shared agent rules](assets/bbos6/AGENTS.md).
+- [Native shade migration](docs/NATIVE_SHADE_MIGRATION.md) —
+  implementation, Q25 evidence, limitations and ROM migration steps.
+- [Shade and trackpad navigation](SHADE_NAVIGATION.md).
+- [Native Quick Settings](docs/NATIVE_QS_UI.md).
+- [Shared shade navigation header](docs/SHADE_HEADER_NAVIGATION.md) — BB-key selector before shade opening and two labeled focus segments.
+- [Notification shade organization (App / Hub)](docs/NOTIFICATION_HUB_MODE.md) —
+  configurable grouping, persistent categories, and hardware test procedure.
+- [Notification count display](docs/NOTIFICATION_SHADE_COUNTS.md).
+- [Native status-bar Hub categories](docs/NATIVE_STATUS_HUB_ICONS.md) —
+  grouped status indicators, integration boundaries, hardware checks and rollback.
+- [Native Back integration](docs/NATIVE_SHADE_BACK_ROUTING.md).
+- [BB6 lock-screen touchscreen investigation](docs/LOCKSCREEN_TOUCH_ROUTING.md) —
+  what changed, what is still unverified, and the tested recovery procedure.
+- [Historical development notes](docs/HISTORICAL_DEVELOPMENT_NOTES.md) —
+  earlier features, commands and branch histories; **not current setup instructions**.
+
+## Architecture in brief
+
+BB UI changes **presentation and physical-key navigation**, not Android's
+notification delivery, QS tile services, credentials or system status.
+
+With native shade mode enabled, `UnifiedShadeHost` is mounted **inside
+SystemUI's existing `NotificationShadeWindowView`**. It is not a second
+full-screen notification window. The real Android status bar continues to own
+clock, notification icons, signal, battery and privacy indicators.
+
+BB UI still uses its own notification and QS **view renderers** as an
+intermediate migration stage. Stock native rows remain attached behind BB
+presentation; they are not a second notification or connectivity *backend*.
+The next stage is to replace these interim renderers with native SystemUI
+views while keeping the BB layout and trackpad behaviour. See the design
+document for the precise boundary.
+
+## Build and test
+
+Requirements: Android SDK 35, JDK 17, globally installed Gradle, ADB and the
+Q25's BB UI module enabled in Vector with SystemUI scope.
+
+```sh
+git clone --recurse-submodules https://github.com/NeilRuffell/bb-ui.git
+cd bb-ui
+gradle :app:assembleDebug :app:testDebugUnitTest
+adb -s 202512003630 install -r app/build/outputs/apk/debug/app-debug.apk
+adb -s 202512003630 shell setprop debug.bb7pulldown.enabled true
+adb -s 202512003630 shell setprop debug.bb7pulldown.native_shade.enabled true
+adb -s 202512003630 shell am crash com.android.systemui
+```
+
+The device serial above belongs to the original Q25 development setup;
+substitute the serial shown by `adb devices` on other devices.
+
+**Owner setup:** The `bbos6-shared` submodule is intentionally private.
+Use the owner's authenticated GitHub account for
+`git submodule update --init --recursive`. No public distribution of
+the shared library is required for current development.
+
+To return to the earlier standalone BB shade (without changing unrelated
+features):
+
+```sh
+adb -s 202512003630 shell setprop debug.bb7pulldown.native_shade.enabled false
+adb -s 202512003630 shell am crash com.android.systemui
+```
+
+This project is **not yet a flashable SystemUI/ROM replacement**. The APK
+requires the supported Android/LineageOS runtime and Vector scope.
+
+## Contributing or porting to a ROM
+
+Start with [the architecture contract](docs/DESIGN_PHILOSOPHY.md). Reuse
+Android's existing notification, QS, media, status and keyguard machinery.
+Do not add competing background services, duplicate status indicators or a
+second shade window to achieve a visual change. Device-tested integration
+and a rollback path are required when working through ROM-specific APIs.

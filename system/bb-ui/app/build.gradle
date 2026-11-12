@@ -1,0 +1,28 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'dev.q25.trackpad'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'dev.q25.trackpad'
+        minSdk 33
+        targetSdk 28
+        versionCode 154
+        versionName '0.9.124-recents-scrim-host-independent'
+    }
+    // Compile legacy feature sources into this one APK. These directories
+    // are source roots only; their former application modules are not built.
+    sourceSets {
+        main.java.srcDirs += [
+            '../bb7focus/src/main/java',
+            '../bb7pulldown/src/main/java'
+        ]
+        test.java.srcDirs += ['../bb7pulldown/src/test/java']
+    }
+}
+
+dependencies {
+    implementation 'androidx.media:media:1.7.1'
+    compileOnly 'de.robv.android.xposed:api:82'
+    testImplementation 'junit:junit:4.13.2'
+}
