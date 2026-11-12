@@ -38,6 +38,17 @@ internal object MusicLibraryGroupPolicy {
         else -> song.genre.lowercase(Locale.ROOT)
     }
 
+    /** One album/artist/genre song-order policy for detail pages and context playback. */
+    @JvmStatic
+    fun orderedGroupSongs(row: MusicActivityModels.MenuRow): List<LocalMusicSource.Song> {
+        if (row.kind != MusicActivityModels.ROW_GROUP) return emptyList()
+        val ordered = ArrayList(row.songs ?: emptyList())
+        if (row.groupCategory == 2) {
+            ordered.sortWith(compareBy { it.trackNumber })
+        }
+        return ordered
+    }
+
     @JvmStatic
     fun artworkAlbumKey(song: LocalMusicSource.Song): String =
         if (!MusicAlbumTag.present(song.album)) "untagged:" + song.uri

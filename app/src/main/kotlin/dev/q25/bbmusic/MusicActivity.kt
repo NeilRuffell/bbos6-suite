@@ -9,6 +9,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.DocumentsContract
 import android.provider.OpenableColumns
+import android.provider.Settings
 import android.text.Editable
 import android.text.InputType
 import android.text.TextWatcher
@@ -113,6 +114,8 @@ class MusicActivity : ComponentActivity() {
     private lateinit var folderBrowser: MusicFolderBrowser
     private lateinit var trackPropertiesReader: MusicTrackPropertiesReader
     private lateinit var trackDeletion: MusicTrackDeletion
+    private lateinit var trackActions: MusicTrackActions
+    private var pendingRingtonePermissionSong: LocalMusicSource.Song? = null
     private var pendingDelete: DeleteRequest? = null
     private var deletingTracks = false
     private var deleteConfirmationSerial = 0
@@ -148,6 +151,7 @@ class MusicActivity : ComponentActivity() {
         folderBrowser = MusicFolderBrowser(this)
         trackPropertiesReader = MusicTrackPropertiesReader(this)
         trackDeletion = MusicTrackDeletion(this)
+        trackActions = MusicTrackActions(this)
         playlists = MusicPlaylists(this)
         playlistTransfer = MusicPlaylistTransfer(this)
         refreshPlaylistCount()
@@ -363,12 +367,30 @@ class MusicActivity : ComponentActivity() {
                 }
                 menu.addGroup(
                     Bbos6ContextMenuItem.resource(
+                        "share", "Share", android.R.drawable.ic_menu_share
+                    ),
+                    Bbos6ContextMenuItem.resource(
+                        "set-ringtone", "Set as Ringtone", android.R.drawable.ic_menu_set_as
+                    )
+                )
+                menu.addGroup(
+                    Bbos6ContextMenuItem.resource(
                         "delete", "Delete audio file", android.R.drawable.ic_menu_delete
                     )
                 )
                 menu.initiallySelected("properties")
             }
             else -> {
+                if (row.kind == ROW_GROUP && row.groupCategory in 1..2) {
+                    menu.addGroup(
+                        Bbos6ContextMenuItem.resource(
+                            "play-group", "Play", R.drawable.bbos6_menu_play_all
+                        ),
+                        Bbos6ContextMenuItem.resource(
+                            "shuffle-group", "Shuffle", R.drawable.bbos6_menu_shuffle_songs
+                        )
+                    )
+                }
                 menu.addGroup(
                     Bbos6ContextMenuItem.resource(
                         "add-to-playlist", "Add to playlist", android.R.drawable.ic_menu_add
@@ -377,7 +399,10 @@ class MusicActivity : ComponentActivity() {
                         "delete", "Delete audio files", android.R.drawable.ic_menu_delete
                     )
                 )
-                menu.initiallySelected("add-to-playlist")
+                menu.initiallySelected(
+                    if (row.kind == ROW_GROUP && row.groupCategory in 1..2)
+                        "play-group" else "add-to-playlist"
+                )
             }
         }
         contextMenuDialog = menu.onAction { item ->
@@ -385,6 +410,16 @@ class MusicActivity : ComponentActivity() {
                 currentPage !== page || !visibleRows.contains(row)) return@onAction
             when (item.id()) {
                 "properties" -> if (row.kind == ROW_SONG) showTrackProperties(row)
+                "play-group" -> playGroup(row, false)
+                "shuffle-group" -> playGroup(row, true)
+                "share" -> if (row.kind == ROW_SONG && row.song != null) {
+                    trackActions.share(this, row.song)?.let { message ->
+                        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                    }
+                }
+                "set-ringtone" -> if (row.kind == ROW_SONG && row.song != null) {
+                    requestSongRingtone(row.song)
+                }
                 "add-to-playlist" ->
                     choosePlaylist(if (row.kind == ROW_SONG) listOf(row.song!!) else row.songs!!)
                 "move-up" -> movePlaylistEntry(row, -1)
@@ -1387,6 +1422,59 @@ class MusicActivity : ComponentActivity() {
         }
     }
 
+    private fun playGroup(row: MenuRow, shuffle: Boolean) {
+        if (row.kind != ROW_GROUP || row.groupCategory !in 1..2) return
+        val queue = MusicLibraryGroupPolicy.orderedGroupSongs(row)
+        if (queue.isEmpty()) {
+            Toast.makeText(this, "No songs in this group", Toast.LENGTH_SHORT).show()
+            return
+        }
+        openNowPlaying()
+        playback.playSongs(
+            queue, if (shuffle) Random().nextInt(queue.size) else 0, shuffle
+        )
+    }
+
+    private fun requestSongRingtone(song: LocalMusicSource.Song) {
+        if (Settings.System.canWrite(this)) {
+            assignSongRingtone(song)
+            return
+        }
+        pendingRingtonePermissionSong = song
+        val settings = Intent(
+            Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:$packageName")
+        )
+        try {
+            startActivity(settings)
+        } catch (error: RuntimeException) {
+            pendingRingtonePermissionSong = null
+            Log.w(TAG, "Cannot request ringtone settings access", error)
+            Toast.makeText(this, "Modify system settings screen unavailable", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun assignSongRingtone(song: LocalMusicSource.Song) {
+        Toast.makeText(this, "Setting ringtone...", Toast.LENGTH_SHORT).show()
+        trackActions.setAsRingtone(song) { error ->
+            if (isFinishing || isDestroyed) return@setAsRingtone
+            Toast.makeText(
+                this, error ?: "Default ringtone updated",
+                if (error == null) Toast.LENGTH_SHORT else Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        val pending = pendingRingtonePermissionSong ?: return
+        pendingRingtonePermissionSong = null
+        if (Settings.System.canWrite(this)) {
+            assignSongRingtone(pending)
+        } else {
+            Toast.makeText(this, "Modify system settings permission not granted", Toast.LENGTH_LONG).show()
+        }
+    }
+
     private fun shuffleAllSongs() {
         if (MusicFolders.selectedTrees(this).isEmpty()) {
             Toast.makeText(this, "Add a music folder in Settings first", Toast.LENGTH_LONG).show()
@@ -1709,10 +1797,7 @@ class MusicActivity : ComponentActivity() {
     }
 
     private fun pageForGroup(group: MenuRow): Page {
-        val songs = ArrayList(group.songs!!)
-        if (group.groupCategory == 2) {
-            songs.sortWith(compareBy { it.trackNumber })
-        }
+        val songs = MusicLibraryGroupPolicy.orderedGroupSongs(group)
         return Page(
             group.title, songRows(songs).toMutableList(),
             if (group.groupCategory == 2) group else null
@@ -1984,6 +2069,7 @@ class MusicActivity : ComponentActivity() {
         folderBrowser.close()
         trackPropertiesReader.close()
         trackDeletion.close()
+        trackActions.close()
         playlists.close()
         playlistTransfer.close()
         super.onDestroy()
