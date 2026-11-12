@@ -10,6 +10,10 @@ This application lives in `apps/files/` of the `bbos6-suite` monorepo.
   `bbos6_files_app_icon` in the canonical shared icon index. The original
   bytes remain untouched; the shared drawable is a symlink to that source.
   A Files-owned adaptive launcher XML uses that shared drawable as foreground.
+- The Files root content applies Android Compose `statusBarsPadding()`
+  before the shared 36dp header. This positions the Files/path heading below
+  status-bar clock and notification icons across all pages without a fixed
+  height, per-page offsets, or changes to the reusable header.
 - Home navigation: Internal Storage, SD Card (when mounted), Recent Files,
   **Favourites**, Images, Downloads, Audio, Documents and Videos.
 - Home-only shortcut artwork uses original assets: Recent Files **129.png**,

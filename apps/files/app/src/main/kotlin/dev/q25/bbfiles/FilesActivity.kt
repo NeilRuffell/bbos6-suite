@@ -16,6 +16,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -449,7 +450,10 @@ private fun FilesPage(
     }
 
     val visibleCategory = indexedCategory
-    Column(Modifier.fillMaxSize().background(Color.Black)) {
+    // The activity's root consumes the system status-bar inset so the
+    // shared header and every Files screen start below clock/notification icons.
+    // Keep system-bar policy at the window boundary, not in Bbos6SectionHeader.
+    Column(Modifier.fillMaxSize().background(Color.Black).statusBarsPadding()) {
         Bbos6SectionHeader(
             title = when {
                 favoritesPage -> "Favourites"

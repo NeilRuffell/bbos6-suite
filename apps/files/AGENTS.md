@@ -17,7 +17,10 @@ monorepo. Consult `../../AGENTS.md`, `../../shared/AGENTS.md`,
   Files owns commands. New Folder and Paste live in the context menus, not
   artificial selectable directory rows.
 - Canonical shared context menu, popup, text input, header, row and loading
-  helpers are used directly.
+  helpers are used directly. The Files root Compose Column owns
+  `Modifier.statusBarsPadding()`, ensuring the shared header/path bar starts
+  below the native Android status bar across all Files pages. Do not add
+  status-bar-specific padding inside `Bbos6SectionHeader` or individual pages.
 - Android storage access is explicitly user granted; protected/private
   app storage remains restricted. All file operations validate canonical
   volume boundaries, refuse overwrite, and run off the UI thread.
