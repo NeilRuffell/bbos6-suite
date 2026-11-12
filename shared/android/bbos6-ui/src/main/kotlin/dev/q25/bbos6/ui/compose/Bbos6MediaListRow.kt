@@ -180,8 +180,8 @@ fun Bbos6MediaListRow(
                         modifier = Modifier.padding(end = 16.dp),
                         maxLines = 1,
                         style = TextStyle(
-                        color = Bbos6MediaListRowPalette.primaryText(colorScheme, highlighted),
-                        fontSize = 15.sp,
+                            color = Bbos6MediaListRowPalette.primaryText(colorScheme, highlighted),
+                            fontSize = 15.sp,
                             platformStyle = PlatformTextStyle(includeFontPadding = true))
                     )
                 }
