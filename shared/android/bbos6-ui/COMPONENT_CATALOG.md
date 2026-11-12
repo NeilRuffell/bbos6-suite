@@ -347,7 +347,10 @@ not a change to shared list-row behaviour.
 the existing black background, white primary text and legacy secondary-text
 colors by default. Callers may opt in to `Bbos6MediaListRowColorScheme.LIGHT`
 for white unselected rows, black primary/track-number text and dark-grey
-secondary text. Both modes retain the existing blue highlighted gradient with
-light foreground text, artwork sizing, Remove action, focus and input behavior.
+secondary text, or `Bbos6MediaListRowColorScheme.SYSTEM` to follow Android's
+current system light/dark theme and recompose when the system theme changes.
+Explicit `DARK` and `LIGHT` settings never follow system theme changes.
+All three modes retain the existing blue highlighted gradient with light
+foreground text, artwork sizing, Remove action, focus and input behavior.
 This option belongs to the row renderer only: `Bbos6PageList`, Music and Files
 do not change their defaults or pass the option until explicitly requested.
