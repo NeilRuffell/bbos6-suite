@@ -12,7 +12,6 @@ import android.webkit.MimeTypeMap
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -27,7 +26,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.core.content.FileProvider
@@ -43,6 +41,8 @@ import dev.q25.bbos6.ui.compose.Bbos6PopupAction
 import dev.q25.bbos6.ui.compose.Bbos6PopupButtonDialog
 import dev.q25.bbos6.ui.compose.Bbos6SectionHeader
 import dev.q25.bbos6.ui.compose.Bbos6SectionHeaderStyle
+import dev.q25.bbos6.ui.compose.Bbos6ThemeSelector
+import dev.q25.bbos6.ui.compose.Bbos6ThemeSurface
 import java.io.File
 import java.io.IOException
 import java.util.Locale
@@ -218,6 +218,7 @@ private fun FilesPage(
             add(Bbos6ListSelectionItem("audio", "Audio"))
             add(Bbos6ListSelectionItem("documents", "Documents"))
             add(Bbos6ListSelectionItem("videos", "Videos"))
+            add(Bbos6ListSelectionItem("settings", "Settings"))
         }
     }
 
@@ -227,6 +228,7 @@ private fun FilesPage(
     var shortcutLabel by remember { mutableStateOf<String?>(null) }
     var returnToFavorites by remember { mutableStateOf(false) }
     var favoritesPage by remember { mutableStateOf(false) }
+    var settingsPage by remember { mutableStateOf(false) }
     var indexedCategory by remember { mutableStateOf<IndexedMediaCategory?>(null) }
     var mediaMenuEntry by remember { mutableStateOf<MediaCategoryBrowser.Entry?>(null) }
     var accessTarget by remember { mutableStateOf<String?>(null) }
@@ -275,6 +277,11 @@ private fun FilesPage(
     }
 
     fun openHomeItem(id: String) {
+        if (id == "settings") {
+            // Settings is an app page, not a storage destination.
+            settingsPage = true
+            return
+        }
         if (id == "favorites") {
             favoritesPage = true
             return
@@ -399,7 +406,7 @@ private fun FilesPage(
     }
 
     BackHandler(
-        enabled = (currentFolder != null || favoritesPage || indexedCategory != null) &&
+        enabled = (currentFolder != null || favoritesPage || settingsPage || indexedCategory != null) &&
             accessTarget == null && popup == null && menuEntry == null &&
             favoriteMenu == null && mediaMenuEntry == null &&
             !folderMenu && deleteTarget == null && !operationBusy
@@ -408,6 +415,7 @@ private fun FilesPage(
             currentFolder != null -> navigateUp()
             indexedCategory != null -> indexedCategory = null
             favoritesPage -> favoritesPage = false
+            settingsPage -> settingsPage = false
         }
     }
 
@@ -454,9 +462,11 @@ private fun FilesPage(
     // The activity's root consumes the system status-bar inset so the
     // shared header and every Files screen start below clock/notification icons.
     // Keep system-bar policy at the window boundary, not in Bbos6SectionHeader.
-    Column(Modifier.fillMaxSize().background(Color.Black).statusBarsPadding()) {
+    Bbos6ThemeSurface(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
+        Column(Modifier.fillMaxSize()) {
         Bbos6SectionHeader(
             title = when {
+                settingsPage -> "Settings"
                 favoritesPage -> "Favourites"
                 visibleCategory != null -> visibleCategory.title
                 root != null && folder != null -> FileBrowser.relativeTitle(
@@ -467,7 +477,11 @@ private fun FilesPage(
             style = Bbos6SectionHeaderStyle.FLAT_BLACK_COMPACT
         )
         Box(Modifier.weight(1f)) {
-            if (favoritesPage) {
+            if (settingsPage) {
+                key("settings") {
+                    Bbos6ThemeSelector(modifier = Modifier.fillMaxSize())
+                }
+            } else if (favoritesPage) {
                 if (favorites.isEmpty()) {
                     Bbos6EmptyState(
                         heading = "No Favourites",
@@ -643,6 +657,7 @@ private fun FilesPage(
             (visibleCategory != null && indexedListing == null && accessGranted)
         ) {
             Bbos6BackgroundLoadingIndicator(accessibilityLabel = "Loading files")
+        }
         }
     }
 

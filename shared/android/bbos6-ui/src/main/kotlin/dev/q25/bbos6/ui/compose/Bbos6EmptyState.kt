@@ -11,7 +11,6 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
@@ -34,6 +33,7 @@ fun Bbos6EmptyState(
 ) {
     val hasHeading = !heading.isNullOrBlank()
     val hasDescription = !description.isNullOrBlank()
+    val textColor = Bbos6ThemePalette.foreground(LocalBbos6ThemeIsDark.current ?: true)
     Column(
         modifier = modifier.padding(horizontal = 22.dp, vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -52,7 +52,7 @@ fun Bbos6EmptyState(
             BasicText(
                 text = heading!!,
                 style = TextStyle(
-                    color = Color.White,
+                    color = textColor,
                     fontSize = 22.sp,
                     textAlign = TextAlign.Center
                 )
@@ -63,7 +63,7 @@ fun Bbos6EmptyState(
             BasicText(
                 text = description!!,
                 style = TextStyle(
-                    color = Color.White,
+                    color = textColor,
                     fontSize = 16.sp,
                     textAlign = TextAlign.Center
                 )

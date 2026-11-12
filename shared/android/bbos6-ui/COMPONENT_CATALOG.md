@@ -29,7 +29,9 @@ not Java. Their public methods remain callable from Java for existing callers.
 | Indeterminate background work | `Bbos6BackgroundLoadingIndicator(modifier, accessibilityLabel)` | Work start/end, screen-bottom placement and whether to reserve layout height |
 | Empty content inside a native layout | `Bbos6EmptyStateComposeView` (*View host*) | Placement outside the selectable list and visibility |
 | Compact modal list selection | `Bbos6ListSelectionPanel` / `Bbos6ListSelectionComposeBridge` | Stable choice IDs/labels, selection action and dialog lifecycle |
-| Full-page navigable list | `Bbos6PageList(items, onActivate)` | Stable IDs, data, row selection actions and page navigation |\n| Media/list row face | `Bbos6MediaListRow(..., rowHeightDp = 68)` | List data, selection, scrolling, event routing and artwork loading |
+| Full-page navigable list | `Bbos6PageList(items, onActivate)` | Stable IDs, data, row selection actions and page navigation |
+| App-level appearance preference | `Bbos6ThemeManager.forApplication(context)`, `rememberBbos6ThemeManager()` | Choosing when opt-in components use it |
+| Three-choice appearance selector | `Bbos6ThemeSelector(manager?, showHeader?)` | Inserting the control into Settings; Settings page navigation |\n| Media/list row face | `Bbos6MediaListRow(..., rowHeightDp = 68)` | List data, selection, scrolling, event routing and artwork loading |
 | Native ListView + Compose row touch routing | `Bbos6MediaListRowTouchHost` (*View host*) | Adapter position, click/long click and scroll owner |
 | Media/detail header | `Bbos6MediaDetailHeader(...)` | Content, artwork loading and navigation |
 | Search panel face | `Bbos6SearchChrome()` | Input field, typing, filtering and results |
@@ -66,6 +68,55 @@ trackpad/DPAD Enter, Back/ESC, touch and bounded window geometry. Use
 the selected ID and its resulting operation. The full media row remains 68dp
 by default. This is a selection list, not the app-neutral full-page list
 controller still identified as missing below.
+
+## App-scoped appearance management
+
+`Bbos6ThemeManager` and `Bbos6ThemeSelector` are neutral shared helpers, not
+a global Android override. The manager persists one mode per application
+package using private Android SharedPreferences: `DARK` (default), `LIGHT`,
+or `SYSTEM`. It owns observable Compose snapshot state and can be obtained
+from any Compose host via `rememberBbos6ThemeManager()`, including Compose
+content mounted separately inside a native `View`. The instance is shared
+within the application process, so choosing a mode in one Compose host
+notifies other Compose consumers without manual parameter forwarding.
+
+The effective night-mode decision is
+`rememberBbos6ThemeManager().isDarkTheme()`. It resolves the stored choice
+against `isSystemInDarkTheme()` on each Compose configuration update.
+`SYSTEM` therefore tracks Android's appearance when a Compose host handles
+configuration changes normally. Native Android Views may subscribe with
+`addModeListener` / `removeModeListener` for preference changes; their host
+must also handle Android configuration changes for `SYSTEM`.
+
+The selector displays Dark, Light, and System as focusable rows using the
+existing `Bbos6PageList`, with the persisted choice marked "(selected)".
+It can be placed in a Settings pane without rewriting list/focus handling.
+For example:
+
+```kotlin
+Bbos6ThemeSelector(modifier = Modifier.fillMaxSize())
+```
+
+A consuming app opts in once by wrapping its screen in
+`Bbos6ThemeSurface(modifier = ...)`. This reads the saved app preference,
+resolves `SYSTEM` with Android night mode, supplies a Compose-local effective
+theme to descendants, and paints the outer surface black or white. The scope
+does not take focus, intercept input or add system-bar padding.
+
+The shared `Bbos6PageList` opts in to this scope: its canvas and its canonical
+`Bbos6MediaListRow` entries automatically use a matching background and text
+colors. `Bbos6EmptyState` also uses dark text on a light scoped surface. With
+no containing theme surface, these helpers retain their existing dark styling
+for Music and other consumers. Standalone media rows retain explicit
+`Bbos6MediaListRowColorScheme.DARK`, `LIGHT` and `SYSTEM` options; the
+page-list is the theme-aware full-list controller. Other helpers can opt into
+the scope in future without changing Files' Settings code.
+
+Files uses this scope at its root, preserving its existing system status-bar
+insets. Its deliberate `FLAT_BLACK_COMPACT` path/header bar and existing
+dark modal/menu helpers remain unchanged until separately made theme-aware.
+This branch includes the canonical media-row color option introduced in PR #6.
+Music, System UI and their existing hard-coded appearances are untouched.
 
 ## Set up a new application (one canonical dependency)
 
@@ -340,3 +391,4 @@ symlink to that original. Files uses it for bookmarked directory entries both
 inside the Favourites list and in regular directory browsing when pinned;
 ordinary folders continue to use `112.png`. This is app-owned icon selection,
 not a change to shared list-row behaviour.
+

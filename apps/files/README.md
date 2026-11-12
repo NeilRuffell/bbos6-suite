@@ -18,7 +18,16 @@ This application lives in `apps/files/` of the `bbos6-suite` monorepo.
   white text, based on the supplied original BlackBerry File Folders image.
   Other consumers retain the original beveled section-header appearance.
 - Home navigation: Internal Storage, SD Card (when mounted), Recent Files,
-  **Favourites**, Images, Downloads, Audio, Documents and Videos.
+  **Favourites**, Images, Downloads, Audio, Documents, Videos and **Settings**
+  (final row). Settings opens a dedicated Files page using the existing
+  flat-black section header and shared `Bbos6ThemeSelector`. Appearance
+  offers Dark (default), Light and System. The selected preference persists
+  for Files only. The Files screen is wrapped in `Bbos6ThemeSurface` so
+  the shared `Bbos6PageList`, its `Bbos6MediaListRow` entries and
+  `Bbos6EmptyState` respond immediately to the selected appearance.
+  The flat-black path bar and existing BBOS6 popup/context menus intentionally
+  retain their original styling until those helpers opt into themes.
+  Settings requires no storage permission; Back returns to the home list.
 - Home-only shortcut artwork uses original assets: Recent Files **129.png**,
   Images **2219.png**, Videos **2216.png**, Audio **1579.png**, and
   Favourites **950.png**.
@@ -125,6 +134,18 @@ adb -s 202512003630 install -r apps/files/app/build/outputs/apk/release/app-rele
 ```
 
 ## Q25 device checks
+
+**Settings smoke check:** Confirm Settings is the final home entry with the
+same list-row spacing/selection as the other shortcuts. Open using touch and
+Q25 trackpad; verify the Settings and Appearance headers and all three modes.
+Select Light, leave and reopen Settings: Light remains selected. Force-stop
+and reopen Files: Light remains selected. Select System and verify its saved
+selection. Back returns to Files home. Repeat with all-files permission denied:
+Settings must open directly without Android's storage-access prompt. Existing
+Files page-list backgrounds, labels and empty states must switch between
+black/white immediately. Verify selection gradient, icons, scroll and
+trackpad behavior are unchanged, and the flat-black header remains black.
+Existing file operations must remain unchanged.
 
 1. Confirm Favourites is a single home-page entry, between Recent Files
    and Images; category rows follow in Images, Downloads, Audio, Documents,
