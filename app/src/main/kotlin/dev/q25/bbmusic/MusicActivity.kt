@@ -241,6 +241,12 @@ class MusicActivity : ComponentActivity() {
         }
     }
 
+    /** Update the scan flag and the passive shared indicator together. */
+    private fun setLibraryLoading(active: Boolean) {
+        loading = active
+        if (::appShell.isInitialized) appShell.setLibraryScanActive(active)
+    }
+
     private fun dp(value: Float): Int = Math.round(resources.displayMetrics.density * value)
     private fun dp(value: Int): Int = dp(value.toFloat())
 
@@ -576,7 +582,7 @@ class MusicActivity : ComponentActivity() {
         if (deletingTracks) return
         deletingTracks = true
         localSource.invalidate()
-        loading = false
+        setLibraryLoading(false)
         Toast.makeText(
             this, "Deleting " + request.songs.size + " songs...", Toast.LENGTH_SHORT
         ).show()
@@ -1328,7 +1334,7 @@ class MusicActivity : ComponentActivity() {
             }
             localSource.invalidate()
             localSource.forgetRemovedTree(tree, MusicFolders.selectedTrees(this).isEmpty())
-            loading = false
+            setLibraryLoading(false)
             pendingMenu = -1
             pendingShuffleStart = false
             localSongs = null
@@ -1557,7 +1563,7 @@ class MusicActivity : ComponentActivity() {
                 localSongs = null
                 albumArtworkSources = emptyMap()
                 list.clearArtworkCache()
-                loading = false
+                setLibraryLoading(false)
                 pendingMenu = -1
                 startLocalScan(false, true)
                 Log.i(
@@ -1612,7 +1618,7 @@ class MusicActivity : ComponentActivity() {
             updateLocalCategoryCounts()
             return
         }
-        loading = true
+        setLibraryLoading(true)
         if (!refresh) localSongs = null
         list.refreshVisibleRows()
         if (showFeedback) Toast.makeText(
@@ -1626,7 +1632,7 @@ class MusicActivity : ComponentActivity() {
             override fun onLoaded(
                 songs: List<LocalMusicSource.Song>, summary: LocalMusicSource.ScanSummary
             ) {
-                loading = false
+                setLibraryLoading(false)
                 localSongs = songs
                 if (refresh && summary.artworkMayHaveChanged()) list.clearArtworkCache()
                 updateAlbumArtworkSources()
@@ -1654,7 +1660,7 @@ class MusicActivity : ComponentActivity() {
             }
 
             override fun onError(reason: String) {
-                loading = false
+                setLibraryLoading(false)
                 startupAutoRefreshPending = false
                 pendingMenu = -1
                 pendingShuffleStart = false
