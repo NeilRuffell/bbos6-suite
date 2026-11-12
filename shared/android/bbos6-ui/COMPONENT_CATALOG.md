@@ -245,7 +245,8 @@ Related: [COMPOSE_MIGRATION.md](COMPOSE_MIGRATION.md),
 Compose scrolling list for new applications. It reuses `Bbos6MediaListRow`
 for the BBOS6 selection face and `Bbos6ListSelectionItem` for stable IDs.
 The helper owns one DPAD/trackpad focus zone, up/down movement, Enter/center
-activation on key release, touch activation, visible-row scrolling, selection
+activation on key release, touch activation, optional row long-press or Menu-key
+context callbacks, visible-row scrolling, selection
 retention and the managed-focus policy. Consumers decide labels, available
 entries, navigation destinations, and actions. Compose-only: no copy of
 Music's native `MusicListView` or its data/business logic.
@@ -253,3 +254,9 @@ Music's native `MusicListView` or its data/business logic.
 Place `Bbos6SectionHeader` above the list if the page needs a heading.
 Trackpad, keyboard, touch and viewport-edge behavior require Q25 verification
 before this helper is merged to `master`.
+
+The optional `onLongPress(itemId)` callback handles touch long press,
+accessibility long click, and native key-long-press for center/Enter; `onMenu(itemId?)`
+handles the hardware Menu key, including an empty list. Both callbacks are
+app-owned actions (e.g., file manager context menus), not shared filesystem code.
+These routes require device verification before merging.
