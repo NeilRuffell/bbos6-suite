@@ -56,6 +56,13 @@ monorepo. Consult `../../AGENTS.md`, `../../shared/AGENTS.md`,
   Only Downloads remains a native public-directory shortcut through
   `FileBrowser`. Preserve Back-to-home navigation and the current 52dp
   rows / 36dp icon slot / 4dp text inset.
+- Files has a Settings home shortcut as the final list row, showing the shared
+  `Bbos6ThemeSelector` and `Bbos6ThemeManager` with Dark/Light/System
+  preferences. No all-files permission is required; Back returns to home.
+  The preference persists per application but does not yet change existing
+  Files pages, which have no theme-aware color wiring. Do not force colors
+  into app screens or duplicate theme UI; future opt-in belongs in shared.
+  Keep future Files settings business logic in this app, not shared UI.
 - Keep shared list controller and context menu app-neutral.
 - Delete always prompts with Cancel selected and has no undo.
 - Keep trackpad, physical keyboard, DPAD, Menu and touch parity.
