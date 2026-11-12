@@ -48,11 +48,28 @@ public final class MusicActivityModelsTest {
         page.setEmptyState("Empty playlist", "Add songs", 1);
         assertEquals("Empty playlist", page.emptyTitle);
         assertEquals(1, page.emptyAfterRows);
-        page.emptyArtworkRes = 7;
+        assertEquals(R.drawable.bbos6_playlist_empty, page.emptyArtworkRes);
+        assertTrue(page.showsEmptyState());
+        page.rows.add(MenuRow.message("Loading playlist..."));
+        assertFalse(page.showsEmptyState());
+        page.rows.remove(1);
+        assertTrue(page.showsEmptyState());
         page.setEmptyState(null, null, 0);
         assertNull(page.emptyTitle);
         assertNull(page.emptyMessage);
         assertEquals(0, page.emptyArtworkRes);
+        assertFalse(page.showsEmptyState());
+    }
+
+    @Test public void zeroContentEmptyStateDoesNotConfuseLoadingWithEmptiness() {
+        Page empty = new Page("Artists", new ArrayList<>());
+        empty.setEmptyState("No Artists.", "No artists found", 0);
+        assertTrue(empty.showsEmptyState());
+        empty.rows.add(MenuRow.message("Loading library..."));
+        assertFalse(empty.showsEmptyState());
+        empty.rows.clear();
+        assertTrue(empty.showsEmptyState());
+        assertEquals(R.drawable.bbos6_playlist_empty, empty.emptyArtworkRes);
     }
 
     @Test public void folderAndPlaylistActionRowsPreserveIdentifiers() {
