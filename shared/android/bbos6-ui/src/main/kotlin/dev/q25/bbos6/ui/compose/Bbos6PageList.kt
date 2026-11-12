@@ -26,6 +26,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.onLongClick
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
 
 /** Bounded selection policy, independent of app data or Android input dispatch. */
@@ -177,6 +178,12 @@ fun Bbos6PageList(
                         }
                         true
                     }
+                    AndroidKeyEvent.KEYCODE_ESCAPE -> {
+                        if (multiSelectEnabled && multiSelection.isActive) {
+                            if (!down && !event.isCanceled) multiSelection.exit()
+                            true
+                        } else false
+                    }
                     AndroidKeyEvent.KEYCODE_MENU -> {
                         if (!down && !event.isCanceled && onMenu != null) {
                             heldConfirm = AndroidKeyEvent.KEYCODE_UNKNOWN
@@ -222,6 +229,10 @@ fun Bbos6PageList(
                     }
                     .semantics(mergeDescendants = true) {
                         contentDescription = item.label
+                        if (multiSelectEnabled && multiSelection.isActive) {
+                            stateDescription = if (item.id in multiSelection.selectedIds)
+                                "Selected" else "Not selected"
+                        }
                         onClick {
                             selected = index
                             focusRequester.requestFocus()
