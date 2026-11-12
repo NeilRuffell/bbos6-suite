@@ -1,72 +1,79 @@
 # BBOS6 Files
 
-A standalone Kotlin + Jetpack Compose file manager for the Zinwa Q25,
-maintained in `apps/files/` of the `bbos6-suite` monorepo.
+Standalone Kotlin + Jetpack Compose file manager for the Zinwa Q25.
+This application lives in `apps/files/` of the `bbos6-suite` monorepo.
 
-## Current functionality
+## Implemented
 
-- Home: Internal Storage, SD Card (when mounted), Recent Files placeholder.
-- Internal Storage and mounted SD Card: native, read-only folder browsing with
-  child directories and files sorted folders-first, case-insensitively.
-- Trackpad/DPAD Up/Down, click/Enter and touch use the shared
-  `Bbos6PageList` helper; hardware Back navigates up to the storage root,
-  then returns to Files home.
-- Header displays the current folder path relative to the selected volume.
-- An empty or inaccessible directory uses the shared `Bbos6EmptyState`.
-- Folder enumeration happens off the UI thread; the existing shared
-  `Bbos6BackgroundLoadingIndicator` appears while loading.
-- Activating an ordinary file shows a truthful message: file opening is not
-  implemented. Recent Files also remains a placeholder. No file operations
-  or modification are implemented yet.
+- Real Internal Storage and mounted SD Card folder browsing with folders-first sorting.
+- Shared `Bbos6PageList` DPAD, trackpad click/hold, touch tap/hold and BB Menu key navigation.
+- Back navigates to parent; headers display the relative folder path.
+- Regular file tap: native Android `ACTION_VIEW` with a temporary, read-only
+  `FileProvider` URI grant. Files opens in a compatible installed Android app.
+- Long-press file or folder / BB Menu key: shared `Bbos6ContextMenuDialog`.
+  File actions: Open, Share, Copy, Cut, Rename, Delete.
+  Folder actions: Open, Copy, Cut, Rename, Delete.
+- New Folder and Paste are selectable directory rows. The Menu key on those
+  rows offers New Folder, Paste (if staged), and Refresh.
+- Rename and New Folder use the shared Q25-proven native
+  `Bbos6PopupButtonList` text-input helper.
+- Delete requires explicit BBOS6 confirmation, initially selecting Cancel.
+  Folders delete recursively only after that confirmation.
+- Copy/Cut/Paste supports files and folders across selected storage volumes.
+  Destinations with the same name are **never overwritten**. Cross-volume
+  moves copy first and delete the original only after a complete copy.
+  Partial failures are reported, not falsely labeled successful.
+- Filesystem enumeration and file mutations execute on `Dispatchers.IO`,
+  with the existing shared `Bbos6BackgroundLoadingIndicator`.
+- Empty/inaccessible directories use shared empty-state presentation. The
+  special `Recent Files` entry is still a placeholder.
 
-## Storage access and restrictions
+## Storage and safety
 
-On Android 11+, full shared-storage file browsing uses the native
-`MANAGE_EXTERNAL_STORAGE` special app access. The app checks
-`Environment.isExternalStorageManager()` and offers the Android Settings
-grant screen only when the user selects a storage volume. There is no silent
-grant, root privilege, or automatic access to other apps' private files.
-Access can be revoked in Android Settings. Android continues to restrict
-certain `Android/data` and `Android/obb` locations.
+All-files access is requested explicitly through Android Settings only when
+browsing storage. It is not a silent permission. Android app-private storage
+restrictions still apply (including protected `Android/data` and `Android/obb`).
+The app doesn't request root, privileged permissions or shell tools.
 
-Directory navigation is constrained by canonical paths to the selected
-storage root. Inaccessible folders report errors without inventing file
-entries. File operations are explicitly out of scope for this stage.
+File operations validate canonical paths within the selected source and
+destination roots. They refuse collisions, invalid names, self-nesting folders
+and symbolic-link copies. File sharing/opening uses a non-exported Android
+`FileProvider` with per-URI read permission, never `file://`.
+The clipboard is in-memory; nothing is changed until Paste is selected.
+Deletion has no undo. Test with disposable files before trying valuable data.
 
-## Canonical shared UI
+## Source ownership
 
-`apps/files/assets/bbos6` is a monorepo symlink to `shared/`, **not** a
-Git submodule. Reusable components, verified original assets and
-`shared/icon-index.csv` must be modified only in `shared/`.
-Files-specific storage queries and path rules belong in this application.
+The monorepo symlink `apps/files/assets/bbos6` resolves to the one
+canonical `shared/` directory. Shared list interaction, BBOS6 components,
+assets and `icon-index.csv` are maintained **only** there.
+`FileBrowser`, `FileOperations` and Android storage policy belong here.
 
-## Build and install (monorepo)
+## Build and install
 
 ```bash
 cd ~/Projects/bbos6-suite
 git fetch origin
-git switch feature/files-folder-browsing
-git pull --ff-only origin feature/files-folder-browsing
+git switch feature/files-actions-and-open
+git pull --ff-only origin feature/files-actions-and-open
 gradle -p apps/files :bbos6-ui:verifyKotlinOnly :bbos6-ui:testDebugUnitTest :app:testDebugUnitTest :app:assembleRelease
 adb -s 202512003630 install -r apps/files/app/build/outputs/apk/release/app-release.apk
 ```
 
-Requires JDK 17 and Android SDK. In-place installation preserves existing
-app data. Local Release uses the existing signing configuration.
+## Q25 device checks
 
-## Q25 acceptance tests
+1. Verify normal trackpad tap opens directories and files; long-press opens
+   context menu without also invoking the normal tap action.
+2. Verify BB Menu key opens the menu for the highlighted item.
+3. Verify menu navigation with trackpad/DPAD/Enter and Back; no light focus overlay.
+4. Open a text/photo/audio file through Android's compatible installed apps;
+   Share should grant access to exactly the chosen file.
+5. Create a folder, rename a test file, copy/paste it, then cut/paste it.
+6. Confirm collisions are rejected; verify copies across internal/SD if available.
+7. Delete disposable file and nested test folder after verifying confirmation
+   defaults to Cancel; verify Back cancels and existing app data is preserved.
+8. Revoke all-files access and confirm no file operation proceeds.
+9. Confirm UI remains responsive during a large copy and errors are reported.
 
-1. Files home appears and highlights only the selected row.
-2. Choose Internal Storage; follow the explicit system Settings request and
-   grant All Files Access. Return and confirm the root folder opens.
-3. Confirm folders are first, file names are real, directory entry works,
-   and hardware Back moves to parent, then Files home.
-4. Confirm trackpad/DPAD/Enter and touch navigation throughout; no Android
-   light focus overlay and no duplicate activations.
-5. Confirm empty folders, unreadable Android protected folders and revoked
-   access behave without crashes.
-6. Verify mounted SD Card if present and a folder containing many entries.
-7. Confirm a non-folder file shows the not-yet-implemented message.
-
-No build or device verification is claimed until actually performed.
-Do not merge this feature branch without approval.
+No build or Q25 device verification is claimed without results.
+Do not merge without explicit owner approval.

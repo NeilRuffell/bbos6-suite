@@ -1,30 +1,30 @@
 # BBOS6 Files — development instructions
 
 This is the standalone Files Android application under the `bbos6-suite`
-monorepo. Source-of-truth instructions are at `../../AGENTS.md`.
-Use Kotlin and Jetpack Compose, app ID `dev.q25.bbfiles`, JDK 17,
-and the Zinwa Q25 hardware serial `202512003630`.
+monorepo. Consult `../../AGENTS.md`, `../../shared/AGENTS.md`,
+`../../shared/android/bbos6-ui/COMPONENT_CATALOG.md`, and this app's
+`README.md` before changing shared UI or file operations.
 
-The `assets/bbos6` link points to the **one canonical** monorepo
-`shared/` directory; it is not a Git submodule. Read
-`../../shared/AGENTS.md` and
-`../../shared/android/bbos6-ui/COMPONENT_CATALOG.md` before editing
-shared UI. Never copy a shared helper, original icon or index. Reusable
-UI belongs in `shared/`, app-specific filesystem logic remains here.
-Preserve hardware trackpad, DPAD, keyboard, Back and touchscreen.
+- Kotlin + Jetpack Compose; application ID: `dev.q25.bbfiles`.
+- `assets/bbos6` is a **monorepo symlink** to one canonical `shared/`, not
+  a Git submodule. All reusable BBOS6 components, icon index and assets
+  must be modified there; never maintain app-specific copies.
+- `Bbos6PageList` is the common full-page trackpad controller. Shared
+  onLongPress and onMenu callbacks own input routing; Files owns commands.
+- Canonical shared context menu, popup, text input, header, row and loading
+  helpers are used directly.
+- Android storage access is explicitly user granted; protected/private
+  app storage remains restricted. All file operations validate canonical
+  volume boundaries, refuse overwrite, and run off the UI thread.
+- App-specific file browsing, operations and Android FileProvider integration
+  belong only to Files. Never use file:// intent URIs.
+- Delete always prompts with Cancel selected and has no undo.
+- Keep trackpad, physical keyboard, DPAD, Menu and touch parity.
 
-Directory enumeration uses `FileBrowser` and is bounded to the
-selected shared-storage root with canonical paths. Only explicitly granted
-Android `MANAGE_EXTERNAL_STORAGE` is used; protected app-private
-directories remain restricted. No root privileges, silent permission
-grants or writes. The initial browser does not open files or implement
-Recent Files.
-
-Build from the monorepo root:
+Build/test from monorepo root with JDK 17:
 ```bash
 gradle -p apps/files :bbos6-ui:verifyKotlinOnly :bbos6-ui:testDebugUnitTest :app:testDebugUnitTest :app:assembleRelease
 adb -s 202512003630 install -r apps/files/app/build/outputs/apk/release/app-release.apk
 ```
-
-Feature branches require PR and explicit approval before merging.
-Never assert build or Q25 validation without results.
+Never uninstall/clear user data as a routine build. No merge until explicit
+approval and Q25 verification.

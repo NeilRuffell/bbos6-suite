@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Covers user-selected primary storage and mounted removable volumes.
+         The provider grants access to individual files, not entire volumes. -->
+    <root-path name="shared_storage" path="storage/" />
+</paths>
