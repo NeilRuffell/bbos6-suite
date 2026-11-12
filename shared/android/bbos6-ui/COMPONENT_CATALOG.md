@@ -69,6 +69,43 @@ the selected ID and its resulting operation. The full media row remains 68dp
 by default. This is a selection list, not the app-neutral full-page list
 controller still identified as missing below.
 
+## App-scoped appearance management
+
+`Bbos6ThemeManager` and `Bbos6ThemeSelector` are neutral shared helpers, not
+a global Android override. The manager persists one mode per application
+package using private Android SharedPreferences: `DARK` (default), `LIGHT`,
+or `SYSTEM`. It owns observable Compose snapshot state and can be obtained
+from any Compose host via `rememberBbos6ThemeManager()`, including Compose
+content mounted separately inside a native `View`. The instance is shared
+within the application process, so choosing a mode in one Compose host
+notifies other Compose consumers without manual parameter forwarding.
+
+The effective night-mode decision is
+`rememberBbos6ThemeManager().isDarkTheme()`. It resolves the stored choice
+against `isSystemInDarkTheme()` on each Compose configuration update.
+`SYSTEM` therefore tracks Android's appearance when a Compose host handles
+configuration changes normally. Native Android Views may subscribe with
+`addModeListener` / `removeModeListener` for preference changes; their host
+must also handle Android configuration changes for `SYSTEM`.
+
+The selector displays Dark, Light, and System as focusable rows using the
+existing `Bbos6PageList`, with the persisted choice marked "(selected)".
+It can be placed in a Settings pane without rewriting list/focus handling.
+For example:
+
+```kotlin
+Bbos6ThemeSelector(modifier = Modifier.fillMaxSize())
+```
+
+Theme-aware shared components opt in by reading the manager's effective
+theme. **Nothing is automatically recolored solely by creating the manager**:
+existing components keep their current hard-coded/default styles until
+explicitly enabled to use the manager. The previously proposed
+`Bbos6MediaListRowColorScheme` API from the separate light-row PR is not
+changed here; those changes need a distinct integration once both
+shared-helper PRs are approved. No Files/Music/SystemUI code is modified by
+this theme infrastructure PR.
+
 ## Set up a new application (one canonical dependency)
 
 From the new Android repository's root:
@@ -343,39 +380,3 @@ inside the Favourites list and in regular directory browsing when pinned;
 ordinary folders continue to use `112.png`. This is app-owned icon selection,
 not a change to shared list-row behaviour.
 
-## App-scoped appearance management
-
-`Bbos6ThemeManager` and `Bbos6ThemeSelector` are neutral shared helpers, not
-a global Android override. The manager persists one mode per application
-package using private Android SharedPreferences: `DARK` (default), `LIGHT`,
-or `SYSTEM`. It owns observable Compose snapshot state and can be obtained
-from any Compose host via `rememberBbos6ThemeManager()`, including Compose
-content mounted separately inside a native `View`. The instance is shared
-within the application process, so choosing a mode in one Compose host
-notifies other Compose consumers without manual parameter forwarding.
-
-The effective night-mode decision is
-`rememberBbos6ThemeManager().isDarkTheme()`. It resolves the stored choice
-against `isSystemInDarkTheme()` on each Compose configuration update.
-`SYSTEM` therefore tracks Android's appearance when a Compose host handles
-configuration changes normally. Native Android Views may subscribe with
-`addModeListener` / `removeModeListener` for preference changes; their host
-must also handle Android configuration changes for `SYSTEM`.
-
-The selector displays Dark, Light, and System as focusable rows using the
-existing `Bbos6PageList`, with the persisted choice marked "(selected)".
-It can be placed in a Settings pane without rewriting list/focus handling.
-For example:
-
-```kotlin
-Bbos6ThemeSelector(modifier = Modifier.fillMaxSize())
-```
-
-Theme-aware shared components opt in by reading the manager's effective
-theme. **Nothing is automatically recolored solely by creating the manager**:
-existing components keep their current hard-coded/default styles until
-explicitly enabled to use the manager. The previously proposed
-`Bbos6MediaListRowColorScheme` API from the separate light-row PR is not
-changed here; those changes need a distinct integration once both
-shared-helper PRs are approved. No Files/Music/SystemUI code is modified by
-this theme infrastructure PR.
