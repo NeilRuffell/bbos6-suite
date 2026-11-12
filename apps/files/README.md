@@ -10,11 +10,12 @@ This application lives in `apps/files/` of the `bbos6-suite` monorepo.
 - Back navigates to parent; headers display the relative folder path.
 - Regular file tap: native Android `ACTION_VIEW` with a temporary, read-only
   `FileProvider` URI grant. Files opens in a compatible installed Android app.
-- Long-press file or folder / BB Menu key: shared `Bbos6ContextMenuDialog`.
-  File actions: Open, Share, Copy, Cut, Rename, Delete.
-  Folder actions: Open, Copy, Cut, Rename, Delete.
-- New Folder and Paste are selectable directory rows. The Menu key on those
-  rows offers New Folder, Paste (if staged), and Refresh.
+- Long-press a file/folder or press BB Menu: shared `Bbos6ContextMenuDialog`.
+  Item actions: Open, Share (files only), Copy, Cut, Rename and Delete.
+  The same menu also offers **New Folder** and Paste when available.
+- Directory lists contain real filesystem entries only, never New Folder or
+  Paste action rows. In an empty folder, press BB Menu or long-press the blank
+  list area for the directory menu (New Folder, Paste, Refresh).
 - Rename and New Folder use the shared Q25-proven native
   `Bbos6PopupButtonList` text-input helper.
 - Delete requires explicit BBOS6 confirmation, initially selecting Cancel.
@@ -63,9 +64,12 @@ adb -s 202512003630 install -r apps/files/app/build/outputs/apk/release/app-rele
 ## Q25 device checks
 
 1. Verify normal trackpad tap opens directories and files; long-press opens
-   context menu without also invoking the normal tap action.
+   context menu without also invoking the normal tap action. Confirm no
+   synthetic New Folder row appears in the file listing.
 2. Verify BB Menu key opens the menu for the highlighted item.
-3. Verify menu navigation with trackpad/DPAD/Enter and Back; no light focus overlay.
+3. Verify New Folder appears in the context menu for selected files/folders,
+   and in empty folders via BB Menu or blank-area long-press. Confirm menu
+   navigation with trackpad/DPAD/Enter and Back; no light focus overlay.
 4. Open a text/photo/audio file through Android's compatible installed apps;
    Share should grant access to exactly the chosen file.
 5. Create a folder, rename a test file, copy/paste it, then cut/paste it.
