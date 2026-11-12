@@ -6,9 +6,10 @@ This application lives in `apps/files/` of the `bbos6-suite` monorepo.
 ## Implemented
 
 - Real Internal Storage and mounted SD Card folder browsing with folders-first sorting.
-- Both home and directory lists use compact 36dp rows with a 6dp text inset,
-  based on the supplied BB 9900 Files screenshot (643 × 395 px).
-  The shared row helper scales its icon slot to the selected row height.
+- Home and directory lists retain their original 52dp vertical row height.
+  The BB 9900 Files reference informs tighter **horizontal** layout only:
+  a 36dp icon slot and 4dp label inset reduce the gap between icon and text.
+  These dimensions are a Q25-tunable approximation, not historical SDK values.
 - Folder rows and storage-root entries display the original BBOS6 **112.png**
   Folders icon, mapped as `bbos6_menu_folders` in the shared index.
   Ordinary files remain text-only until their icon mapping is defined.
