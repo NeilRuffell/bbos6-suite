@@ -264,16 +264,17 @@ injecting fake selectable rows. Both callbacks remain app-owned actions (e.g.,
 file manager context menus), not shared filesystem code.
 These routes require device verification before merging.
 
-### Compact page-list geometry
+### Independent page-list dimensions
 
-`Bbos6PageList(rowHeightDp = 36, textHorizontalPaddingDp = 6)` uses the
-canonical media-row renderer with an artwork slot matched to the chosen row
-height. This supports closely spaced single-line file lists like the BB 9900
-reference without changing Music's normal 68dp media-row appearance.
-The 36dp / 6dp proportions are a Q25-tunable approximation based on the
-provided screenshot; they are not claimed as historical BBOS SDK metrics.
-Callers should test row activation, selection, icons and scroll alignment on
-hardware when changing row geometry.
+`Bbos6PageList(rowHeightDp = 52, artworkSlotSizeDp = 36,
+textHorizontalPaddingDp = 4)` retains Files' original vertical row height
+while reducing the icon-to-label gap based on the supplied BB 9900 reference.
+The shared page-list supplies independent row height, artwork slot width and
+text inset to the canonical `Bbos6MediaListRow`; other consumers retain their
+existing default dimensions, including Music's 68dp media rows.
+The 36dp / 4dp horizontal dimensions are Q25-tunable approximations, not
+verified historical BBOS SDK constants. Test selection, touch targets,
+trackpad focus and icon alignment on device.
 
 ### Optional list-row icon artwork
 
