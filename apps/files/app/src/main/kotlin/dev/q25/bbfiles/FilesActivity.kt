@@ -306,8 +306,9 @@ private fun FilesPage(
                 key("home") {
                     Bbos6PageList(
                         items = homeItems,
-                        rowHeightDp = 36,
-                        textHorizontalPaddingDp = 6,
+                        rowHeightDp = 52,
+                        artworkSlotSizeDp = 36,
+                        textHorizontalPaddingDp = 4,
                         artworkForId = { id ->
                             if (id == "internal" || id == "removable") folderIcon else null
                         },
@@ -344,8 +345,9 @@ private fun FilesPage(
                             Box(Modifier.fillMaxSize()) {
                                 Bbos6PageList(
                                     items = rows,
-                                    rowHeightDp = 36,
-                                    textHorizontalPaddingDp = 6,
+                                    rowHeightDp = 52,
+                                    artworkSlotSizeDp = 36,
+                                    textHorizontalPaddingDp = 4,
                                     artworkForId = { id ->
                                         if (byPath[id]?.isDirectory == true) folderIcon else null
                                     },
