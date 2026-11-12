@@ -30,6 +30,32 @@ builds, like TV-DV's Release build; do not generate disposable keys. Keep
 each APK with a *new* certificate was removed. Existing installations
 signed by that job cannot be upgraded in-place using a different identity.
 
+### Optimized release APK (R8)
+
+The `release` variant enables R8 code optimization (`minifyEnabled true`)
+and Android resource shrinking (`shrinkResources true`) with the SDK's
+`proguard-android-optimize.txt` rules. This removes unused application and
+dependency code/resources (including unused parts of Compose) without changing
+the debug variant. Room and Media3 dependencies supply their own consumer
+rules; avoid broad custom keep rules unless a build or device regression
+demonstrates a specific missing entry.
+
+The release APK **still uses the existing local debug signing identity** and
+the same `dev.q25.bbmusic` application ID. The generated R8 mapping file is at
+`app/build/outputs/mapping/release/mapping.txt`; preserve the mapping associated
+with any APK you distribute if obfuscated crash reports need decoding.
+
+After building, inspect APK size using
+`stat -c '%s bytes' app/build/outputs/apk/release/app-release.apk`.
+The change must be evaluated against the previous release APK on the same
+machine; no fixed size saving is guaranteed. Device-test in-place updates,
+startup/cached library, incremental/full scan, Room migrations, playlist
+persistence and import/export, Media3 background playback and resumption,
+the Now Playing screen, shared Compose popups/rows, folder permissions,
+and Q25 touch/trackpad focus before merging. Do not clear app data or
+regenerate the signing key.
+
+
 
 ## UI and navigation
 
