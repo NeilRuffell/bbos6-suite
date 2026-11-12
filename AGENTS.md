@@ -701,3 +701,27 @@ import/export; authorized file delete and Cancel; Now Playing seek,
 transport, Stop, metadata links, Back and retained paused playback.
 This all-at-once Activity conversion cannot be considered build- or
 device-verified until the owner reports Gradle and Q25 results.
+
+### Album/artist context playback and per-song Android actions
+
+The existing Music-only `MusicActivity.showMusicContextMenu` supplies action
+IDs/callbacks to the shared `Bbos6ContextMenu`: **Play** and **Shuffle** for
+album/artist groups; **Share** and **Set as ringtone** for indexed song rows.
+The shared renderer and modal focus/navigation policy must not change for
+these app-specific actions. Group playback uses the same
+`MusicLibraryGroupPolicy.orderedGroupSongs` order as opened group pages and
+the existing `MusicPlaybackClient.playSongs` API, with Media3 shuffle instead
+of a new playback engine. Genre actions and playlist maintenance stay intact.
+
+`MusicTrackActions` owns native `ACTION_SEND` Sharesheet delegation with
+the existing SAF `content://` song URI, `ClipData` and temporary read flag.
+Ringtone assignment is opt-in: `MusicActivity` requests Android's
+`WRITE_SETTINGS` special user approval only for this action; the worker
+checks selected-tree authorization again, copies (never moves/edits) the
+source document into `MediaStore.Audio`'s Ringtones directory with
+`IS_PENDING` semantics, then assigns it through `RingtoneManager`.
+Failed assignments attempt to remove their new copy. Never introduce broad
+storage privileges, a direct filesystem path, system-settings shortcuts,
+a second menu renderer, or new copies of shared UI helpers. Do not merge
+until the release APK passes Q25 touch, long-press/trackpad, sharesheet,
+ringtone approval/denial, playback shuffle/order and revoked-grant checks.
