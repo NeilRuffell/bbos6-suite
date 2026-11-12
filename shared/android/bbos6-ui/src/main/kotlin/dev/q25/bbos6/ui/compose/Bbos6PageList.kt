@@ -58,7 +58,9 @@ fun Bbos6PageList(
     textHorizontalPaddingDp: Int = 16,
     artworkSlotSizeDp: Int = rowHeightDp,
     artworkPaddingDp: Int = 2,
-    reserveArtworkSlotForMissing: Boolean = false
+    reserveArtworkSlotForMissing: Boolean = false,
+    multiSelectEnabled: Boolean = false,
+    multiSelectionState: Bbos6PageListMultiSelectionState? = null
 ) {
     require(rowHeightDp > 0) { "Row height must be positive" }
     require(artworkSlotSizeDp > 0 && artworkSlotSizeDp <= rowHeightDp) {
@@ -77,13 +79,22 @@ fun Bbos6PageList(
         else Bbos6MediaListRowColorScheme.LIGHT
     val focusRequester = remember { FocusRequester() }
     val listState = rememberLazyListState()
+    val rememberedSelection = rememberBbos6PageListMultiSelectionState()
+    val multiSelection = multiSelectionState ?: rememberedSelection
     var selected by rememberSaveable { mutableIntStateOf(0) }
     var hasFocus by remember { mutableStateOf(false) }
     var heldConfirm by remember { mutableIntStateOf(AndroidKeyEvent.KEYCODE_UNKNOWN) }
     var longPressTriggered by remember { mutableStateOf(false) }
 
-    LaunchedEffect(items) {
+    LaunchedEffect(items, multiSelectEnabled, multiSelection) {
         selected = if (items.isEmpty()) 0 else selected.coerceIn(0, items.lastIndex)
+        if (multiSelectEnabled) multiSelection.retainAvailable(items.map { it.id })
+        else multiSelection.exit()
+    }
+
+    fun activate(id: String) {
+        if (multiSelectEnabled && multiSelection.isActive) multiSelection.toggle(id)
+        else onActivate(id)
     }
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
     LaunchedEffect(selected, items.size) {
@@ -162,7 +173,7 @@ fun Bbos6PageList(
                                 !longPressTriggered
                             heldConfirm = AndroidKeyEvent.KEYCODE_UNKNOWN
                             longPressTriggered = false
-                            if (invoke) items.getOrNull(selected)?.let { onActivate(it.id) }
+                            if (invoke) items.getOrNull(selected)?.let { activate(it.id) }
                         }
                         true
                     }
@@ -190,6 +201,8 @@ fun Bbos6PageList(
                 artworkContentDescription = "", // Decorative; row label announces the item.
                 menuArtwork = true,
                 highlighted = hasFocus && selected == index,
+                multiSelected = multiSelectEnabled && multiSelection.isActive &&
+                    item.id in multiSelection.selectedIds,
                 showRemoveAction = false,
                 onRemove = null,
                 modifier = Modifier
@@ -198,7 +211,7 @@ fun Bbos6PageList(
                             onTap = {
                                 selected = index
                                 focusRequester.requestFocus()
-                                onActivate(item.id)
+                                activate(item.id)
                             },
                             onLongPress = if (onLongPress != null) ({
                                 selected = index
@@ -212,7 +225,7 @@ fun Bbos6PageList(
                         onClick {
                             selected = index
                             focusRequester.requestFocus()
-                            onActivate(item.id)
+                            activate(item.id)
                             true
                         }
                         if (onLongPress != null) onLongClick {
