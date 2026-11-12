@@ -324,32 +324,25 @@ private fun FilesPage(
                         val byPath = remember(contents) {
                             contents.entries.associateBy { it.file.path }
                         }
-                        val rows = buildList {
-                            add(Bbos6ListSelectionItem("#new-folder", "New Folder"))
-                            if (clipboard != null) {
-                                add(Bbos6ListSelectionItem("#paste", "Paste"))
-                            }
-                            contents.entries.forEach { entry ->
-                                add(Bbos6ListSelectionItem(
-                                    id = entry.file.path,
-                                    label = if (entry.isDirectory) "${entry.name}/" else entry.name
-                                ))
-                            }
+                        // The list contains filesystem entries only. Folder commands
+                        // belong to the BBOS6 context menu, not synthetic rows.
+                        val rows = contents.entries.map { entry ->
+                            Bbos6ListSelectionItem(
+                                id = entry.file.path,
+                                label = if (entry.isDirectory) "${entry.name}/" else entry.name
+                            )
                         }
                         key(folder.path) {
+                            Box(Modifier.fillMaxSize()) {
                             Bbos6PageList(
                                 items = rows,
                                 onActivate = { id ->
                                     if (operationBusy) return@Bbos6PageList
-                                    when (id) {
-                                        "#new-folder" -> createFolder()
-                                        "#paste" -> pasteItem()
-                                        else -> byPath[id]?.let { entry ->
-                                            if (entry.isDirectory) currentFolder = entry.file
-                                            else {
-                                                val failure = openOrShare(root.directory, entry.file, false)
-                                                if (failure != null) popup = InfoPopup(entry.name, failure)
-                                            }
+                                    byPath[id]?.let { entry ->
+                                        if (entry.isDirectory) currentFolder = entry.file
+                                        else {
+                                            val failure = openOrShare(root.directory, entry.file, false)
+                                            if (failure != null) popup = InfoPopup(entry.name, failure)
                                         }
                                     }
                                 },
@@ -368,6 +361,16 @@ private fun FilesPage(
                                     }
                                 }
                             )
+                            if (rows.isEmpty()) {
+                                // Passive artwork/text layer: menu handling stays
+                                // with the focused shared list beneath it.
+                                Bbos6EmptyState(
+                                    heading = "Empty Folder",
+                                    description = "This folder contains no files.",
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                            }
                         }
                     }
                 }
@@ -414,6 +417,9 @@ private fun FilesPage(
             add(Bbos6ContextAction.text("cut", "Cut"))
             add(Bbos6ContextAction.text("rename", "Rename"))
             add(Bbos6ContextAction.text("delete", "Delete"))
+            // Directory-level actions remain available when an item is selected.
+            add(Bbos6ContextAction.text("new", "New Folder"))
+            if (clipboard != null) add(Bbos6ContextAction.text("paste", "Paste"))
         }
         Bbos6ContextMenuDialog(
             groups = listOf(actions),
@@ -441,6 +447,8 @@ private fun FilesPage(
                         mutate({ FileOperations.rename(selectedRoot.directory, selected.file, newName) })
                     }
                     "delete" -> deleteTarget = selected
+                    "new" -> createFolder()
+                    "paste" -> pasteItem()
                 }
             }
         )
