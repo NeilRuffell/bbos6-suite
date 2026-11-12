@@ -334,42 +334,46 @@ private fun FilesPage(
                         }
                         key(folder.path) {
                             Box(Modifier.fillMaxSize()) {
-                            Bbos6PageList(
-                                items = rows,
-                                onActivate = { id ->
-                                    if (operationBusy) return@Bbos6PageList
-                                    byPath[id]?.let { entry ->
-                                        if (entry.isDirectory) currentFolder = entry.file
-                                        else {
-                                            val failure = openOrShare(root.directory, entry.file, false)
-                                            if (failure != null) popup = InfoPopup(entry.name, failure)
+                                Bbos6PageList(
+                                    items = rows,
+                                    onActivate = { id ->
+                                        if (operationBusy) return@Bbos6PageList
+                                        byPath[id]?.let { entry ->
+                                            if (entry.isDirectory) currentFolder = entry.file
+                                            else {
+                                                val failure = openOrShare(
+                                                    root.directory, entry.file, false
+                                                )
+                                                if (failure != null) {
+                                                    popup = InfoPopup(entry.name, failure)
+                                                }
+                                            }
+                                        }
+                                    },
+                                    onLongPress = { id ->
+                                        if (!operationBusy) {
+                                            val entry = byPath[id]
+                                            if (entry == null) folderMenu = true
+                                            else menuEntry = entry
+                                        }
+                                    },
+                                    onMenu = { id ->
+                                        if (!operationBusy) {
+                                            val entry = byPath[id]
+                                            if (entry == null) folderMenu = true
+                                            else menuEntry = entry
                                         }
                                     }
-                                },
-                                onLongPress = { id ->
-                                    if (!operationBusy) {
-                                        val entry = byPath[id]
-                                        if (entry == null) folderMenu = true
-                                        else menuEntry = entry
-                                    }
-                                },
-                                onMenu = { id ->
-                                    if (!operationBusy) {
-                                        val entry = byPath[id]
-                                        if (entry == null) folderMenu = true
-                                        else menuEntry = entry
-                                    }
-                                }
-                            )
-                            if (rows.isEmpty()) {
-                                // Passive artwork/text layer: menu handling stays
-                                // with the focused shared list beneath it.
-                                Bbos6EmptyState(
-                                    heading = "Empty Folder",
-                                    description = "This folder contains no files.",
-                                    modifier = Modifier.fillMaxSize()
                                 )
-                            }
+                                if (rows.isEmpty()) {
+                                    // Passive overlay: shared list remains the Menu
+                                    // focus owner and handles blank-area long press.
+                                    Bbos6EmptyState(
+                                        heading = "Empty Folder",
+                                        description = "This folder contains no files.",
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                }
                             }
                         }
                     }
