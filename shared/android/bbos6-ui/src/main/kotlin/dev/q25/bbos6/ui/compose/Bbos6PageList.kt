@@ -21,6 +21,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.contentDescription
@@ -53,7 +54,8 @@ fun Bbos6PageList(
     modifier: Modifier = Modifier,
     rowHeightDp: Int = 52,
     onLongPress: ((String) -> Unit)? = null,
-    onMenu: ((String?) -> Unit)? = null
+    onMenu: ((String?) -> Unit)? = null,
+    artworkForId: (String) -> Painter? = { null }
 ) {
     require(rowHeightDp > 0) { "Row height must be positive" }
     require(items.map { it.id }.toSet().size == items.size) {
@@ -164,15 +166,16 @@ fun Bbos6PageList(
             .focusable()
     ) {
         itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
+            val itemArtwork = artworkForId(item.id)
             Bbos6MediaListRow(
                 title = item.label,
                 subtitle = null,
                 duration = null,
                 trackNumber = null,
-                showArtwork = false,
-                artwork = null,
-                artworkContentDescription = "",
-                menuArtwork = false,
+                showArtwork = itemArtwork != null,
+                artwork = itemArtwork,
+                artworkContentDescription = if (itemArtwork != null) "Item icon" else "",
+                menuArtwork = true,
                 highlighted = hasFocus && selected == index,
                 showRemoveAction = false,
                 onRemove = null,

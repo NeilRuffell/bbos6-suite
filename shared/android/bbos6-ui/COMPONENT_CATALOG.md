@@ -241,7 +241,7 @@ Related: [COMPOSE_MIGRATION.md](COMPOSE_MIGRATION.md),
 
 ## Full-page trackpad list
 
-`Bbos6PageList(items, onActivate, modifier, rowHeightDp)` provides a full-width
+`Bbos6PageList(items, onActivate, modifier, rowHeightDp, onLongPress, onMenu, artworkForId)` provides a full-width
 Compose scrolling list for new applications. It reuses `Bbos6MediaListRow`
 for the BBOS6 selection face and `Bbos6ListSelectionItem` for stable IDs.
 The helper owns one DPAD/trackpad focus zone, up/down movement, Enter/center
@@ -263,3 +263,14 @@ long-pressing the blank surface (or an accessibility long-click) also invokes
 injecting fake selectable rows. Both callbacks remain app-owned actions (e.g.,
 file manager context menus), not shared filesystem code.
 These routes require device verification before merging.
+
+### Optional list-row icon artwork
+
+`Bbos6PageList(artworkForId = { id -> painterOrNull })` delegates icon
+layout and sizing to the existing `Bbos6MediaListRow`. Callers choose icons
+using canonical verified asset mappings; a null Painter leaves the row
+text-only. This does not add a second row component or duplicate image data.
+The source-owned original Folders icon `shared/icons/112.png` is exposed to
+Android consumers as `dev.q25.bbos6.ui.R.drawable.bbos6_menu_folders` through
+a source symlink in shared UI resources. Its index mapping is already verified;
+no new historical identification is inferred.

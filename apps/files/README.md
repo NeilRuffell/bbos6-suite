@@ -6,6 +6,9 @@ This application lives in `apps/files/` of the `bbos6-suite` monorepo.
 ## Implemented
 
 - Real Internal Storage and mounted SD Card folder browsing with folders-first sorting.
+- Folder rows and storage-root entries display the original BBOS6 **112.png**
+  Folders icon, mapped as `bbos6_menu_folders` in the shared index.
+  Ordinary files remain text-only until their icon mapping is defined.
 - Shared `Bbos6PageList` DPAD, trackpad click/hold, touch tap/hold and BB Menu key navigation.
 - Back navigates to parent; headers display the relative folder path.
 - Regular file tap: native Android `ACTION_VIEW` with a temporary, read-only
@@ -66,7 +69,9 @@ adb -s 202512003630 install -r apps/files/app/build/outputs/apk/release/app-rele
 1. Verify normal trackpad tap opens directories and files; long-press opens
    context menu without also invoking the normal tap action. Confirm no
    synthetic New Folder row appears in the file listing.
-2. Verify BB Menu key opens the menu for the highlighted item.
+2. Verify folder rows (including nested folders) and Internal Storage / SD Card
+   show original 112.png, while ordinary files do not show that icon.
+   Verify BB Menu key opens the menu for the highlighted item.
 3. Verify New Folder appears in the context menu for selected files/folders,
    and in empty folders via BB Menu or blank-area long-press. Confirm menu
    navigation with trackpad/DPAD/Enter and Back; no light focus overlay.

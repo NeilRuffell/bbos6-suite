@@ -27,8 +27,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.core.content.FileProvider
 import dev.q25.bbos6.ui.Bbos6PopupButtonList
+import dev.q25.bbos6.ui.R as Bbos6UiR
 import dev.q25.bbos6.ui.compose.Bbos6BackgroundLoadingIndicator
 import dev.q25.bbos6.ui.compose.Bbos6ContextAction
 import dev.q25.bbos6.ui.compose.Bbos6ContextMenuDialog
@@ -168,6 +170,7 @@ private fun FilesPage(
     promptName: (String, String, (String) -> Unit) -> Unit
 ) {
     val scope = rememberCoroutineScope()
+    val folderIcon = painterResource(Bbos6UiR.drawable.bbos6_menu_folders)
     val roots = remember(internalDirectory, removableDirectory) {
         buildList {
             add(StorageRoot("internal", "Internal Storage", internalDirectory))
@@ -303,6 +306,9 @@ private fun FilesPage(
                 key("home") {
                     Bbos6PageList(
                         items = homeItems,
+                        artworkForId = { id ->
+                            if (id == "internal" || id == "removable") folderIcon else null
+                        },
                         onActivate = { id ->
                             if (id == "recent") {
                                 popup = InfoPopup("Recent Files", "Recent Files is not implemented yet.")
@@ -336,6 +342,9 @@ private fun FilesPage(
                             Box(Modifier.fillMaxSize()) {
                                 Bbos6PageList(
                                     items = rows,
+                                    artworkForId = { id ->
+                                        if (byPath[id]?.isDirectory == true) folderIcon else null
+                                    },
                                     onActivate = { id ->
                                         if (operationBusy) return@Bbos6PageList
                                         byPath[id]?.let { entry ->
