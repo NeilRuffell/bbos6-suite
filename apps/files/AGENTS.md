@@ -10,7 +10,9 @@ monorepo. Consult `../../AGENTS.md`, `../../shared/AGENTS.md`,
   a Git submodule. All reusable BBOS6 components, icon index and assets
   must be modified there; never maintain app-specific copies.
 - `Bbos6PageList` is the common full-page trackpad controller. Shared
-  onLongPress and onMenu callbacks own input routing; Files owns commands.
+  onLongPress and onMenu callbacks own input routing, including an empty list;
+  Files owns commands. New Folder and Paste live in the context menus, not
+  artificial selectable directory rows.
 - Canonical shared context menu, popup, text input, header, row and loading
   helpers are used directly.
 - Android storage access is explicitly user granted; protected/private
