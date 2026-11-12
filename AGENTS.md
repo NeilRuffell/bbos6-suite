@@ -166,6 +166,14 @@ pixel offsets, or compensating layout arithmetic.
 
 ## Playlist maintenance
 
+Playlist detail lists expose only **Play all** and **Shuffle** before the
+track rows. **Add songs**, **Rename playlist**, **Export M3U8**, and
+**Delete playlist** belong in the existing `Bbos6ContextMenu` long-press
+action on a playlist name in the Playlists directory. These actions call
+the pre-existing Music methods, including the original destructive
+confirmation and SAF export flow; do not introduce a second popup or
+duplicate functionality inside the playlist detail view.
+
 Playlists are implemented only in this repository, through
 `MusicPlaylists`, `MusicPlaylistTransfer` and the existing
 `MusicLibraryDatabase` Room schema (v3). Preserve playlist entries,
@@ -173,6 +181,12 @@ order, names and existing music catalog through forward migrations.
 A playlist references indexed, user-authorized SAF `content://` songs,
 not a new filesystem crawler or an unscoped `MediaStore` query.
 
+Playlist directory icon assignments are Music-owned row policy:
+saved playlist names reuse verified `337.png`, the Add Playlist row
+uses `335.png`, and opened-playlist Play all uses `334.png`. Shuffle
+reuses Home Shuffle Songs' `339.png` resource. The numbered mappings
+are maintained in canonical `bbos6-shared/icon-index.csv`.
+Package original PNG bytes unchanged; do not duplicate row renderers.
 Playlist selection uses the existing `MusicListView`,
 `Bbos6ContextMenu` and Media3 playback client. Reuse the shared
 widgets without maintaining screen-specific copies. Import/export is

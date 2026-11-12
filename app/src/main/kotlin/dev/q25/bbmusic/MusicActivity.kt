@@ -305,13 +305,21 @@ class MusicActivity : ComponentActivity() {
             ROW_PLAYLIST -> {
                 menu.addGroup(
                     Bbos6ContextMenuItem.resource(
+                        "playlist-add-songs", "Add songs", android.R.drawable.ic_menu_add
+                    ),
+                    Bbos6ContextMenuItem.resource(
                         "playlist-rename", "Rename playlist", android.R.drawable.ic_menu_edit
                     ),
+                    Bbos6ContextMenuItem.resource(
+                        "playlist-export", "Export M3U8", android.R.drawable.ic_menu_save
+                    )
+                )
+                menu.addGroup(
                     Bbos6ContextMenuItem.resource(
                         "playlist-delete", "Delete playlist", android.R.drawable.ic_menu_delete
                     )
                 )
-                menu.initiallySelected("playlist-rename")
+                menu.initiallySelected("playlist-add-songs")
             }
             ROW_PLAYLIST_MISSING -> {
                 menu.addGroup(
@@ -376,7 +384,9 @@ class MusicActivity : ComponentActivity() {
                 "move-up" -> movePlaylistEntry(row, -1)
                 "move-down" -> movePlaylistEntry(row, 1)
                 "remove-from-playlist" -> removePlaylistEntry(row)
+                "playlist-add-songs" -> openPlaylistSongPicker(row.playlistId)
                 "playlist-rename" -> renamePlaylist(row.playlistId)
+                "playlist-export" -> pickPlaylistExport(row.playlistId)
                 "playlist-delete" -> confirmPlaylistDelete(row.playlistId, row.title)
                 "delete" -> if (row.kind == ROW_SONG || row.kind == ROW_GROUP) confirmDelete(row)
             }
@@ -786,15 +796,12 @@ class MusicActivity : ComponentActivity() {
             val id = page.playlistId
             rows.add(MenuRow.playlistAction("Play all", "play", id))
             rows.add(MenuRow.playlistAction("Shuffle", "shuffle", id))
-            rows.add(MenuRow.playlistAction("Add songs", "add", id))
-            rows.add(MenuRow.playlistAction("Rename playlist", "rename", id))
-            rows.add(MenuRow.playlistAction("Export M3U8", "export", id))
-            rows.add(MenuRow.playlistAction("Delete playlist", "delete", id))
             page.setEmptyState(null, null, 0)
             when {
                 error != null -> rows.add(MenuRow.message("Unable to load playlist songs"))
                 items.isNullOrEmpty() -> page.setEmptyState(
-                    "Empty playlist", "Add songs to this playlist to start listening.", rows.size
+                    "Empty playlist",
+                    "Long-press the playlist name in Playlists to add songs.", rows.size
                 )
                 localSongs == null -> rows.add(MenuRow.message("Loading music library..."))
                 else -> {
@@ -1039,10 +1046,6 @@ class MusicActivity : ComponentActivity() {
             "import" -> pickPlaylistImport()
             "play" -> playPlaylist(false)
             "shuffle" -> playPlaylist(true)
-            "add" -> openPlaylistSongPicker(row.playlistId)
-            "rename" -> renamePlaylist(row.playlistId)
-            "export" -> pickPlaylistExport(row.playlistId)
-            "delete" -> confirmPlaylistDelete(row.playlistId, currentPage.name)
         }
     }
 

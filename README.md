@@ -285,6 +285,10 @@ OS 6 Music home menu supplied for this project:
 | Albums | `351.png` | `bbos6_menu_albums.png` |
 | Genres | `348.png` | `bbos6_menu_genres.png` |
 | Playlists | `337.png` | `bbos6_menu_playlists.png` |
+| Saved playlist rows (inside Playlists) | `337.png` | `bbos6_menu_playlists.png` |
+| Add Playlist (inside Playlists) | `335.png` | `bbos6_menu_add_playlist.png` |
+| Play all (inside a playlist) | `334.png` | `bbos6_menu_play_all.png` |
+| Shuffle (inside a playlist) | `339.png` | `bbos6_menu_shuffle_songs.png` |
 | Folders (home and directory rows) | `112.png` | `bbos6_menu_folders.png` |
 | Shuffle Songs | `339.png` | `bbos6_menu_shuffle_songs.png` |
 | Settings (Options wrench) | `3412.png` | `bbos6_menu_settings.png` |
@@ -292,7 +296,7 @@ OS 6 Music home menu supplied for this project:
 Android requires referenced PNGs to be present in application resource
 directories, so the exact original binary blobs are reused under
 `app/src/main/res/drawable-nodpi/`. No artwork is redrawn or
-modified. `MusicActivity.menuIconForRow` owns the menu-to-resource mapping;
+modified. `MusicLibraryRowPolicy.menuIconForRow` owns the menu-to-resource mapping;
 `MusicListView` uses its existing left image slot to draw the selected
 resource, so it does not introduce a second adapter or custom scrolling.
 
@@ -1245,13 +1249,19 @@ background workers; the native ListView and Media3 controller are reused.
   Save reuses the existing Room playlist
   validation and create/rename logic; Cancel makes no changes. Saved
   playlists follow with entry counts. Tap a playlist to open it;
-  long-press one to **Rename playlist** or **Delete playlist**.
-- Open playlist: **Play all**, **Shuffle**, **Add songs**, **Rename playlist**,
-  **Export M3U8**, **Delete playlist**, followed by the ordered track list.
+  long-press its name to access **Add songs**, **Rename playlist**,
+  **Export M3U8**, and **Delete playlist** through the existing shared
+  `Bbos6ContextMenu`. Delete still opens its existing confirmation and never
+  deletes audio files.
+- Open playlist: **Play all** (original `334.png`) and **Shuffle**
+  (reusing Home's original `339.png`) appear above the ordered track
+  list; the four maintenance actions are no longer listed here.
   Playing one track uses the available songs of that playlist as its Media3
   queue. Shuffle uses the existing Media3 queue shuffle mode.
 - **Add songs** opens the existing All Songs list as a picker. Enter/tap
-  inserts the selected song; Back returns to the playlist. To add a whole
+  inserts the selected song; Back returns to Playlists when the picker was
+  opened from the playlist-name long-press menu. An empty playlist directs
+  users back to that long-press menu to add songs. To add a whole
   album, artist, or genre at once, long-press its group row anywhere in the
   music library and choose **Add to playlist**. The same action is available
   for individual track rows. The chooser now uses the shared BBOS6 compact
@@ -1870,3 +1880,17 @@ navigate 1 or many playlists with DPAD/trackpad, center/Enter and touch;
 confirm Back cancels; verify New playlist still opens the current name
 entry, inserts initial songs, and does not modify the database when cancelled.
 Build and install the existing release APK only; do not clear app data.
+
+## Playlist directory icon mapping
+
+The saved playlist entries in the **Playlists** directory reuse the already
+verified original **337.png** playlist icon. The **Add Playlist** action row
+uses the user-specified original **335.png**, packaged unchanged as
+`bbos6_menu_add_playlist.png`; its canonical mapping lives in
+`bbos6-shared/icon-index.csv`. Both are selected by the existing
+`MusicLibraryRowPolicy.menuIconForRow`, rendered through the standard
+`MusicListView` icon slot and shared Compose row. The opened playlist also uses
+original `334.png` for **Play all** and reuses the same `339.png`
+resource as Home's **Shuffle Songs** for **Shuffle**. All four action
+and playlist row mappings are owned centrally by the existing Music row
+policy; icon display and row focus/trackpad behavior are unchanged.
