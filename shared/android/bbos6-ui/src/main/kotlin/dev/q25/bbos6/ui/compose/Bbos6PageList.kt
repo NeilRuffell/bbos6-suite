@@ -21,10 +21,12 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.onLongClick
 import androidx.compose.ui.semantics.semantics
 
 /** Bounded selection policy, independent of app data or Android input dispatch. */
@@ -40,7 +42,7 @@ internal object Bbos6PageListNavigation {
  *
  * This controller owns exactly one focus zone and handles DPAD/trackpad
  * movement, Enter/center activation on key release, touch activation,
- * selection retention, and scrolling. The caller owns row IDs and actions.
+ * selection retention, scrolling and optional long-press/Menu action dispatch. The\n * caller owns row IDs, context actions and screen navigation.
  * Presentation delegates to the canonical Bbos6MediaListRow.
  *
  * Use Bbos6SectionHeader separately for non-selectable page headings.
@@ -50,9 +52,18 @@ fun Bbos6PageList(
     items: List<Bbos6ListSelectionItem>,
     onActivate: (String) -> Unit,
     modifier: Modifier = Modifier,
-    rowHeightDp: Int = 52
+    rowHeightDp: Int = 52,
+    onLongPress: ((String) -> Unit)? = null,
+    onMenu: ((String?) -> Unit)? = null,
+    artworkForId: (String) -> Painter? = { null },
+    textHorizontalPaddingDp: Int = 16,
+    artworkSlotSizeDp: Int = rowHeightDp
 ) {
     require(rowHeightDp > 0) { "Row height must be positive" }
+    require(artworkSlotSizeDp > 0 && artworkSlotSizeDp <= rowHeightDp) {
+        "Artwork slot must fit inside row height"
+    }
+    require(textHorizontalPaddingDp >= 0) { "Text padding must not be negative" }
     require(items.map { it.id }.toSet().size == items.size) {
         "Duplicate list item ID"
     }
@@ -62,6 +73,7 @@ fun Bbos6PageList(
     var selected by rememberSaveable { mutableIntStateOf(0) }
     var hasFocus by remember { mutableStateOf(false) }
     var heldConfirm by remember { mutableIntStateOf(AndroidKeyEvent.KEYCODE_UNKNOWN) }
+    var longPressTriggered by remember { mutableStateOf(false) }
 
     LaunchedEffect(items) {
         selected = if (items.isEmpty()) 0 else selected.coerceIn(0, items.lastIndex)
@@ -92,6 +104,22 @@ fun Bbos6PageList(
         modifier = modifier
             .fillMaxSize()
             .background(Color.Black)
+            // A blank list still needs a touch/long-press path to the
+            // enclosing page's context menu (e.g. New Folder).
+            .then(
+                if (items.isEmpty() && onMenu != null) {
+                    Modifier
+                        .pointerInput(onMenu) {
+                            detectTapGestures(onLongPress = { onMenu(null) })
+                        }
+                        .semantics {
+                            onLongClick {
+                                onMenu(null)
+                                true
+                            }
+                        }
+                } else Modifier
+            )
             .focusRequester(focusRequester)
             .onFocusChanged { hasFocus = it.isFocused }
             .onPreviewKeyEvent { key ->
@@ -112,13 +140,31 @@ fun Bbos6PageList(
                     AndroidKeyEvent.KEYCODE_DPAD_CENTER,
                     AndroidKeyEvent.KEYCODE_ENTER,
                     AndroidKeyEvent.KEYCODE_NUMPAD_ENTER -> {
-                        if (down && event.repeatCount == 0) heldConfirm = event.keyCode
-                        if (!down) {
-                            val invoke = heldConfirm == event.keyCode && !event.isCanceled
+                        if (down && event.repeatCount == 0) {
+                            heldConfirm = event.keyCode
+                            longPressTriggered = false
+                        }
+                        if (down && event.repeatCount > 0 && event.isLongPress &&
+                            !longPressTriggered && onLongPress != null) {
+                            longPressTriggered = true
                             heldConfirm = AndroidKeyEvent.KEYCODE_UNKNOWN
+                            items.getOrNull(selected)?.let { onLongPress(it.id) }
+                        }
+                        if (!down) {
+                            val invoke = heldConfirm == event.keyCode && !event.isCanceled &&
+                                !longPressTriggered
+                            heldConfirm = AndroidKeyEvent.KEYCODE_UNKNOWN
+                            longPressTriggered = false
                             if (invoke) items.getOrNull(selected)?.let { onActivate(it.id) }
                         }
                         true
+                    }
+                    AndroidKeyEvent.KEYCODE_MENU -> {
+                        if (!down && !event.isCanceled && onMenu != null) {
+                            heldConfirm = AndroidKeyEvent.KEYCODE_UNKNOWN
+                            onMenu(items.getOrNull(selected)?.id)
+                        }
+                        onMenu != null
                     }
                     else -> false
                 }
@@ -126,25 +172,33 @@ fun Bbos6PageList(
             .focusable()
     ) {
         itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
+            val itemArtwork = artworkForId(item.id)
             Bbos6MediaListRow(
                 title = item.label,
                 subtitle = null,
                 duration = null,
                 trackNumber = null,
-                showArtwork = false,
-                artwork = null,
-                artworkContentDescription = "",
-                menuArtwork = false,
+                showArtwork = itemArtwork != null,
+                artwork = itemArtwork,
+                artworkContentDescription = "", // Decorative; row label announces the item.
+                menuArtwork = true,
                 highlighted = hasFocus && selected == index,
                 showRemoveAction = false,
                 onRemove = null,
                 modifier = Modifier
-                    .pointerInput(item.id) {
-                        detectTapGestures(onTap = {
-                            selected = index
-                            focusRequester.requestFocus()
-                            onActivate(item.id)
-                        })
+                    .pointerInput(item.id, onLongPress) {
+                        detectTapGestures(
+                            onTap = {
+                                selected = index
+                                focusRequester.requestFocus()
+                                onActivate(item.id)
+                            },
+                            onLongPress = if (onLongPress != null) ({
+                                selected = index
+                                focusRequester.requestFocus()
+                                onLongPress(item.id)
+                            }) else null
+                        )
                     }
                     .semantics(mergeDescendants = true) {
                         contentDescription = item.label
@@ -154,8 +208,16 @@ fun Bbos6PageList(
                             onActivate(item.id)
                             true
                         }
+                        if (onLongPress != null) onLongClick {
+                            selected = index
+                            focusRequester.requestFocus()
+                            onLongPress(item.id)
+                            true
+                        }
                     },
-                rowHeightDp = rowHeightDp
+                rowHeightDp = rowHeightDp,
+                artworkSlotSizeDp = artworkSlotSizeDp,
+                textHorizontalPaddingDp = textHorizontalPaddingDp
             )
         }
     }

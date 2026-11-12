@@ -241,11 +241,12 @@ Related: [COMPOSE_MIGRATION.md](COMPOSE_MIGRATION.md),
 
 ## Full-page trackpad list
 
-`Bbos6PageList(items, onActivate, modifier, rowHeightDp)` provides a full-width
+`Bbos6PageList(items, onActivate, modifier, rowHeightDp, onLongPress, onMenu, artworkForId)` provides a full-width
 Compose scrolling list for new applications. It reuses `Bbos6MediaListRow`
 for the BBOS6 selection face and `Bbos6ListSelectionItem` for stable IDs.
 The helper owns one DPAD/trackpad focus zone, up/down movement, Enter/center
-activation on key release, touch activation, visible-row scrolling, selection
+activation on key release, touch activation, optional row long-press or Menu-key
+context callbacks, visible-row scrolling, selection
 retention and the managed-focus policy. Consumers decide labels, available
 entries, navigation destinations, and actions. Compose-only: no copy of
 Music's native `MusicListView` or its data/business logic.
@@ -253,3 +254,35 @@ Music's native `MusicListView` or its data/business logic.
 Place `Bbos6SectionHeader` above the list if the page needs a heading.
 Trackpad, keyboard, touch and viewport-edge behavior require Q25 verification
 before this helper is merged to `master`.
+
+The optional `onLongPress(itemId)` callback handles touch long press,
+accessibility long click, and native key-long-press for center/Enter; `onMenu(itemId?)`
+handles the hardware Menu key, including an empty list. When the list is empty,
+long-pressing the blank surface (or an accessibility long-click) also invokes
+`onMenu(null)`, allowing the host to offer directory-level actions without
+injecting fake selectable rows. Both callbacks remain app-owned actions (e.g.,
+file manager context menus), not shared filesystem code.
+These routes require device verification before merging.
+
+### Independent page-list dimensions
+
+`Bbos6PageList(rowHeightDp = 52, artworkSlotSizeDp = 36,
+textHorizontalPaddingDp = 4)` retains Files' original vertical row height
+while reducing the icon-to-label gap based on the supplied BB 9900 reference.
+The shared page-list supplies independent row height, artwork slot width and
+text inset to the canonical `Bbos6MediaListRow`; other consumers retain their
+existing default dimensions, including Music's 68dp media rows.
+The 36dp / 4dp horizontal dimensions are Q25-tunable approximations, not
+verified historical BBOS SDK constants. Test selection, touch targets,
+trackpad focus and icon alignment on device.
+
+### Optional list-row icon artwork
+
+`Bbos6PageList(artworkForId = { id -> painterOrNull })` delegates icon
+layout and sizing to the existing `Bbos6MediaListRow`. Callers choose icons
+using canonical verified asset mappings; a null Painter leaves the row
+text-only. This does not add a second row component or duplicate image data.
+The source-owned original Folders icon `shared/icons/112.png` is exposed to
+Android consumers as `dev.q25.bbos6.ui.R.drawable.bbos6_menu_folders` through
+a source symlink in shared UI resources. Its index mapping is already verified;
+no new historical identification is inferred.

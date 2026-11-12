@@ -376,3 +376,7 @@ The reusable `Bbos6BackgroundLoadingIndicator` lives exclusively in the shared C
 ## Full-page Compose list
 
 `Bbos6PageList` is the shared, app-neutral one-zone controller for full-page Compose lists. Use it instead of copying Music's native list/navigation layer. Keep application-specific row definitions, storage operations, and destinations in the consuming app. Validate Q25 trackpad, Enter, touch and focus policy before merging.
+
+## Shared full-page list context gestures
+
+`Bbos6PageList` owns optional long-press and Menu key dispatch (including accessibility long click). Applications own the selected item and action menus. Never implement repeated gesture handling separately in Music or Files. Preserve normal Enter-on-release and touch tapping with no duplicated action; verify on actual Q25 hardware.
