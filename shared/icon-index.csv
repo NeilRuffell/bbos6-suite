@@ -1,5 +1,7 @@
 filename,name,keywords,android_resource
 112.png,Folders,music folders directories browse storage selected folder navigation,bbos6_menu_folders
+129.png,Recent Files Shortcut,files app home recent files shortcut user assigned,bbos6_files_home_recent
+211.png,Files Launcher Icon,files application launcher user assigned 211 png,bbos6_files_app_icon
 334.png,Play All,music playlist play all tracks action,bbos6_menu_play_all
 335.png,Add Playlist,music add new playlist action entry,bbos6_menu_add_playlist
 337.png,Playlists,music playlist lists,bbos6_menu_playlists
@@ -18,6 +20,12 @@ filename,name,keywords,android_resource
 510.png,Shuffle On,music now playing shuffle on enabled,bbos6_shuffle_on
 511.png,Shuffle Available Off,music now playing shuffle available not on off,bbos6_shuffle_off
 543.png,Missing Album Art,music album missing artwork placeholder,bbos6_album_no_art
+950.png,Favourites Shortcut,files app home favourites shortcut user assigned,bbos6_files_home_favourites
+1050.png,Music Folder Icon,music folder directory original icon user identified,
+1338.png,Favourited Folder,files app favourite folder bookmarked pinned folder icon user identified,bbos6_favourited_folder
+1579.png,Audio Shortcut,files app home audio shortcut user assigned,bbos6_files_home_audio
+2216.png,Videos Shortcut,files app home videos shortcut user assigned,bbos6_files_home_videos
+2219.png,Images Shortcut,files app home images shortcut user assigned,bbos6_files_home_images
 2486.png,Bottom Panel Gradient Reference,blackberry os 6 dark bottom panel seekbar background top dark border lower bevel silver white bottom separator,
 2513.png,Dark Header Background Reference,blackberry os 6 dark gradient header silver top highlight bottom bevel user supplied 2513 image,
 3246.png,Sound Recorder Controls,blackberry os 6 sound recorder audio recording play folder media buttons toolbar gradient,

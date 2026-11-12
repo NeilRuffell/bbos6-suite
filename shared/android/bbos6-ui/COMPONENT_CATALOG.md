@@ -276,6 +276,18 @@ The 36dp / 4dp horizontal dimensions are Q25-tunable approximations, not
 verified historical BBOS SDK constants. Test selection, touch targets,
 trackpad focus and icon alignment on device.
 
+### Icon size and aligned labels
+
+`Bbos6PageList(artworkPaddingDp = 2, reserveArtworkSlotForMissing = true)`
+passes the adjustable image inset into `Bbos6MediaListRow` and keeps an empty
+artwork slot for text-only items. With `artworkSlotSizeDp = 36`, a 2dp inset
+leaves a 32dp artwork viewport instead of the original 20dp viewport at 8dp
+inset. The image is vertically and horizontally centered in the reserved
+36dp slot and every home row label begins at the same horizontal coordinate.
+The default 8dp inset and optional-slot behaviour remain unchanged in other
+consumers, including folder rows and Music. Actual bitmap transparent margins
+can still affect perceived artwork size; verify visually on Q25.
+
 ### Optional list-row icon artwork
 
 `Bbos6PageList(artworkForId = { id -> painterOrNull })` delegates icon
@@ -286,3 +298,23 @@ The source-owned original Folders icon `shared/icons/112.png` is exposed to
 Android consumers as `dev.q25.bbos6.ui.R.drawable.bbos6_menu_folders` through
 a source symlink in shared UI resources. Its index mapping is already verified;
 no new historical identification is inferred.
+
+### Files home shortcut artwork (verified user assignments)
+
+The Files app uses original numbered icons **only on its home shortcuts**:
+Recent Files `129.png` via `bbos6_files_home_recent`,
+Images `2219.png` via `bbos6_files_home_images`, Videos `2216.png` via
+`bbos6_files_home_videos`, Favourites `950.png` via
+`bbos6_files_home_favourites`, and Audio `1579.png` via
+`bbos6_files_home_audio`. The shared resource entries are symlinks to
+`shared/icons/`, with one canonical `shared/icon-index.csv`. This does
+not change existing media list artwork or the Files folder icon `112.png`.
+
+### Favourited folder artwork
+
+Original `shared/icons/1338.png` is the user-confirmed **favourited folder**
+artwork. The canonical drawable resource `bbos6_favourited_folder` is a
+symlink to that original. Files uses it for bookmarked directory entries both
+inside the Favourites list and in regular directory browsing when pinned;
+ordinary folders continue to use `112.png`. This is app-owned icon selection,
+not a change to shared list-row behaviour.

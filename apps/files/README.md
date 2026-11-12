@@ -6,6 +6,54 @@ This application lives in `apps/files/` of the `bbos6-suite` monorepo.
 ## Implemented
 
 - Real Internal Storage and mounted SD Card folder browsing with folders-first sorting.
+- Android launcher icon uses original `shared/icons/211.png`, mapped to
+  `bbos6_files_app_icon` in the canonical shared icon index. The original
+  bytes remain untouched; the shared drawable is a symlink to that source.
+  A Files-owned adaptive launcher XML uses that shared drawable as foreground.
+- Home navigation: Internal Storage, SD Card (when mounted), Recent Files,
+  **Favourites**, Images, Downloads, Audio, Documents and Videos.
+- Home-only shortcut artwork uses original assets: Recent Files **129.png**,
+  Images **2219.png**, Videos **2216.png**, Audio **1579.png**, and
+  Favourites **950.png**.
+  The home list retains 52dp row height and a compact 36dp icon column,
+  but reduces icon inset from 8dp to 2dp (32dp artwork viewport). Empty
+  icon slots are reserved, keeping labels aligned even when an entry has no
+  mapped icon. Other screens retain their default icon
+  insets and existing layout.
+  The original PNGs remain in `shared/icons/`; canonical shared resource
+  symlinks supply them to Android. Audio uses its dedicated home shortcut
+  mapping `bbos6_files_home_audio`; the original Genres icon **348.png**
+  remains unchanged. Folder icons inside lists remain **112.png**, and
+  MediaStore list rows remain unchanged.
+- A folder marked as a favourite displays the original **1338.png**
+  favourited-folder icon in both its normal directory list and the dedicated
+  Favourites list. Removing the bookmark restores the normal **112.png**
+  folder icon without altering the folder or its contents. File favourites
+  keep their existing text-only row presentation.
+- **Favourites** is one openable home row, with a dedicated list of pinned
+  files/folders. Long-press or press the BB Menu key on a file/folder and
+  choose **Add to Favorites**. Pinned items keep insertion order and survive
+  app restarts in private SharedPreferences; no file contents are duplicated.
+- Selecting a favorite opens the original folder (Back returns to Favourites)
+  or opens the original file using the native Android viewer. Long-press a
+  pinned entry to **Remove from Favorites** without deleting the original.
+- Images, Audio, Videos and **Documents** use Android's existing `MediaStore`
+  index across mounted shared-storage volumes, **not** an app-maintained scanner.
+  Indexed items can be opened and shared using their system content URIs.
+  The Documents category queries `MediaStore.Files` using MIME-type filters
+  for recognized document formats, including PDFs, text, Office, OpenDocument,
+  RTF and e-books. Its results are independent of directory location; files
+  with unknown or non-document MIME types may not appear.
+  File management operations and Add to Favorites remain available through
+  normal folder browsing, not the indexed category lists.
+- **Downloads only** opens the primary shared-storage `Download/` folder
+  via the existing `FileBrowser`. Back from that shortcut root goes directly
+  to the home page. The app does not create public directories on entry.
+- Files/folders already pinned show **Remove from Favorites** in their
+  original context menu, preventing duplicate pins.
+- Missing, renamed or inaccessible favorites display an explanatory popup
+  rather than inventing a location or deleting the original file. Removable
+  storage shortcuts require their recorded volume root to be available.
 - Home and directory lists retain their original 52dp vertical row height.
   The BB 9900 Files reference informs tighter **horizontal** layout only:
   a 36dp icon slot and 4dp label inset reduce the gap between icon and text.
@@ -55,7 +103,8 @@ Deletion has no undo. Test with disposable files before trying valuable data.
 The monorepo symlink `apps/files/assets/bbos6` resolves to the one
 canonical `shared/` directory. Shared list interaction, BBOS6 components,
 assets and `icon-index.csv` are maintained **only** there.
-`FileBrowser`, `FileOperations` and Android storage policy belong here.
+`FileBrowser`, `FileOperations`, `FavoritePolicy`, `FavoritesStore`,
+`MediaCategoryBrowser`, and Android storage policy belong here.
 
 ## Build and install
 
@@ -69,6 +118,34 @@ adb -s 202512003630 install -r apps/files/app/build/outputs/apk/release/app-rele
 ```
 
 ## Q25 device checks
+
+1. Confirm Favourites is a single home-page entry, between Recent Files
+   and Images; category rows follow in Images, Downloads, Audio, Documents,
+   Videos order. No individual favorites are pinned directly to home.
+2. Pin a file and folder using the original-item context menu. Open
+   Favourites, confirm ordered entries and no duplicates. Enter a favorite
+   folder and verify Back returns to Favourites.
+3. Force-stop/reopen Files; verify the favorites remain.
+4. Remove a favorite using its Favourites-page long-press/Menu context menu;
+   confirm the underlying file still exists.
+5. Open Images, Audio, Videos and Documents; verify MediaStore lists indexed
+   matches from mounted shared-storage volumes and that Back returns to Files
+   home. Tap to open; long-press for Open or Share.
+6. Check Documents includes indexed PDFs, text, Word/Excel/PowerPoint and
+   OpenDocument files in locations *outside* `Documents/`, including SD Card
+   when mounted. Non-document media and unrelated files should not appear.
+   The category may omit files Android has not indexed or whose MIME types
+   it has not recognized.
+7. Open Downloads as the standard directory shortcut. Navigate a nested
+   folder, then use Back to return to Downloads and Files home. Empty or
+   unavailable directories must not crash or be created silently.
+5. Pin a disposable file, rename or delete the original, then open the stale
+   favorite: expect an unavailable message and ability to remove the shortcut.
+6. Revoke storage permission and verify favorites request native Android
+   access rather than bypassing storage restrictions. If present, test SD card
+   removal and remount behavior.
+
+### Existing functionality checks
 
 1. Verify normal trackpad tap opens directories and files; long-press opens
    context menu without also invoking the normal tap action. Confirm no
