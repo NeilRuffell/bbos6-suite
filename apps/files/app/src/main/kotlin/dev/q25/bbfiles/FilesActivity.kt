@@ -239,7 +239,7 @@ private fun FilesPage(
 
     LaunchedEffect(accessGranted, pendingAfterPermission, roots, favorites) {
         if (accessGranted && pendingAfterPermission != null) {
-            val requested = pendingAfterPermission
+            val requested = pendingAfterPermission ?: ""
             pendingAfterPermission = null
             val bookmarked = favoriteById[requested]
             if (bookmarked != null) activateFavorite(bookmarked)
