@@ -187,6 +187,7 @@ private fun FilesPage(
 ) {
     val scope = rememberCoroutineScope()
     val folderIcon = painterResource(Bbos6UiR.drawable.bbos6_menu_folders)
+    val favouritedFolderIcon = painterResource(Bbos6UiR.drawable.bbos6_favourited_folder)
     val imagesHomeIcon = painterResource(Bbos6UiR.drawable.bbos6_files_home_images)
     val videosHomeIcon = painterResource(Bbos6UiR.drawable.bbos6_files_home_videos)
     val audioHomeIcon = painterResource(Bbos6UiR.drawable.bbos6_menu_genres)
@@ -408,6 +409,18 @@ private fun FilesPage(
 
     val root = currentRoot
     val folder = currentFolder
+    val favouritedFolderPaths = remember(favorites, root?.id, root?.directory?.path) {
+        val rootPath = try {
+            root?.directory?.canonicalPath
+        } catch (_: IOException) {
+            null
+        } catch (_: SecurityException) {
+            null
+        }
+        favorites.filter {
+            it.isDirectory && it.storageId == root?.id && it.rootPath == rootPath
+        }.map { it.path }.toSet()
+    }
     var listing by remember(
         root?.directory?.path, folder?.path, accessGranted, refreshCounter, resumeCounter
     ) {
@@ -463,7 +476,7 @@ private fun FilesPage(
                             artworkSlotSizeDp = 36,
                             textHorizontalPaddingDp = 4,
                             artworkForId = { id ->
-                                if (favoriteById[id]?.isDirectory == true) folderIcon else null
+                                if (favoriteById[id]?.isDirectory == true) favouritedFolderIcon else null
                             },
                             onActivate = { id ->
                                 favoriteById[id]?.let { activateFavorite(it) }
@@ -568,7 +581,10 @@ private fun FilesPage(
                                     artworkSlotSizeDp = 36,
                                     textHorizontalPaddingDp = 4,
                                     artworkForId = { id ->
-                                        if (byPath[id]?.isDirectory == true) folderIcon else null
+                                        if (byPath[id]?.isDirectory == true) {
+                                            if (id in favouritedFolderPaths) favouritedFolderIcon
+                                            else folderIcon
+                                        } else null
                                     },
                                     onActivate = { id ->
                                         if (operationBusy) return@Bbos6PageList

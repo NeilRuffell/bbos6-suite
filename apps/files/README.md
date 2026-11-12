@@ -23,6 +23,11 @@ This application lives in `apps/files/` of the `bbos6-suite` monorepo.
   symlinks supply them to Android. Audio reuses the existing verified
   `bbos6_menu_genres` mapping for icon 348; folder icons inside lists
   remain **112.png** and MediaStore list rows remain unchanged.
+- A folder marked as a favourite displays the original **1338.png**
+  favourited-folder icon in both its normal directory list and the dedicated
+  Favourites list. Removing the bookmark restores the normal **112.png**
+  folder icon without altering the folder or its contents. File favourites
+  keep their existing text-only row presentation.
 - **Favourites** is one openable home row, with a dedicated list of pinned
   files/folders. Long-press or press the BB Menu key on a file/folder and
   choose **Add to Favorites**. Pinned items keep insertion order and survive

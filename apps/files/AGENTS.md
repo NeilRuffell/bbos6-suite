@@ -23,6 +23,10 @@ monorepo. Consult `../../AGENTS.md`, `../../shared/AGENTS.md`,
   volume boundaries, refuse overwrite, and run off the UI thread.
 - App-specific file browsing, operations, favorites and Android FileProvider
   integration belong only to Files. Never use file:// intent URIs.
+- Favoured folders use original 1338.png (`bbos6_favourited_folder`) both
+  in normal directory rows and the Favourites page; unpinned directories keep
+  112.png. The original is mapped in `shared/icon-index.csv` and exposed
+  through a shared resource symlink. File favorites are unchanged.
 - `FavoritePolicy` and `FavoritesStore` persist location shortcuts, not
   file copies. Home has **one** Favourites navigation row, while actual pinned
   entries live in the dedicated Favourites page in saved insertion order.
