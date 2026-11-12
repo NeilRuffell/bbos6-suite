@@ -20,11 +20,18 @@ monorepo. Consult `../../AGENTS.md`, `../../shared/AGENTS.md`,
   volume boundaries, refuse overwrite, and run off the UI thread.
 - App-specific file browsing, operations, favorites and Android FileProvider
   integration belong only to Files. Never use file:// intent URIs.
-- `FavoritePolicy` and `FavoritesStore` persist location shortcuts, not file
-  copies. Append favorites beneath the original home entries in insertion
-  order. Avoid duplicate pins; let home long-press remove a shortcut without
-  deleting the file. Always validate saved paths/volume roots before opening.
-  Keep the shared list controller and context menu app-neutral.
+- `FavoritePolicy` and `FavoritesStore` persist location shortcuts, not
+  file copies. Home has **one** Favourites navigation row, while actual pinned
+  entries live in the dedicated Favourites page in saved insertion order.
+  Long-press a favorite to remove only the shortcut. Validate saved paths
+  and volume roots before opening. Do not duplicate shared list UI.
+- `MediaCategoryBrowser` uses Android `MediaStore` for Images, Audio,
+  Videos across shared volumes. These indexed results use content URIs and
+  currently support Open/Share; do not build custom media scanners.
+  Downloads and Documents are simple links to Android public directories
+  via the existing `FileBrowser`. Preserve Back-to-home navigation and
+  the current 52dp rows / 36dp icon slot / 4dp text inset.
+- Keep shared list controller and context menu app-neutral.
 - Delete always prompts with Cancel selected and has no undo.
 - Keep trackpad, physical keyboard, DPAD, Menu and touch parity.
 
