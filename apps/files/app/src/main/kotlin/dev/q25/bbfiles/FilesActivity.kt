@@ -192,6 +192,7 @@ private fun FilesPage(
     val videosHomeIcon = painterResource(Bbos6UiR.drawable.bbos6_files_home_videos)
     val audioHomeIcon = painterResource(Bbos6UiR.drawable.bbos6_files_home_audio)
     val favouritesHomeIcon = painterResource(Bbos6UiR.drawable.bbos6_files_home_favourites)
+    val recentHomeIcon = painterResource(Bbos6UiR.drawable.bbos6_files_home_recent)
     val roots = remember(internalDirectory, removableDirectory) {
         buildList {
             add(StorageRoot("internal", "Internal Storage", internalDirectory))
@@ -546,6 +547,7 @@ private fun FilesPage(
                                 "videos" -> videosHomeIcon
                                 "audio" -> audioHomeIcon
                                 "favorites" -> favouritesHomeIcon
+                                "recent" -> recentHomeIcon
                                 else -> null
                             }
                         },

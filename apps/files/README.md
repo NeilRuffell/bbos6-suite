@@ -12,12 +12,13 @@ This application lives in `apps/files/` of the `bbos6-suite` monorepo.
   A Files-owned adaptive launcher XML uses that shared drawable as foreground.
 - Home navigation: Internal Storage, SD Card (when mounted), Recent Files,
   **Favourites**, Images, Downloads, Audio, Documents and Videos.
-- Home-only shortcut artwork uses original assets: Images **2219.png**,
-  Videos **2216.png**, Audio **1579.png**, and Favourites **950.png**.
+- Home-only shortcut artwork uses original assets: Recent Files **129.png**,
+  Images **2219.png**, Videos **2216.png**, Audio **1579.png**, and
+  Favourites **950.png**.
   The home list retains 52dp row height and a compact 36dp icon column,
   but reduces icon inset from 8dp to 2dp (32dp artwork viewport). Empty
-  icon slots are reserved, so rows such as Recent Files align their labels
-  with the rest of the home list. Other screens retain their default icon
+  icon slots are reserved, keeping labels aligned even when an entry has no
+  mapped icon. Other screens retain their default icon
   insets and existing layout.
   The original PNGs remain in `shared/icons/`; canonical shared resource
   symlinks supply them to Android. Audio uses its dedicated home shortcut
