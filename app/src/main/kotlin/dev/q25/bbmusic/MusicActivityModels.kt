@@ -149,13 +149,19 @@ internal object MusicActivityModels {
         @JvmField var selected: Int = 0
         @JvmField var selectedTop: Int = 0
 
-        fun setEmptyState(title: String?, message: String?, afterRows: Int) {
+        @JvmOverloads
+        fun setEmptyState(
+            title: String?, message: String?, afterRows: Int, artworkRes: Int = 0
+        ) {
             emptyTitle = title
             emptyMessage = message
             emptyAfterRows = afterRows
-            // Original numbered artwork is only supplied once identified.
-            emptyArtworkRes = 0
+            emptyArtworkRes = if (title.isNullOrBlank()) 0 else artworkRes
         }
+
+        // Content is an overlay below reserved action rows, never an adapter item.
+        fun showsEmptyState(): Boolean =
+            !emptyTitle.isNullOrBlank() && rows.size <= emptyAfterRows
     }
 
     /** Immutable snapshot of a user-confirmed file deletion operation. */

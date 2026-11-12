@@ -45,14 +45,20 @@ public final class MusicActivityModelsTest {
         page.rows.add(MenuRow.setting("Refresh library"));
         assertEquals(1, page.rows.size());
 
-        page.setEmptyState("Empty playlist", "Add songs", 1);
+        page.setEmptyState("Empty playlist", "Add songs", 1, 7);
         assertEquals("Empty playlist", page.emptyTitle);
         assertEquals(1, page.emptyAfterRows);
-        page.emptyArtworkRes = 7;
+        assertEquals(7, page.emptyArtworkRes);
+        assertTrue(page.showsEmptyState());
+        page.rows.add(MenuRow.message("Loading playlist..."));
+        assertFalse(page.showsEmptyState());
+        page.rows.remove(1);
+        assertTrue(page.showsEmptyState());
         page.setEmptyState(null, null, 0);
         assertNull(page.emptyTitle);
         assertNull(page.emptyMessage);
         assertEquals(0, page.emptyArtworkRes);
+        assertFalse(page.showsEmptyState());
     }
 
     @Test public void folderAndPlaylistActionRowsPreserveIdentifiers() {

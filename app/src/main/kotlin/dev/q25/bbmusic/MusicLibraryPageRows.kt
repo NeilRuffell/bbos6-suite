@@ -24,7 +24,6 @@ internal object MusicLibraryPageRows {
     fun songRows(songs: List<LocalMusicSource.Song>): ArrayList<MusicActivityModels.MenuRow> {
         val rows = ArrayList<MusicActivityModels.MenuRow>(songs.size)
         for (song in songs) rows.add(MusicActivityModels.MenuRow.song(song))
-        if (rows.isEmpty()) rows.add(MusicActivityModels.MenuRow.message("No local music found"))
         return rows
     }
 
@@ -38,7 +37,6 @@ internal object MusicLibraryPageRows {
         for (group in groups) {
             rows.add(MusicActivityModels.MenuRow.group(group.label, category, group.songs))
         }
-        if (rows.isEmpty()) rows.add(MusicActivityModels.MenuRow.message("No local music found"))
         return rows
     }
 
@@ -105,13 +103,6 @@ internal object MusicLibraryPageRows {
             } else {
                 rows.add(MusicActivityModels.MenuRow.browserUnavailable(name))
             }
-        }
-        if (rows.isEmpty()) {
-            rows.add(
-                MusicActivityModels.MenuRow.message(
-                    if (saved.isEmpty()) "No folders selected" else "No visible folders"
-                )
-            )
         }
         return rows
     }
@@ -186,13 +177,10 @@ internal object MusicLibraryPageRows {
                 }
             }
         }
-        if (rows.isEmpty()) {
-            val message = if (localSongs == null && entries.any { !it.directory }) {
-                "Reading selected music folders..."
-            } else {
-                "Empty folder"
-            }
-            rows.add(MusicActivityModels.MenuRow.message(message))
+        // Loading is not an empty state: retain its non-selectable status row.
+        // An actual empty folder uses the shared empty-state view.
+        if (rows.isEmpty() && localSongs == null && entries.any { !it.directory }) {
+            rows.add(MusicActivityModels.MenuRow.message("Reading selected music folders..."))
         }
         return rows
     }

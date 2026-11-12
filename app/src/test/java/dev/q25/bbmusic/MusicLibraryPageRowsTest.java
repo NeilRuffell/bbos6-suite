@@ -26,14 +26,11 @@ public final class MusicLibraryPageRowsTest {
         assertEquals("Auto refresh on launch", rows.get(4).title);
     }
 
-    @Test public void emptyLibraryUsesOriginalEmptyMessage() {
+    @Test public void emptyLibraryLeavesRowsEmptyForSharedIllustratedState() {
         List<MenuRow> rows = MusicLibraryPageRows.songRows(Collections.emptyList());
-        assertEquals(1, rows.size());
-        assertEquals(MusicActivityModels.ROW_MESSAGE, rows.get(0).kind);
-        assertEquals("No local music found", rows.get(0).title);
+        assertTrue(rows.isEmpty());
         List<MenuRow> groups = MusicLibraryPageRows.groupedRows(Collections.emptyList(), 2);
-        assertEquals(1, groups.size());
-        assertEquals("No local music found", groups.get(0).title);
+        assertTrue(groups.isEmpty());
     }
 
     @Test public void clearingSearchReturnsExistingPageRowsByIdentity() {
@@ -97,9 +94,7 @@ public final class MusicLibraryPageRowsTest {
         page.browserEntries = Collections.emptyList();
         List<MenuRow> empty = MusicLibraryPageRows.browserRows(
                 page, Collections.emptyList());
-        assertEquals(1, empty.size());
-        assertEquals(MusicActivityModels.ROW_MESSAGE, empty.get(0).kind);
-        assertEquals("Empty folder", empty.get(0).title);
+        assertTrue(empty.isEmpty());
         assertTrue(page.rows.isEmpty());
     }
 
