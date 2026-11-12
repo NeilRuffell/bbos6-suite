@@ -29,7 +29,7 @@ internal object FileOperations {
         if (!FileBrowser.isWithin(root, target)) {
             return@guarded Result.Failure("The folder is outside the storage volume.")
         }
-        if (target.exists()) return@guarded Result.Failure("An item with this name already exists.")
+        if (target.exists() || Files.isSymbolicLink(target.toPath())) return@guarded Result.Failure("An item with this name already exists.")
         if (target.mkdir()) Result.Success(target)
         else Result.Failure("Android could not create the folder.")
     }
@@ -48,7 +48,7 @@ internal object FileOperations {
         if (target.canonicalFile == source.canonicalFile) {
             return@guarded Result.Success(source)
         }
-        if (target.exists()) return@guarded Result.Failure("An item with this name already exists.")
+        if (target.exists() || Files.isSymbolicLink(target.toPath())) return@guarded Result.Failure("An item with this name already exists.")
         if (source.renameTo(target)) Result.Success(target)
         else Result.Failure("Android could not rename this item.")
     }
@@ -87,7 +87,7 @@ internal object FileOperations {
         if (move && source.renameTo(target)) return@guarded Result.Success(target)
         try {
             copyTree(sourceRoot, source, targetRoot, target)
-        } catch (error: IOException) {
+        } catch (error: Exception) {
             // Only a newly created, non-overwriting target is removed.
             if (target.exists()) deleteTree(targetRoot, target)
             return@guarded Result.Failure("Copy failed: ${error.message ?: "storage error"}.")
