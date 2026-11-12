@@ -18,8 +18,13 @@ monorepo. Consult `../../AGENTS.md`, `../../shared/AGENTS.md`,
 - Android storage access is explicitly user granted; protected/private
   app storage remains restricted. All file operations validate canonical
   volume boundaries, refuse overwrite, and run off the UI thread.
-- App-specific file browsing, operations and Android FileProvider integration
-  belong only to Files. Never use file:// intent URIs.
+- App-specific file browsing, operations, favorites and Android FileProvider
+  integration belong only to Files. Never use file:// intent URIs.
+- `FavoritePolicy` and `FavoritesStore` persist location shortcuts, not file
+  copies. Append favorites beneath the original home entries in insertion
+  order. Avoid duplicate pins; let home long-press remove a shortcut without
+  deleting the file. Always validate saved paths/volume roots before opening.
+  Keep the shared list controller and context menu app-neutral.
 - Delete always prompts with Cancel selected and has no undo.
 - Keep trackpad, physical keyboard, DPAD, Menu and touch parity.
 
