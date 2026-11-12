@@ -20,7 +20,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.pointer.pointerInput
@@ -71,6 +70,11 @@ fun Bbos6PageList(
         "Duplicate list item ID"
     }
     Bbos6ManagedFocusEffect()
+    // A theme-aware host opts this page-list into the app-wide preference.
+    // Without a host, retain the original dark list used by existing apps.
+    val isDark = LocalBbos6ThemeIsDark.current ?: true
+    val rowColorScheme = if (isDark) Bbos6MediaListRowColorScheme.DARK
+        else Bbos6MediaListRowColorScheme.LIGHT
     val focusRequester = remember { FocusRequester() }
     val listState = rememberLazyListState()
     var selected by rememberSaveable { mutableIntStateOf(0) }
@@ -106,7 +110,7 @@ fun Bbos6PageList(
         state = listState,
         modifier = modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(Bbos6ThemePalette.background(isDark))
             // A blank list still needs a touch/long-press path to the
             // enclosing page's context menu (e.g. New Folder).
             .then(
@@ -221,7 +225,8 @@ fun Bbos6PageList(
                 rowHeightDp = rowHeightDp,
                 artworkSlotSizeDp = artworkSlotSizeDp,
                 artworkPaddingDp = artworkPaddingDp,
-                textHorizontalPaddingDp = textHorizontalPaddingDp
+                textHorizontalPaddingDp = textHorizontalPaddingDp,
+                colorScheme = rowColorScheme
             )
         }
     }
