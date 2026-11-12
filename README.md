@@ -253,6 +253,8 @@ timestamps; those files are rechecked every time rather than silently
 classified as unchanged. Changes that preserve file size, timestamp and name
 cannot be detected reliably, so **Full rescan** is available.
 
+**Background scan indication:** While the app's selected-folder library load, incremental refresh or full rescan is running, `MusicActivity.setLibraryLoading` drives a passive, full-width `Bbos6BackgroundLoadingIndicator` in the Compose `MusicAppShellView`. It occupies a 14dp bottom-edge slot *below* the active screen viewport (Library or Now Playing) and disappears on completion, error or explicit scan invalidation. Its green beveled stripes scroll right; the animation/visuals belong exclusively to the shared `bbos6-ui` helper. Music owns only scan lifecycle and visibility. No persistent progress state, list overlay, or input/focus interception is added. Test cached launch, auto refresh, manual Refresh library, Full rescan, folder removal, error and navigation/trackpad while active on the Q25.
+
 Auto refresh runs once when an Activity is created after its cached library
 loads, not as continuous polling. The worker scans only selected trees and
 logs added/rechecked/removed/reused counts. Manually triggered scans show a
