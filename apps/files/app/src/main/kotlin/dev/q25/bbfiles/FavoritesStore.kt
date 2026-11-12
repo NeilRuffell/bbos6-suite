@@ -51,20 +51,22 @@ internal object FavoritePolicy {
         items.any { it.id == item.id && it.rootPath == item.rootPath }
 
     /** Resolve afresh before opening; stale or remounted paths are not traversed. */
-    fun resolve(root: File, favorite: FileFavorite): File? = try {
-        if (root.canonicalPath != favorite.rootPath) return null
-        val file = File(favorite.path)
-        if (!FileBrowser.isWithin(root, file)) return null
-        val canonical = file.canonicalFile
-        canonical.takeIf {
-            it != root.canonicalFile &&
-                (it.isDirectory && favorite.isDirectory ||
-                    it.isFile && !favorite.isDirectory)
+    fun resolve(root: File, favorite: FileFavorite): File? {
+        return try {
+            if (root.canonicalPath != favorite.rootPath) return null
+            val file = File(favorite.path)
+            if (!FileBrowser.isWithin(root, file)) return null
+            val canonical = file.canonicalFile
+            canonical.takeIf {
+                it != root.canonicalFile &&
+                    (it.isDirectory && favorite.isDirectory ||
+                        it.isFile && !favorite.isDirectory)
+            }
+        } catch (_: IOException) {
+            null
+        } catch (_: SecurityException) {
+            null
         }
-    } catch (_: IOException) {
-        null
-    } catch (_: SecurityException) {
-        null
     }
 }
 
