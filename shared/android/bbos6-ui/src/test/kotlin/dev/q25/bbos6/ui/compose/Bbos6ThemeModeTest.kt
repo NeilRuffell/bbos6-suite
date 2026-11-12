@@ -1,5 +1,6 @@
 package dev.q25.bbos6.ui.compose
 
+import androidx.compose.ui.graphics.Color
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -29,5 +30,12 @@ class Bbos6ThemeModeTest {
     @Test fun systemModeTracksCurrentSystemNightMode() {
         assertTrue(Bbos6ThemeMode.SYSTEM.resolvesToDark(true))
         assertFalse(Bbos6ThemeMode.SYSTEM.resolvesToDark(false))
+    }
+
+    @Test fun scopedPaletteKeepsDarkDefaultsAndSupportsLightSurfaces() {
+        assertEquals(Color.Black, Bbos6ThemePalette.background(true))
+        assertEquals(Color.White, Bbos6ThemePalette.foreground(true))
+        assertEquals(Color.White, Bbos6ThemePalette.background(false))
+        assertEquals(Color.Black, Bbos6ThemePalette.foreground(false))
     }
 }
