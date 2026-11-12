@@ -1,55 +1,72 @@
 # BBOS6 Files
 
-A standalone Kotlin + Jetpack Compose file manager for the Zinwa Q25.
+A standalone Kotlin + Jetpack Compose file manager for the Zinwa Q25,
+maintained in `apps/files/` of the `bbos6-suite` monorepo.
 
-**Current state:** First-stage BBOS6 home-page prototype only. The home
-shows Internal Storage, an SD Card entry when mounted removable storage is
-detected, and Recent Files. Selecting an entry currently displays an explicit
-not-yet-implemented message; **file browsing and file operations are not
-implemented**. No all-files access or storage write permission is requested.
+## Current functionality
 
-## Architecture
+- Home: Internal Storage, SD Card (when mounted), Recent Files placeholder.
+- Internal Storage and mounted SD Card: native, read-only folder browsing with
+  child directories and files sorted folders-first, case-insensitively.
+- Trackpad/DPAD Up/Down, click/Enter and touch use the shared
+  `Bbos6PageList` helper; hardware Back navigates up to the storage root,
+  then returns to Files home.
+- Header displays the current folder path relative to the selected volume.
+- An empty or inaccessible directory uses the shared `Bbos6EmptyState`.
+- Folder enumeration happens off the UI thread; the existing shared
+  `Bbos6BackgroundLoadingIndicator` appears while loading.
+- Activating an ordinary file shows a truthful message: file opening is not
+  implemented. Recent Files also remains a placeholder. No file operations
+  or modification are implemented yet.
 
-- Android app ID: `dev.q25.bbfiles`
-- Independent repository: `NeilRuffell/bb-files`, active base `master`
-- Canonical reusable UI: pinned `assets/bbos6` Git submodule pointing to
-  `NeilRuffell/bbos6-shared`
-- Full-page DPAD/trackpad/Enter/touch navigation: shared
-  `Bbos6PageList` (feature branch until approved), using the canonical
-  `Bbos6MediaListRow` selection face
-- Title: shared `Bbos6SectionHeader`
-- Notifications, storage access, SAF, file operations and recents: none yet
+## Storage access and restrictions
 
-Never duplicate shared components or asset mappings in this app. Implement
-future generic helpers in `bbos6-shared` first and advance this app's pinned
-gitlink in a separate PR. Storage discovery and file operations belong here.
+On Android 11+, full shared-storage file browsing uses the native
+`MANAGE_EXTERNAL_STORAGE` special app access. The app checks
+`Environment.isExternalStorageManager()` and offers the Android Settings
+grant screen only when the user selects a storage volume. There is no silent
+grant, root privilege, or automatic access to other apps' private files.
+Access can be revoked in Android Settings. Android continues to restrict
+certain `Android/data` and `Android/obb` locations.
 
-## Build and install
+Directory navigation is constrained by canonical paths to the selected
+storage root. Inaccessible folders report errors without inventing file
+entries. File operations are explicitly out of scope for this stage.
+
+## Canonical shared UI
+
+`apps/files/assets/bbos6` is a monorepo symlink to `shared/`, **not** a
+Git submodule. Reusable components, verified original assets and
+`shared/icon-index.csv` must be modified only in `shared/`.
+Files-specific storage queries and path rules belong in this application.
+
+## Build and install (monorepo)
 
 ```bash
-cd ~/Projects/bb-files
+cd ~/Projects/bbos6-suite
 git fetch origin
-git switch feature/initial-compose-home
-git pull --ff-only origin feature/initial-compose-home
-git submodule sync --recursive
-git submodule update --init --recursive
-gradle :bbos6-ui:verifyKotlinOnly :bbos6-ui:testDebugUnitTest :app:assembleRelease
-adb -s 202512003630 install -r app/build/outputs/apk/release/app-release.apk
+git switch feature/files-folder-browsing
+git pull --ff-only origin feature/files-folder-browsing
+gradle -p apps/files :bbos6-ui:verifyKotlinOnly :bbos6-ui:testDebugUnitTest :app:testDebugUnitTest :app:assembleRelease
+adb -s 202512003630 install -r apps/files/app/build/outputs/apk/release/app-release.apk
 ```
 
-Use JDK 17 and the existing Android SDK. The release APK is signed with the
-existing local Android debug keystore, matching the BB Music personal-build
-workflow; it is not a Play Store release signature.
+Requires JDK 17 and Android SDK. In-place installation preserves existing
+app data. Local Release uses the existing signing configuration.
 
-## Device acceptance checklist
+## Q25 acceptance tests
 
-1. Open Files on Q25; verify the BBOS6 header, dark rows and blue highlight.
-2. Trackpad/DPAD Up/Down changes the selected row without moving focus away.
-3. Trackpad click / Enter shows the explanatory popup once per click.
-4. Back closes the popup; Back on home exits the app.
-5. Touch selects rows and dismisses the popup via OK.
-6. Confirm mounted SD entry visibility on the actual device.
-7. Confirm no white Android default focus overlay covers selected rows.
+1. Files home appears and highlights only the selected row.
+2. Choose Internal Storage; follow the explicit system Settings request and
+   grant All Files Access. Return and confirm the root folder opens.
+3. Confirm folders are first, file names are real, directory entry works,
+   and hardware Back moves to parent, then Files home.
+4. Confirm trackpad/DPAD/Enter and touch navigation throughout; no Android
+   light focus overlay and no duplicate activations.
+5. Confirm empty folders, unreadable Android protected folders and revoked
+   access behave without crashes.
+6. Verify mounted SD Card if present and a folder containing many entries.
+7. Confirm a non-folder file shows the not-yet-implemented message.
 
-No build or on-device verification has been reported yet. Do not merge this
-or the shared helper PR until approved after device testing.
+No build or device verification is claimed until actually performed.
+Do not merge this feature branch without approval.

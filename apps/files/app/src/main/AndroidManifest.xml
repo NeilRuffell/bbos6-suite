@@ -1,5 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Home-page prototype: no filesystem permission is needed yet. -->
+    <!-- Explicit system-settings grant for the file-manager's core browsing function. -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+
     <application
         android:label="Files"
         android:allowBackup="false"
