@@ -6,47 +6,67 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+/** Shared header appearances. Defaults preserve existing Music/settings styling. */
+enum class Bbos6SectionHeaderStyle {
+    BEVELED,
+    FLAT_BLACK_COMPACT
+}
+
 /**
- * Non-selectable BBOS6 settings/list section heading.
+ * Non-selectable BBOS6 section heading.
  *
- * Appearance matches the pre-existing 36dp Music Settings header View.
- * Selection, list position, focus and tap actions remain with the caller.
- * This component never requests focus or intercepts keyboard/trackpad input.
+ * BEVELED preserves the existing 36dp settings header.
+ * FLAT_BLACK_COMPACT renders a 28dp flat black path bar with 2dp horizontal
+ * text inset and no border, matching the user-supplied BBOS Files reference.
+ * The caller owns window insets; this helper never adds status-bar padding.
+ * The header does not request focus or intercept keyboard/trackpad input.
  */
 @Composable
-fun Bbos6SectionHeader(title: String, modifier: Modifier = Modifier) {
+fun Bbos6SectionHeader(
+    title: String,
+    modifier: Modifier = Modifier,
+    style: Bbos6SectionHeaderStyle = Bbos6SectionHeaderStyle.BEVELED
+) {
+    val compact = style == Bbos6SectionHeaderStyle.FLAT_BLACK_COMPACT
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(36.dp)
-            .background(
-                Brush.verticalGradient(
-                    listOf(Color(0xFF4B4E53), Color(0xFF292C31))
-                )
+            .height(if (compact) 28.dp else 36.dp)
+            .then(
+                if (compact) {
+                    Modifier.background(Color.Black)
+                } else {
+                    Modifier
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(Color(0xFF4B4E53), Color(0xFF292C31))
+                            )
+                        )
+                        .border(1.dp, Color(0xFF5A5D63), RectangleShape)
+                }
             )
-            .border(1.dp, Color(0xFF5A5D63), RectangleShape)
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = if (compact) 2.dp else 16.dp),
         contentAlignment = Alignment.CenterStart
     ) {
         BasicText(
             text = title,
             style = TextStyle(
-                color = Color(0xFFE8EBEF),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold
+                color = if (compact) Color.White else Color(0xFFE8EBEF),
+                fontSize = if (compact) 15.sp else 14.sp,
+                fontWeight = if (compact) FontWeight.Normal else FontWeight.Bold
             ),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
