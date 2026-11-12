@@ -96,6 +96,22 @@ fun Bbos6PageList(
         modifier = modifier
             .fillMaxSize()
             .background(Color.Black)
+            // A blank list still needs a touch/long-press path to the
+            // enclosing page's context menu (e.g. New Folder).
+            .then(
+                if (items.isEmpty() && onMenu != null) {
+                    Modifier
+                        .pointerInput(onMenu) {
+                            detectTapGestures(onLongPress = { onMenu(null) })
+                        }
+                        .semantics {
+                            onLongClick {
+                                onMenu(null)
+                                true
+                            }
+                        }
+                } else Modifier
+            )
             .focusRequester(focusRequester)
             .onFocusChanged { hasFocus = it.isFocused }
             .onPreviewKeyEvent { key ->
