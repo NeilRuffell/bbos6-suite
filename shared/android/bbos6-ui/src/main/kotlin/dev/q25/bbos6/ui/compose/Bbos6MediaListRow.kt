@@ -131,7 +131,8 @@ fun Bbos6MediaListRow(
     artworkSlotSizeDp: Int = 68,
     textHorizontalPaddingDp: Int = 16,
     artworkPaddingDp: Int = 8,
-    colorScheme: Bbos6MediaListRowColorScheme = Bbos6MediaListRowColorScheme.DARK
+    colorScheme: Bbos6MediaListRowColorScheme = Bbos6MediaListRowColorScheme.DARK,
+    multiSelected: Boolean = false
 ) {
     require(rowHeightDp > 0) { "rowHeightDp must be positive" }
     require(artworkSlotSizeDp > 0) { "artworkSlotSizeDp must be positive" }
@@ -143,7 +144,11 @@ fun Bbos6MediaListRow(
     Row(
         modifier = modifier.fillMaxWidth().height(rowHeightDp.dp)
             .bbos6MediaListSelectionFace(
-                highlighted, Bbos6MediaListRowPalette.background(resolvedColorScheme)
+                highlighted,
+                if (multiSelected) {
+                    if (resolvedColorScheme == Bbos6MediaListRowColorScheme.LIGHT)
+                        Color(0xFFD1E6F8) else Color(0xFF274860)
+                } else Bbos6MediaListRowPalette.background(resolvedColorScheme)
             ),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -212,6 +217,18 @@ fun Bbos6MediaListRow(
                     )
                 )
             }
+        }
+        if (multiSelected) {
+            BasicText(
+                text = "✓",
+                modifier = Modifier.padding(end = 12.dp),
+                style = TextStyle(
+                    color = if (highlighted || resolvedColorScheme == Bbos6MediaListRowColorScheme.DARK)
+                        Color.White else Color(0xFF135482),
+                    fontSize = 18.sp,
+                    platformStyle = PlatformTextStyle(includeFontPadding = false)
+                )
+            )
         }
         if (showRemoveAction) {
             Box(
