@@ -18,7 +18,11 @@ This application lives in `apps/files/` of the `bbos6-suite` monorepo.
   white text, based on the supplied original BlackBerry File Folders image.
   Other consumers retain the original beveled section-header appearance.
 - Home navigation: Internal Storage, SD Card (when mounted), Recent Files,
-  **Favourites**, Images, Downloads, Audio, Documents and Videos.
+  **Favourites**, Images, Downloads, Audio, Documents, Videos and **Settings**
+  (final row). Settings opens a dedicated Files page using the existing
+  flat-black section header and shared empty-state presentation. It requires
+  no storage permission; Back returns to the home list. No configurable
+  options or persistence have been introduced yet.
 - Home-only shortcut artwork uses original assets: Recent Files **129.png**,
   Images **2219.png**, Videos **2216.png**, Audio **1579.png**, and
   Favourites **950.png**.
@@ -126,6 +130,11 @@ adb -s 202512003630 install -r apps/files/app/build/outputs/apk/release/app-rele
 
 ## Q25 device checks
 
+0. Confirm **Settings** is the last home entry with the same list row
+   spacing/selection as other shortcuts. Open with touch and Q25 trackpad;
+   verify the Settings header and empty-state message. Back returns to Files.
+   Repeat without all-files permission: Settings must open directly without
+   Android's storage-access prompt. No existing file operations should change.
 1. Confirm Favourites is a single home-page entry, between Recent Files
    and Images; category rows follow in Images, Downloads, Audio, Documents,
    Videos order. No individual favorites are pinned directly to home.
