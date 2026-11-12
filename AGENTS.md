@@ -182,8 +182,10 @@ A playlist references indexed, user-authorized SAF `content://` songs,
 not a new filesystem crawler or an unscoped `MediaStore` query.
 
 Playlist directory icon assignments are Music-owned row policy:
-saved playlist names reuse verified `337.png` and the Add Playlist row
-uses `335.png` (mapped in canonical `bbos6-shared/icon-index.csv`).
+saved playlist names reuse verified `337.png`, the Add Playlist row
+uses `335.png`, and opened-playlist Play all uses `334.png`. Shuffle
+reuses Home Shuffle Songs' `339.png` resource. The numbered mappings
+are maintained in canonical `bbos6-shared/icon-index.csv`.
 Package original PNG bytes unchanged; do not duplicate row renderers.
 Playlist selection uses the existing `MusicListView`,
 `Bbos6ContextMenu` and Media3 playback client. Reuse the shared

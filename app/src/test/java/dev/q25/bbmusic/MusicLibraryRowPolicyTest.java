@@ -41,8 +41,14 @@ public final class MusicLibraryRowPolicyTest {
         assertEquals(R.drawable.bbos6_menu_add_playlist,
                 MusicLibraryRowPolicy.menuIconForRow(
                         MenuRow.playlistAction("Add Playlist", "choose-add", -1L)));
+        assertEquals(R.drawable.bbos6_menu_play_all,
+                MusicLibraryRowPolicy.menuIconForRow(
+                        MenuRow.playlistAction("Play all", "play", 42L)));
+        assertEquals(R.drawable.bbos6_menu_shuffle_songs,
+                MusicLibraryRowPolicy.menuIconForRow(
+                        MenuRow.playlistAction("Shuffle", "shuffle", 42L)));
         assertEquals(0, MusicLibraryRowPolicy.menuIconForRow(
-                MenuRow.playlistAction("Play all", "play", 42L)));
+                MenuRow.playlistAction("Other", "unknown", 42L)));
         assertEquals(0, MusicLibraryRowPolicy.menuIconForRow(
                 MenuRow.settingsHeader("Music library")));
     }

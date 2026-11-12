@@ -287,6 +287,8 @@ OS 6 Music home menu supplied for this project:
 | Playlists | `337.png` | `bbos6_menu_playlists.png` |
 | Saved playlist rows (inside Playlists) | `337.png` | `bbos6_menu_playlists.png` |
 | Add Playlist (inside Playlists) | `335.png` | `bbos6_menu_add_playlist.png` |
+| Play all (inside a playlist) | `334.png` | `bbos6_menu_play_all.png` |
+| Shuffle (inside a playlist) | `339.png` | `bbos6_menu_shuffle_songs.png` |
 | Folders (home and directory rows) | `112.png` | `bbos6_menu_folders.png` |
 | Shuffle Songs | `339.png` | `bbos6_menu_shuffle_songs.png` |
 | Settings (Options wrench) | `3412.png` | `bbos6_menu_settings.png` |
@@ -1251,7 +1253,8 @@ background workers; the native ListView and Media3 controller are reused.
   **Export M3U8**, and **Delete playlist** through the existing shared
   `Bbos6ContextMenu`. Delete still opens its existing confirmation and never
   deletes audio files.
-- Open playlist: **Play all** and **Shuffle** appear above the ordered track
+- Open playlist: **Play all** (original `334.png`) and **Shuffle**
+  (reusing Home's original `339.png`) appear above the ordered track
   list; the four maintenance actions are no longer listed here.
   Playing one track uses the available songs of that playlist as its Media3
   queue. Shuffle uses the existing Media3 queue shuffle mode.
@@ -1886,5 +1889,8 @@ uses the user-specified original **335.png**, packaged unchanged as
 `bbos6_menu_add_playlist.png`; its canonical mapping lives in
 `bbos6-shared/icon-index.csv`. Both are selected by the existing
 `MusicLibraryRowPolicy.menuIconForRow`, rendered through the standard
-`MusicListView` icon slot and shared Compose row. Playback actions,
-other list rows, focus and trackpad behavior are unaffected.
+`MusicListView` icon slot and shared Compose row. The opened playlist also uses
+original `334.png` for **Play all** and reuses the same `339.png`
+resource as Home's **Shuffle Songs** for **Shuffle**. All four action
+and playlist row mappings are owned centrally by the existing Music row
+policy; icon display and row focus/trackpad behavior are unchanged.
