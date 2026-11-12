@@ -10,10 +10,13 @@ This application lives in `apps/files/` of the `bbos6-suite` monorepo.
   `bbos6_files_app_icon` in the canonical shared icon index. The original
   bytes remain untouched; the shared drawable is a symlink to that source.
   A Files-owned adaptive launcher XML uses that shared drawable as foreground.
-- The Files root content applies Android Compose `statusBarsPadding()`
-  before the shared 36dp header. This positions the Files/path heading below
-  status-bar clock and notification icons across all pages without a fixed
-  height, per-page offsets, or changes to the reusable header.
+- The Files root applies Android Compose `statusBarsPadding()` before the
+  shared Files/path header, keeping it below the clock and notification icons
+  on every page without per-page offsets. Files selects the shared
+  `Bbos6SectionHeaderStyle.FLAT_BLACK_COMPACT` appearance: a 28dp solid-black
+  bar with no gradient or border, 2dp horizontal text inset and 15sp regular
+  white text, based on the supplied original BlackBerry File Folders image.
+  Other consumers retain the original beveled section-header appearance.
 - Home navigation: Internal Storage, SD Card (when mounted), Recent Files,
   **Favourites**, Images, Downloads, Audio, Documents and Videos.
 - Home-only shortcut artwork uses original assets: Recent Files **129.png**,

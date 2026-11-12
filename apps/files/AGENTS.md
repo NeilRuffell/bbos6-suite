@@ -19,8 +19,11 @@ monorepo. Consult `../../AGENTS.md`, `../../shared/AGENTS.md`,
 - Canonical shared context menu, popup, text input, header, row and loading
   helpers are used directly. The Files root Compose Column owns
   `Modifier.statusBarsPadding()`, ensuring the shared header/path bar starts
-  below the native Android status bar across all Files pages. Do not add
-  status-bar-specific padding inside `Bbos6SectionHeader` or individual pages.
+  below the native Android status bar across all Files pages. Files selects
+  `Bbos6SectionHeaderStyle.FLAT_BLACK_COMPACT` for its path bar (28dp flat
+  black, no border, 2dp text inset). Other clients retain `BEVELED`.
+  Do not add status-bar-specific padding inside `Bbos6SectionHeader`
+  or individual pages.
 - Android storage access is explicitly user granted; protected/private
   app storage remains restricted. All file operations validate canonical
   volume boundaries, refuse overwrite, and run off the UI thread.

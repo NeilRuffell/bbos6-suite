@@ -42,6 +42,7 @@ import dev.q25.bbos6.ui.compose.Bbos6PageList
 import dev.q25.bbos6.ui.compose.Bbos6PopupAction
 import dev.q25.bbos6.ui.compose.Bbos6PopupButtonDialog
 import dev.q25.bbos6.ui.compose.Bbos6SectionHeader
+import dev.q25.bbos6.ui.compose.Bbos6SectionHeaderStyle
 import java.io.File
 import java.io.IOException
 import java.util.Locale
@@ -462,7 +463,8 @@ private fun FilesPage(
                     shortcutRoot ?: root.directory, folder, shortcutLabel ?: root.label
                 )
                 else -> "Files"
-            }
+            },
+            style = Bbos6SectionHeaderStyle.FLAT_BLACK_COMPACT
         )
         Box(Modifier.weight(1f)) {
             if (favoritesPage) {
