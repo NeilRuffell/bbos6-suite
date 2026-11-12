@@ -1,10 +1,16 @@
 package dev.q25.bbos6.ui.compose
 
 import android.content.Context
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import java.util.concurrent.CopyOnWriteArraySet
 
@@ -90,3 +96,31 @@ fun rememberBbos6ThemeManager(): Bbos6ThemeManager {
 @Composable
 fun Bbos6ThemeManager.isDarkTheme(): Boolean =
     mode.resolvesToDark(isSystemInDarkTheme())
+
+/**
+ * Optional theme scope. Without this scope, existing shared components retain
+ * their original dark appearance; one app must explicitly opt in at its root.
+ */
+internal val LocalBbos6ThemeIsDark = compositionLocalOf<Boolean?> { null }
+
+internal object Bbos6ThemePalette {
+    fun background(isDark: Boolean): Color = if (isDark) Color.Black else Color.White
+    fun foreground(isDark: Boolean): Color = if (isDark) Color.White else Color.Black
+}
+
+/**
+ * App-owned theme preference is provided once to theme-aware BBOS6 helpers.
+ * No focus owner, gesture handling, or system-bar insets are added here.
+ */
+@Composable
+fun Bbos6ThemeSurface(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    val isDark = rememberBbos6ThemeManager().isDarkTheme()
+    CompositionLocalProvider(LocalBbos6ThemeIsDark provides isDark) {
+        Box(modifier.background(Bbos6ThemePalette.background(isDark))) {
+            content()
+        }
+    }
+}
