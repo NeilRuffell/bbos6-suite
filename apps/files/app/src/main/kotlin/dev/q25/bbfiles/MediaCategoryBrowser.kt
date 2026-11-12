@@ -3,6 +3,7 @@ package dev.q25.bbfiles
 import android.content.ContentResolver
 import android.content.ContentUris
 import android.net.Uri
+import android.provider.BaseColumns
 import android.provider.MediaStore
 
 /** Native Android indexed media collections, not filesystem scans. */
@@ -33,12 +34,12 @@ internal object MediaCategoryBrowser {
 
     fun query(resolver: ContentResolver, category: IndexedMediaCategory): Listing {
         val collection = when (category) {
-            IndexedMediaCategory.IMAGES -> MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-            IndexedMediaCategory.AUDIO -> MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
-            IndexedMediaCategory.VIDEOS -> MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+            IndexedMediaCategory.IMAGES -> MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
+            IndexedMediaCategory.AUDIO -> MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
+            IndexedMediaCategory.VIDEOS -> MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
         }
         val projection = arrayOf(
-            MediaStore.MediaColumns._ID,
+            BaseColumns._ID,
             MediaStore.MediaColumns.DISPLAY_NAME,
             MediaStore.MediaColumns.MIME_TYPE
         )
@@ -49,7 +50,7 @@ internal object MediaCategoryBrowser {
                 "${MediaStore.MediaColumns.DISPLAY_NAME} ASC"
             ) ?: return Listing.Unavailable("Android's media database is unavailable.")
             cursor.use {
-                val idColumn = it.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
+                val idColumn = it.getColumnIndexOrThrow(BaseColumns._ID)
                 val nameColumn = it.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
                 val mimeColumn = it.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE)
                 while (it.moveToNext()) {
