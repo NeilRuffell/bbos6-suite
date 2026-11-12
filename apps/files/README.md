@@ -6,6 +6,19 @@ This application lives in `apps/files/` of the `bbos6-suite` monorepo.
 ## Implemented
 
 - Real Internal Storage and mounted SD Card folder browsing with folders-first sorting.
+- Favorites: long-press or press the BB Menu key on any file or folder,
+  then choose **Add to Favorites**. The shortcut appears on the Files home
+  page **after** Internal Storage, SD Card (when mounted) and Recent Files.
+  Favorites preserve their insertion order and survive app restarts in private
+  SharedPreferences; no file contents are copied.
+- Tapping a favorite opens its original folder or opens the original file
+  using the native Android viewer. Long-pressing a home favorite offers
+  **Remove from Favorites**, which removes only the shortcut.
+- Files/folders already pinned show **Remove from Favorites** in their
+  original context menu, preventing duplicate pins.
+- Missing, renamed or inaccessible favorites display an explanatory popup
+  rather than inventing a location or deleting the original file. Removable
+  storage shortcuts require their recorded volume root to be available.
 - Home and directory lists retain their original 52dp vertical row height.
   The BB 9900 Files reference informs tighter **horizontal** layout only:
   a 36dp icon slot and 4dp label inset reduce the gap between icon and text.
@@ -55,7 +68,8 @@ Deletion has no undo. Test with disposable files before trying valuable data.
 The monorepo symlink `apps/files/assets/bbos6` resolves to the one
 canonical `shared/` directory. Shared list interaction, BBOS6 components,
 assets and `icon-index.csv` are maintained **only** there.
-`FileBrowser`, `FileOperations` and Android storage policy belong here.
+`FileBrowser`, `FileOperations`, `FavoritePolicy`, `FavoritesStore`, and
+Android storage policy belong here.
 
 ## Build and install
 
@@ -69,6 +83,21 @@ adb -s 202512003630 install -r apps/files/app/build/outputs/apk/release/app-rele
 ```
 
 ## Q25 device checks
+
+1. Pin a folder and a file using the long-press context menu. Confirm both
+   appear below Recent Files, in pin order, and do not create duplicates.
+2. Open the pinned folder and file, navigate Back, and verify the original
+   locations and file contents are unchanged.
+3. Force-stop/reopen Files; verify the same favorites are still present.
+4. Remove a favorite using its home-page long-press/Menu context menu; verify
+   the original file remains intact. Re-pin and remove from the folder menu.
+5. Pin a disposable file, rename or delete the original, then open the stale
+   favorite: expect an unavailable message and ability to remove the shortcut.
+6. Revoke storage permission and verify favorites request native Android
+   access rather than bypassing storage restrictions. If present, test SD card
+   removal and remount behavior.
+
+### Existing functionality checks
 
 1. Verify normal trackpad tap opens directories and files; long-press opens
    context menu without also invoking the normal tap action. Confirm no
