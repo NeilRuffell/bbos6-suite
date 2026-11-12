@@ -323,7 +323,7 @@ opening the item. Focus remains independent of membership; the canonical
 `Bbos6MediaListRow` renders a persistent muted selected face and a check mark,
 while the focused row retains the existing blue gradient. Long-press and Menu
 callbacks remain app-owned, allowing a consumer to open its batch action menu.
-The host owns Back/ESC-to-exit, page changes, labels and all batch operations.
+The helper handles Escape while focused; the host owns system Back-to-exit, page changes, labels and all batch operations.
 No file operations, music commands, or permission logic live in shared UI.
 The selected-face colors and marker are implementation choices, not verified
 historic BlackBerry selection imagery.
