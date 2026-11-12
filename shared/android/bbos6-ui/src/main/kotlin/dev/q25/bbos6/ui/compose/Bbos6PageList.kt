@@ -168,7 +168,7 @@ fun Bbos6PageList(
                                 focusRequester.requestFocus()
                                 onActivate(item.id)
                             },
-                            onLongPress = if (onLongPress != null) ({ 
+                            onLongPress = if (onLongPress != null) ({
                                 selected = index
                                 focusRequester.requestFocus()
                                 onLongPress(item.id)
