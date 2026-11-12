@@ -6,14 +6,25 @@ This application lives in `apps/files/` of the `bbos6-suite` monorepo.
 ## Implemented
 
 - Real Internal Storage and mounted SD Card folder browsing with folders-first sorting.
-- Favorites: long-press or press the BB Menu key on any file or folder,
-  then choose **Add to Favorites**. The shortcut appears on the Files home
-  page **after** Internal Storage, SD Card (when mounted) and Recent Files.
-  Favorites preserve their insertion order and survive app restarts in private
-  SharedPreferences; no file contents are copied.
-- Tapping a favorite opens its original folder or opens the original file
-  using the native Android viewer. Long-pressing a home favorite offers
-  **Remove from Favorites**, which removes only the shortcut.
+- Home navigation: Internal Storage, SD Card (when mounted), Recent Files,
+  **Favourites**, Images, Downloads, Audio, Documents and Videos.
+- **Favourites** is one openable home row, with a dedicated list of pinned
+  files/folders. Long-press or press the BB Menu key on a file/folder and
+  choose **Add to Favorites**. Pinned items keep insertion order and survive
+  app restarts in private SharedPreferences; no file contents are duplicated.
+- Selecting a favorite opens the original folder (Back returns to Favourites)
+  or opens the original file using the native Android viewer. Long-press a
+  pinned entry to **Remove from Favorites** without deleting the original.
+- Images, Audio and Videos use Android's existing `MediaStore` index across
+  available shared-storage volumes, **not** an app-maintained scanner.
+  Indexed items can be opened and shared using their system content URIs.
+  File management operations and Add to Favorites remain available through
+  normal folder browsing, not the indexed category lists.
+- Downloads and Documents open the standard primary shared-storage
+  `Download/` and `Documents/` folders via the existing `FileBrowser`.
+  They are directory shortcuts, not all-device aggregated categories.
+  Back from each shortcut root returns directly to the home page.
+  The app does not create public directories on entry.
 - Files/folders already pinned show **Remove from Favorites** in their
   original context menu, preventing duplicate pins.
 - Missing, renamed or inaccessible favorites display an explanatory popup
@@ -68,8 +79,8 @@ Deletion has no undo. Test with disposable files before trying valuable data.
 The monorepo symlink `apps/files/assets/bbos6` resolves to the one
 canonical `shared/` directory. Shared list interaction, BBOS6 components,
 assets and `icon-index.csv` are maintained **only** there.
-`FileBrowser`, `FileOperations`, `FavoritePolicy`, `FavoritesStore`, and
-Android storage policy belong here.
+`FileBrowser`, `FileOperations`, `FavoritePolicy`, `FavoritesStore`,
+`MediaCategoryBrowser`, and Android storage policy belong here.
 
 ## Build and install
 
@@ -84,13 +95,21 @@ adb -s 202512003630 install -r apps/files/app/build/outputs/apk/release/app-rele
 
 ## Q25 device checks
 
-1. Pin a folder and a file using the long-press context menu. Confirm both
-   appear below Recent Files, in pin order, and do not create duplicates.
-2. Open the pinned folder and file, navigate Back, and verify the original
-   locations and file contents are unchanged.
-3. Force-stop/reopen Files; verify the same favorites are still present.
-4. Remove a favorite using its home-page long-press/Menu context menu; verify
-   the original file remains intact. Re-pin and remove from the folder menu.
+1. Confirm Favourites is a single home-page entry, between Recent Files
+   and Images; category rows follow in Images, Downloads, Audio, Documents,
+   Videos order. No individual favorites are pinned directly to home.
+2. Pin a file and folder using the original-item context menu. Open
+   Favourites, confirm ordered entries and no duplicates. Enter a favorite
+   folder and verify Back returns to Favourites.
+3. Force-stop/reopen Files; verify the favorites remain.
+4. Remove a favorite using its Favourites-page long-press/Menu context menu;
+   confirm the underlying file still exists.
+5. Open Images, Audio and Videos and verify MediaStore lists items from the
+   mounted shared-storage volumes; tap to open, long-press to Open or Share,
+   and verify Back returns to the Files home page.
+6. Open Downloads and Documents as directory shortcuts. Navigate a nested
+   folder and use Back to return to the category root, then Files home.
+   Empty/unavailable public directories must not crash or be created silently.
 5. Pin a disposable file, rename or delete the original, then open the stale
    favorite: expect an unavailable message and ability to remove the shortcut.
 6. Revoke storage permission and verify favorites request native Android
