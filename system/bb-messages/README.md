@@ -58,6 +58,35 @@ continuing to masquerade as a working BBOS6 integration. The experimental
 sources remain only for reference while direct Google controller bindings
 are investigated. No production UI replacement is active. Do not merge.
 
+### Q25 incomplete ConversationId provenance scan (2026-11-14 16:34)
+
+Q25 read-only probe reached the configured **48-object limit** while
+walking the native `asvj` holder graph. It found one candidate
+`ConversationId` at `asvj.r.l`, but the candidate was neither the
+same object nor equal to the actual argument received by
+`asvk.Q(ConversationId)`. This **does not establish a usable ID mapping**:
+the probe was truncated and the candidate is not verified as the
+clicked conversation's identity.
+
+The probe now scans at most **160 non-platform object references**,
+to a maximum depth of 4, and logs `objectCapReached`,
+`depthCapReached`, `fieldCapReached`, plus `matchingPath`
+(if an equal `ConversationId` is found). No IDs, message text,
+contact details, or values are logged. This remains a read-only,
+opt-in diagnostic in the stock Google inbox.
+
+After rebuilding, open one conversation normally, then capture:
+
+```sh
+adb -s 202512003630 logcat -d -v time | grep 'BBMessagesActions.*ID_LINK'
+```
+
+If no matching identity is found, **do not** implement a navigation
+binding from `asvj.r.l`; investigate Google's verified row-model
+binding rather than guessing or opening the wrong conversation.
+Existing shared BBOS6 presentation helpers remain unchanged.
+No overlays are enabled, and no merge is authorized.
+
 ### Q25 verified navigation method argument types (2026-11-14 16:31)
 
 Q25 device output verifies these *instance methods* on the installed
