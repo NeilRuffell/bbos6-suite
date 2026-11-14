@@ -64,6 +64,8 @@ monorepo. Consult `../../AGENTS.md`, `../../shared/AGENTS.md`,
   no other app gets an indicator by default.
 - Files is an Android Storage Access Framework source through app-owned
   `FilesDocumentsProvider` (authority `dev.q25.bbfiles.documents`).
+  Its primary DocumentsUI root is labeled `BB Files — Internal Storage`
+  to distinguish it from the platform's own Internal Storage source.
   Android's system DocumentsUI handles `ACTION_OPEN_DOCUMENT`,
   `ACTION_CREATE_DOCUMENT`, `ACTION_OPEN_DOCUMENT_TREE` and
   `ACTION_GET_CONTENT` (via the system picker): do not register those
