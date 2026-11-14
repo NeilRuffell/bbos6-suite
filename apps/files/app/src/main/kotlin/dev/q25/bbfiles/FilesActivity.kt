@@ -8,6 +8,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
 import android.os.storage.StorageManager
+import android.provider.DocumentsContract
 import android.provider.Settings
 import android.text.format.DateFormat
 import android.text.format.Formatter
@@ -117,12 +118,21 @@ class FilesActivity : ComponentActivity() {
     }
 
     private fun refreshStorage() {
+        val previousAccess = allFilesAccess
+        val previousRemovable = removableDirectory
         allFilesAccess = Environment.isExternalStorageManager()
         removableDirectory = getSystemService(StorageManager::class.java)
             .storageVolumes.firstOrNull {
                 it.isRemovable && (it.state == Environment.MEDIA_MOUNTED ||
                     it.state == Environment.MEDIA_MOUNTED_READ_ONLY)
             }?.directory
+        if (previousAccess != allFilesAccess || previousRemovable != removableDirectory) {
+            // Let Android's DocumentsUI refresh visible roots after permission
+            // changes or mounted-storage changes; do not grant access here.
+            contentResolver.notifyChange(
+                DocumentsContract.buildRootsUri("$packageName.documents"), null
+            )
+        }
     }
 
     private fun openAllFilesSettings(): Boolean = try {
