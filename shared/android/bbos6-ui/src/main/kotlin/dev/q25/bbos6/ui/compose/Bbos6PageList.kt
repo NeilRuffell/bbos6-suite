@@ -71,6 +71,8 @@ internal object Bbos6PageListNavigation {
  * movement, Enter/center activation on key release, touch activation,
  * selection retention, scrolling and optional long-press/Menu action dispatch. The\n * caller owns row IDs, context actions and screen navigation.
  * Presentation delegates to the canonical Bbos6MediaListRow. The optional
+ * [secondaryTextForId] optionally supplies a one-line subtitle beneath
+ * each row title (for example, a conversation preview).
  * [trailingTextForId] displays caller-owned short metadata at the right of
  * the title, immediately before the selection checkbox when active.
  * Its default is null for all existing consumers.
@@ -97,6 +99,7 @@ fun Bbos6PageList(
     multiSelectEnabled: Boolean = false,
     multiSelectionState: Bbos6PageListMultiSelectionState? = null,
     trailingTextForId: (String) -> String? = { null },
+    secondaryTextForId: (String) -> String? = { null },
     initialSelectedId: String? = null
 ) {
     require(rowHeightDp > 0) { "Row height must be positive" }
@@ -239,9 +242,10 @@ fun Bbos6PageList(
         itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
             val itemArtwork = artworkForId(item.id)
             val trailingText = trailingTextForId(item.id)
+            val secondaryText = secondaryTextForId(item.id)
             Bbos6MediaListRow(
                 title = item.label,
-                subtitle = null,
+                subtitle = secondaryText,
                 duration = trailingText,
                 trackNumber = null,
                 showArtwork = itemArtwork != null || reserveArtworkSlotForMissing,
@@ -270,8 +274,9 @@ fun Bbos6PageList(
                         )
                     }
                     .semantics(mergeDescendants = true) {
-                        contentDescription = if (trailingText == null) item.label
-                            else "${item.label}, $trailingText"
+                        contentDescription = listOfNotNull(
+                            item.label, secondaryText, trailingText
+                        ).joinToString(", ")
                         if (multiSelectEnabled && multiSelection.isActive) {
                             stateDescription = if (item.id in multiSelection.selectedIds)
                                 "Selected" else "Not selected"
