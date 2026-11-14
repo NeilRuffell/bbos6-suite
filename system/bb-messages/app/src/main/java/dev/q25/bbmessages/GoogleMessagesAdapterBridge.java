@@ -454,7 +454,28 @@ final class GoogleMessagesAdapterBridge {
                 "conversation_name", "id", TARGET_PACKAGE
             );
             View nativeRow = holderItemView(holder, nameId);
-            if (nativeRow == null || !nativeRow.hasOnClickListeners()) return false;
+            if (nativeRow == null || !CONVERSATION_ROW.equals(
+                    nativeRow.getClass().getName())
+                || !nativeRow.hasOnClickListeners()
+                || (longPress && !nativeRow.isLongClickable())) return false;
+            // Native IDs are unavailable. A background reorder could make
+            // the position represent another conversation between selection
+            // and activation. Compare the current bound presentation before
+            // dispatching Google's original action. Fail closed on mismatch.
+            int snippetId = recycler.getResources().getIdentifier(
+                "conversation_snippet", "id", TARGET_PACKAGE
+            );
+            View senderView = nativeRow.findViewById(nameId);
+            View snippetView = nativeRow.findViewById(snippetId);
+            if (!(senderView instanceof TextView)
+                || !(snippetView instanceof TextView)
+                || !selected.sender.equals(
+                    ((TextView) senderView).getText().toString())
+                || !selected.preview.equals(
+                    ((TextView) snippetView).getText().toString())) {
+                Log.w(TAG, "Native position changed before action; no action dispatched");
+                return false;
+            }
             return longPress ? nativeRow.performLongClick() : nativeRow.performClick();
         } catch (Throwable failure) {
             Log.e(TAG, "Native conversation action failed; no synthetic fallback", failure);
