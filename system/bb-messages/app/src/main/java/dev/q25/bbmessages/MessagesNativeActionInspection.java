@@ -57,8 +57,9 @@ final class MessagesNativeActionInspection {
                 describe(row, "attached", attached++);
             }
             bridge.inspectDetachedActionShape();
-            // A class name alone does not establish native controller access.
-            // This phase only verifies what callback objects exist.
+            bridge.verifyBoundConversationHandles();
+            // Controller identity is structurally verified but opening a
+            // BBOS6 conversation still requires safe action integration.
         } catch (Throwable failure) {
             Log.w(TAG, "Read-only action introspection unavailable: "
                 + failure.getClass().getSimpleName());
