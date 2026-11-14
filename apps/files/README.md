@@ -169,7 +169,8 @@ Files registers an Android `DocumentsProvider` at
 `dev.q25.bbfiles.documents`. Android's native DocumentsUI (not a second
 Files-owned picker activity) discovers it through
 `android.content.action.DOCUMENTS_PROVIDER` and displays **Internal Storage**
-and mounted **SD Cards with stable volume UUIDs** as local roots. Other apps can use standard
+and mounted **SD Cards with stable volume UUIDs** as local roots.
+Other apps can use standard
 `ACTION_OPEN_DOCUMENT`, `ACTION_GET_CONTENT` (via Android's picker),
 `ACTION_CREATE_DOCUMENT`, and `ACTION_OPEN_DOCUMENT_TREE` to browse
 authorized directories and select documents. This does **not** make the Files
@@ -181,10 +182,13 @@ activity a direct handler for those intents.
   lookups, reads, writes and listings. Storage-root changes are notified on
   Files activity resume; existing open pickers may need to be reopened.
 - Only the app's current public shared-storage root and mounted removable
-  volumes with stable UUIDs are exposed, using volume-scoped **opaque relative document IDs**
+  volumes with stable UUIDs are exposed, using volume-scoped
+  **opaque relative document IDs**
   validated against canonical storage paths. `Android/data`, `Android/obb`
   and other Android-protected paths remain subject to platform restrictions.
   Files does not expose its private data or other arbitrary filesystem paths.
+  Symlink aliases are omitted from picker listings; removable volumes without
+  a stable UUID are not exported.
 - The exported provider is protected by system-only
   `android.permission.MANAGE_DOCUMENTS`, with narrow user-selected
   `content://` URI grants from Android. This is separate from the existing,
