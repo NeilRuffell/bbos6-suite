@@ -87,6 +87,16 @@ final class MessagesNativeActionTrace {
             }
             int hooks = 0;
             for (Method method : declared) {
+                // Only the signatures of methods observed in real Q25
+                // actions are useful. Never read argument values or inspect
+                // message/contact fields.
+                if ("asvk".equals(name) && isObservedControllerMethod(method)) {
+                    Log.i(TAG, "TRACE_SIGNATURE method=" + name + "."
+                        + method.getName()
+                        + " static=" + Modifier.isStatic(method.getModifiers())
+                        + " parameterTypes=" + parameterTypeNames(method)
+                        + " returnType=" + method.getReturnType().getName());
+                }
                 if (Modifier.isAbstract(method.getModifiers())
                     || Modifier.isNative(method.getModifiers())
                     || method.isSynthetic()) continue;
@@ -101,6 +111,17 @@ final class MessagesNativeActionTrace {
                                 + " call=" + name + "." + method.getName()
                                 + " params=" + method.getParameterCount()
                                 + " return=" + method.getReturnType().getName());
+                            // For Q/P only, report the runtime CLASSES of
+                            // argument objects passed by Google itself.
+                            // Do not print toString(), object identity,
+                            // IDs, or any model payload.
+                            if ("asvk".equals(name)
+                                && ("Q".equals(method.getName())
+                                    || "P".equals(method.getName()))) {
+                                Log.i(TAG, "TRACE_ARGTYPE action=" + state.kind
+                                    + " method=" + name + "." + method.getName()
+                                    + " argClasses=" + argumentTypeNames(hook.args));
+                            }
                         }
                     });
                     hooks++;
@@ -116,6 +137,40 @@ final class MessagesNativeActionTrace {
             Log.w(TAG, "TRACE_PATH class unavailable=" + name
                 + " error=" + failure.getClass().getSimpleName());
         }
+    }
+
+    private static boolean isObservedControllerMethod(Method method) {
+        switch (method.getName()) {
+            case "L":
+            case "I":
+            case "Q":
+            case "G":
+            case "P":
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private static String parameterTypeNames(Method method) {
+        Class<?>[] types = method.getParameterTypes();
+        StringBuilder result = new StringBuilder("[");
+        for (int i = 0; i < types.length; i++) {
+            if (i != 0) result.append(",");
+            result.append(types[i].getName());
+        }
+        return result.append("]").toString();
+    }
+
+    private static String argumentTypeNames(Object[] values) {
+        if (values == null) return "[]";
+        StringBuilder result = new StringBuilder("[");
+        for (int i = 0; i < values.length; i++) {
+            if (i != 0) result.append(",");
+            result.append(values[i] == null
+                ? "null" : values[i].getClass().getName());
+        }
+        return result.append("]").toString();
     }
 
     private static void hook(
