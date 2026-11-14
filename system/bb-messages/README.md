@@ -53,7 +53,22 @@ Native owners are reused when available; Google's own view tree is never
 modified. The row bridge also avoids duplicate attachments from constructor
 hooks and removes text observers and the old overlay on detach.
 
-**This fallback is not yet build-verified or tested on Q25.** If it cannot
+### Q25 follow-up: overlay parent owner (2026-11-14)
+
+The next Q25 run showed `java.lang.IllegalStateException:
+ViewTreeLifecycleOwner not found from android.view.ViewOverlay$OverlayViewGroup`.
+The ComposeView had an owner, but the Android overlay's actual parent did not.
+Compose's window-recomposer lookup inspects that parent while attaching.
+
+The BB Messages row bridge now attaches a zero-size, non-interactive native
+owner anchor into the row overlay **before** mounting Compose. The anchor
+assigns lifecycle, saved-state and ViewModelStore owners to the overlay
+parent. The original Google RecyclerView and its row remain the scroll/action
+owners; the anchor and Compose overlay are removed together on detach.
+If the mount fails, the original row is retained and further attempts are
+suppressed until that row reattaches, preventing repeated stack-trace spam.
+
+**The overlay-parent correction is not yet build-verified or tested on Q25.** If it cannot
 create the Compose host, the hook logs the exception and does not shrink
 the original row. Captured logs must include `BBMessagesInbox` lines; a
 successful "Mounted BBOS6 inbox row face" indicates the host was installed,
