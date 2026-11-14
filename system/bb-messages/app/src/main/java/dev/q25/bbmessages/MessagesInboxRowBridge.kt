@@ -231,7 +231,7 @@ object MessagesInboxRowBridge {
 
             var paint: ComposeView? = null
             try {
-                paint = ComposeView(row.context).apply {
+                val newPaint = ComposeView(row.context).apply {
                     isClickable = false
                     isFocusable = false
                     importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
@@ -242,8 +242,9 @@ object MessagesInboxRowBridge {
                 }
                 // ViewGroupOverlay is non-interactive: Google still handles
                 // every row click, long press, trackpad event and scroll.
-                row.overlay.add(paint)
-                composeView = paint
+                paint = newPaint
+                row.overlay.add(newPaint)
+                composeView = newPaint
                 localOwner = fallback
                 Log.i(TAG, "Mounted BBOS6 inbox row face" +
                     if (fallback != null) " (isolated Compose lifecycle)" else "")
