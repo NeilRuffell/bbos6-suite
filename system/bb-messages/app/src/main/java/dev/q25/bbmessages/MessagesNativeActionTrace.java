@@ -28,6 +28,7 @@ final class MessagesNativeActionTrace {
     private static final class ActionScope {
         final String kind;
         final Object nativeDelegate;
+        Object resultOfI;
         int events;
         int depth = 1;
 
@@ -112,6 +113,10 @@ final class MessagesNativeActionTrace {
                             if (state == null
                                 || !"asvb.onClick".equals(state.kind)
                                 || !"asvk".equals(name)) return;
+                            if ("I".equals(method.getName())
+                                && !hook.hasThrowable()) {
+                                state.resultOfI = hook.getResult();
+                            }
                             if ("L".equals(method.getName())
                                 || "I".equals(method.getName())) {
                                 GoogleMessagesConversationBinding.logDelegatePathStage(
@@ -147,6 +152,10 @@ final class MessagesNativeActionTrace {
                                     );
                                     GoogleMessagesConversationBinding.matchesGoogleOpen(
                                         state.nativeDelegate, hook.args[0]
+                                    );
+                                    MessagesNativeRowModelInspection.compareOnRealOpen(
+                                        state.nativeDelegate, state.resultOfI,
+                                        hook.args[0]
                                     );
                                 }
                             }
