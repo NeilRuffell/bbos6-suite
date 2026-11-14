@@ -199,8 +199,9 @@ activity a direct handler for those intents.
   No overwrites are permitted when creating or renaming. Read-only volumes
   do not advertise write or create operations; removable media disappearance
   returns an unavailable-document error. Renamed documents receive updated
-  document IDs. Deletion from a system picker is subject to that picker's
-  own confirmation UI, not the Files app's BBOS6 delete dialog.
+  document IDs. A URI-granted external app may delete a document without
+  showing the Files app's BBOS6 confirmation dialog; confirmation is owned
+  by the calling app or system picker, not this provider.
 - As a deliberate minimal first release, the provider does not advertise
   search, recents, thumbnail or cross-folder move/copy APIs. The existing
   Files UI and its native FileProvider share/open actions are unchanged.
