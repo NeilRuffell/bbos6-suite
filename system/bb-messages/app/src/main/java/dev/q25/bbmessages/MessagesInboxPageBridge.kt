@@ -4,6 +4,7 @@ import android.app.Activity
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewTreeObserver
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import androidx.compose.runtime.getValue
@@ -96,6 +97,20 @@ object MessagesInboxPageBridge {
                 _, _, _, _, _, _, _, _, _ ->
             scheduleRefresh()
         }
+        private val countObserver = ViewTreeObserver.OnPreDrawListener {
+            // Adapter updates which remove the last native row may not
+            // trigger any bind callback. Check only the integer count here.
+            // Snapshot work always remains deferred after this draw pass.
+            if (!closed) {
+                try {
+                    if (adapter.itemCount() != nativeRows.size) scheduleRefresh()
+                } catch (failure: Throwable) {
+                    scheduleRefresh()
+                }
+            }
+            true
+        }
+        private var observedTree: ViewTreeObserver? = null
 
         fun mount() {
             if (originalIndex < 0) return
@@ -142,6 +157,8 @@ object MessagesInboxPageBridge {
                 recycler.isFocusableInTouchMode = false
                 host.addView(compose)
                 recycler.addOnLayoutChangeListener(refreshListener)
+                observedTree = host.viewTreeObserver.takeIf { it.isAlive }
+                observedTree?.addOnPreDrawListener(countObserver)
 
                 host.addOnAttachStateChangeListener(
                     object : View.OnAttachStateChangeListener {
@@ -228,6 +245,8 @@ object MessagesInboxPageBridge {
             closed = true
             if (currentSession?.get() === this) currentSession = null
             recycler.removeOnLayoutChangeListener(refreshListener)
+            observedTree?.takeIf { it.isAlive }?.removeOnPreDrawListener(countObserver)
+            observedTree = null
             try {
                 compose.disposeComposition()
             } finally {
