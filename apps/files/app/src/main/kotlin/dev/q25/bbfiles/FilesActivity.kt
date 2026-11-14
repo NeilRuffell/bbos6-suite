@@ -730,7 +730,7 @@ private fun FilesPage(
                         val rows = contents.entries.map { entry ->
                             Bbos6ListSelectionItem(
                                 id = entry.file.path,
-                                label = if (entry.isDirectory) "${entry.name}/" else entry.name
+                                label = entry.name
                             )
                         }
                         key(folder.path) {
