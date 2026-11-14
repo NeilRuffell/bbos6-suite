@@ -205,8 +205,9 @@ final class GoogleMessagesAdapterBridge {
     }
 
     /**
-     * Controller-level diagnostic for freshly bound native conversation rows.
-     * Samples at most 40 adapter positions; no message contents or IDs are
+     * STRUCTURAL controller/holder diagnostic for freshly bound rows.
+     * This does not establish any per-row ConversationId or safe ability
+     * to navigate. Samples at most 40 positions; no message contents or IDs are
      * logged, no UI is added, and Google navigation is never invoked.
      */
     void verifyBoundConversationHandles() {
@@ -220,9 +221,9 @@ final class GoogleMessagesAdapterBridge {
             int unbound = 0;
             int animations = 0;
             int unexpected = 0;
-            int repeatedRefs = 0;
+            int repeatedHolderRefs = 0;
             java.util.Map<String, Integer> failures = new java.util.TreeMap<>();
-            java.util.Set<Object> identities =
+            java.util.Set<Object> observedHolders =
                 java.util.Collections.newSetFromMap(
                     new java.util.IdentityHashMap<Object, Boolean>()
                 );
@@ -265,7 +266,9 @@ final class GoogleMessagesAdapterBridge {
                             );
                         if (check.handle != null) {
                             valid++;
-                            if (!identities.add(check.handle.conversationId)) repeatedRefs++;
+                            if (!observedHolders.add(check.handle.nativeHolder)) {
+                                repeatedHolderRefs++;
+                            }
                         } else {
                             unbound++;
                             failures.merge(check.reason, 1, Integer::sum);
@@ -290,11 +293,11 @@ final class GoogleMessagesAdapterBridge {
             Log.i(TAG, "HANDLE_PROBE nativeItems=" + nativeCount
                 + " sampled=" + limit
                 + " conversations=" + conversations
-                + " verified=" + valid
+                + " structural=" + valid
                 + " unbound=" + unbound
                 + " animation=" + animations
                 + " unexpected=" + unexpected
-                + " repeatedIdReferences=" + repeatedRefs
+                + " repeatedHolderReferences=" + repeatedHolderRefs
                 + " failureReasons=" + failures);
         } catch (Throwable failure) {
             Log.w(TAG, "HANDLE_PROBE could not inspect bound holders: "
