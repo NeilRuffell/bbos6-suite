@@ -78,7 +78,7 @@ object MessagesInboxPageBridge {
             }
             if (recycler.parent !== parent || !recycler.isAttachedToWindow) return
 
-            val session = Session(parent, recycler, adapter, snapshot)
+            val session = Session(parent, recycler, adapter, snapshot, adapter.itemCount())
             session.mount()
             currentSession = WeakReference(session)
         } catch (failure: Throwable) {
@@ -90,7 +90,8 @@ object MessagesInboxPageBridge {
         private val parent: LinearLayout,
         private val recycler: ViewGroup,
         private val adapter: GoogleMessagesAdapterBridge,
-        originalRows: List<GoogleMessagesAdapterBridge.NativeConversationRow>
+        originalRows: List<GoogleMessagesAdapterBridge.NativeConversationRow>,
+        initialNativeItemCount: Int
     ) {
         private val owner = InboxRowCompositionOwner()
         private val originalLayoutParams = recycler.layoutParams
@@ -101,6 +102,10 @@ object MessagesInboxPageBridge {
         private val host = FrameLayout(parent.context)
         private val compose = ComposeView(parent.context)
         private var nativeRows = originalRows
+        // The adapter can contain noninteractive Lottie rows. Its total
+        // count is NOT the displayed conversation count; comparing these
+        // would schedule a refresh every frame.
+        private var nativeAdapterItemCount = initialNativeItemCount
         private var displayRows by mutableStateOf(asDisplayRows(originalRows))
         private var revision by mutableIntStateOf(0)
         private var scheduled = false
@@ -117,7 +122,7 @@ object MessagesInboxPageBridge {
             // Snapshot work always remains deferred after this draw pass.
             if (!closed) {
                 try {
-                    if (adapter.itemCount() != nativeRows.size) scheduleRefresh()
+                    if (adapter.itemCount() != nativeAdapterItemCount) scheduleRefresh()
                 } catch (failure: Throwable) {
                     scheduleRefresh()
                 }
@@ -218,10 +223,12 @@ object MessagesInboxPageBridge {
             if (closed || !recycler.isAttachedToWindow) return
             try {
                 val latest = adapter.snapshot()
+                val refreshedItemCount = adapter.itemCount()
                 val presentation = asDisplayRows(latest)
                 // Position IDs cannot be treated as stable conversation IDs.
                 // Reset shared selection whenever Google's dataset changes.
                 nativeRows = latest
+                nativeAdapterItemCount = refreshedItemCount
                 if (presentation != displayRows) {
                     displayRows = presentation
                     revision++
