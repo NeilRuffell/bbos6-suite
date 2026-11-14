@@ -61,6 +61,16 @@ lets us locate an R8-renamed adapter reference without guessing method names.
 It never logs any field values, contact names, message objects, or message text.
 It does not yet replace the Google-owned inbox with `Bbos6PageList`.
 
+The subsequent Q25 field inventory identified an active `RecyclerView`
+field `F` declared as `zc` with runtime class `wk`, alongside other
+obfuscated native view implementation fields. This is **not sufficient
+evidence** to designate `F` the adapter; the field could serve another
+RecyclerView role. The following diagnostic adds bounded
+`CANDIDATE` / `CANDIDATE_METHOD` signatures and superclass chains for
+active non-platform reference fields. It does not invoke any unidentified
+methods, read conversation objects, or modify UI. Identify the adapter
+contract and stable item/action mappings before enabling a full-page swap.
+
 To inspect the stock adapter, **disable the old visual experiment first**:
 
 ```sh
