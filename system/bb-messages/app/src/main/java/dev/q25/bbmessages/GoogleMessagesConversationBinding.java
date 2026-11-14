@@ -65,41 +65,95 @@ final class GoogleMessagesConversationBinding {
         }
     }
 
+    static final class BindingCheck {
+        final VerifiedHandle handle;
+        final String reason;
+
+        BindingCheck(VerifiedHandle handle, String reason) {
+            this.handle = handle;
+            this.reason = reason;
+        }
+    }
+
     /**
-     * Links a native bound holder to its actual controller and ConversationId.
-     * This does not invoke Q or P. The caller must ensure the adapter has not
-     * changed and refresh/revalidate selection before future navigation.
+     * Classifies a bound native row without invoking any Google controller.
+     * Distinguishing binding failures matters: the Q25 attached callback
+     * produced a valid ID but detached snapshot binds verified 0/8 rows.
      */
-    static VerifiedHandle fromBoundConversation(View row, Object holder) {
-        if (row == null || holder == null
-            || !"com.google.android.apps.messaging.home.list.ConversationListItemView"
-                .equals(row.getClass().getName())
-            || !HOLDER.equals(holder.getClass().getName())) return null;
+    static BindingCheck inspectBoundConversation(View row, Object holder) {
+        if (row == null || !"com.google.android.apps.messaging.home.list.ConversationListItemView"
+            .equals(row.getClass().getName())) {
+            return new BindingCheck(null, "row_type");
+        }
+        if (holder == null || !HOLDER.equals(holder.getClass().getName())) {
+            return new BindingCheck(null, "holder_type");
+        }
         try {
             Object info = XposedHelpers.getObjectField(row, "mListenerInfo");
-            if (info == null) return null;
-            Object clickWrapper = XposedHelpers.getObjectField(info, "mOnClickListener");
-            if (clickWrapper == null || !"fzih".equals(clickWrapper.getClass().getName()))
-                return null;
-            Object delegate = readInstanceField(clickWrapper, "c");
-            if (delegate == null
-                || !CLICK_DELEGATE.equals(delegate.getClass().getName())
-                || readInstanceField(delegate, "b") != holder) return null;
+            if (info == null) return new BindingCheck(null, "listener_info");
+            Object wrapper = XposedHelpers.getObjectField(info, "mOnClickListener");
+            if (wrapper == null || !"fzih".equals(wrapper.getClass().getName())) {
+                return new BindingCheck(null, "click_wrapper");
+            }
+            Object delegate = readInstanceField(wrapper, "c");
+            if (delegate == null ||
+                !CLICK_DELEGATE.equals(delegate.getClass().getName())) {
+                return new BindingCheck(null, "click_delegate");
+            }
+            if (readInstanceField(delegate, "b") != holder) {
+                return new BindingCheck(null, "holder_reference");
+            }
             Object controller = readInstanceField(delegate, "a");
-            if (controller == null || !CONTROLLER.equals(controller.getClass().getName()))
-                return null;
+            if (controller == null || !CONTROLLER.equals(controller.getClass().getName())) {
+                return new BindingCheck(null, "controller_type");
+            }
             Object id = conversationIdFromHolder(holder);
-            if (id == null) return null;
+            if (id == null) return new BindingCheck(null, "id_unavailable");
             Class<?> idClass = Class.forName(
                 CONVERSATION_ID, false, holder.getClass().getClassLoader()
             );
             java.lang.reflect.Method open = controller.getClass()
                 .getDeclaredMethod("Q", idClass);
             if (open.getReturnType() != void.class
-                || Modifier.isStatic(open.getModifiers())) return null;
-            return new VerifiedHandle(controller, id, holder);
+                || Modifier.isStatic(open.getModifiers())) {
+                return new BindingCheck(null, "open_signature");
+            }
+            return new BindingCheck(new VerifiedHandle(controller, id, holder), "verified");
         } catch (Throwable failure) {
-            return null;
+            return new BindingCheck(null,
+                "reflection_" + failure.getClass().getSimpleName());
+        }
+    }
+
+    static VerifiedHandle fromBoundConversation(View row, Object holder) {
+        return inspectBoundConversation(row, holder).handle;
+    }
+
+    /**
+     * Inspect the original *attached* Google's row without needing an
+     * adapter-position mapping. Its own click delegate identifies its holder.
+     * Never invoke the callback. Only for read-only native diagnostics.
+     */
+    static BindingCheck inspectAttachedConversation(View row) {
+        if (row == null || !row.isAttachedToWindow()) {
+            return new BindingCheck(null, "not_attached");
+        }
+        try {
+            Object info = XposedHelpers.getObjectField(row, "mListenerInfo");
+            if (info == null) return new BindingCheck(null, "listener_info");
+            Object wrapper = XposedHelpers.getObjectField(info, "mOnClickListener");
+            if (wrapper == null || !"fzih".equals(wrapper.getClass().getName())) {
+                return new BindingCheck(null, "click_wrapper");
+            }
+            Object delegate = readInstanceField(wrapper, "c");
+            if (delegate == null ||
+                !CLICK_DELEGATE.equals(delegate.getClass().getName())) {
+                return new BindingCheck(null, "click_delegate");
+            }
+            return inspectBoundConversation(row, readInstanceField(delegate, "b"));
+        } catch (Throwable failure) {
+            return new BindingCheck(null,
+                "reflection_" + failure.getClass().getSimpleName());
         }
     }
 
