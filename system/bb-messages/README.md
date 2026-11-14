@@ -58,6 +58,45 @@ continuing to masquerade as a working BBOS6 integration. The experimental
 sources remain only for reference while direct Google controller bindings
 are investigated. No production UI replacement is active. Do not merge.
 
+### Q25 repeatability and structural binding confirmed (2026-11-14 16:56)
+
+User verified the updated action-probe build installed and ran on
+the Zinwa Q25. The stock Google Messages inbox produced:
+
+```text
+ATTACHED_HANDLE_PROBE inspected=5 structural=5 failureReasons={}
+HANDLE_PROBE nativeItems=8 sampled=8 conversations=8 structural=8
+  unbound=0 animation=0 unexpected=0
+  repeatedHolderReferences=0 failureReasons={}
+MODEL_SOURCE resultClass=aszh path=resultOfI.a.I.c failedAt=none
+  typedId=true referenceMatch=true equalityMatch=true
+  nativeBinderSeen=true nativeBindEvents=10
+  selectionIndexPresent=true selectionMatchesNativePosition=true
+MODEL_SOURCE resultClass=aszh path=resultOfI.a.I.c failedAt=none
+  typedId=true referenceMatch=true equalityMatch=true
+  nativeBinderSeen=true nativeBindEvents=15
+  selectionIndexPresent=true selectionMatchesNativePosition=true
+```
+
+This establishes the **observed native dispatch contract in two
+different conversation taps**: Google's own `asvk.I(int)` resolves a
+model carrying the same `ConversationId` later used by `asvk.Q`,
+and its integer argument matches the native adapter's bound position.
+The separate attached and detached structural checks also succeeded
+for all sampled rows; they do **not** assert that a detached holder
+contains a persistent `ConversationId`.
+
+**Next integration stage:** implement a Google-specific, fail-closed
+navigation adapter for the canonical `Bbos6PageList` that resolves
+the *current* native adapter/model and verifies the selected row's
+identity before any direct navigation; account for asynchronous
+dataset changes and non-conversation rows. Test that independently
+invoking Google's model accessor and navigation method preserves
+normal SMS/MMS/RCS actions. Then hook presentation at source/creation
+time instead of the rejected delayed overlay. No production UI or
+independent `I/Q` dispatch has been enabled by these tests. Do not
+merge PR #19 until explicit approval and device acceptance.
+
 ### Q25 verified native index-to-conversation contract (2026-11-14 16:52)
 
 The user built and tested the action-probe branch on the Q25. Actual
