@@ -43,7 +43,7 @@ fun MessagesInboxList(
         onActivate = onOpenConversation,
         modifier = modifier,
         rowHeightDp = 52,
-        textHorizontalPaddingDp = 8,
+        textHorizontalPaddingDp = 4,
         secondaryTextForId = { byId[it]?.preview },
         trailingTextForId = { byId[it]?.timestamp },
         onLongPress = onConversationMenu,
