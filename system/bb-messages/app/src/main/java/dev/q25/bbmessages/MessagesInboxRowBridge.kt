@@ -13,10 +13,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.findViewTreeLifecycleOwner
+import androidx.lifecycle.findViewTreeViewModelStoreOwner
 import androidx.lifecycle.setViewTreeLifecycleOwner
+import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.findViewTreeSavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import dev.q25.bbos6.ui.compose.Bbos6MediaListRow
+import java.util.Collections
+import java.util.WeakHashMap
 
 /**
  * Experimental, read-only visual bridge to a verified native
@@ -34,9 +38,12 @@ object MessagesInboxRowBridge {
     private const val TAG = "BBMessagesInbox"
     private const val GOOGLE_PACKAGE = "com.google.android.apps.messaging"
     private const val ROW_HEIGHT_DP = 52
+    private val attachedRows = Collections.newSetFromMap(WeakHashMap<ViewGroup, Boolean>())
 
     @JvmStatic
     fun attachToRow(row: ViewGroup) {
+        // Xposed may hook delegating constructors more than once.
+        if (!attachedRows.add(row)) return
         val painter = RowPainter(row)
         row.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
             painter.sync()
@@ -48,7 +55,11 @@ object MessagesInboxRowBridge {
             }
 
             override fun onViewDetachedFromWindow(view: View) {
-                painter.unregisterFocusObserver()
+                try {
+                    painter.detach()
+                } catch (failure: Throwable) {
+                    Log.e(TAG, "Failed to clean up BBOS6 row overlay", failure)
+                }
             }
         })
         if (row.isAttachedToWindow) {
@@ -67,6 +78,7 @@ object MessagesInboxRowBridge {
         private var text by mutableStateOf(FaceText("", null, null))
         private var focused by mutableStateOf(false)
         private var composeView: ComposeView? = null
+        private var localOwner: InboxRowCompositionOwner? = null
         private var senderField: TextView? = null
         private var previewField: TextView? = null
         private var timestampField: TextView? = null
@@ -100,9 +112,29 @@ object MessagesInboxRowBridge {
             focusObserver = null
         }
 
+        fun detach() {
+            unregisterFocusObserver()
+            senderField?.removeTextChangedListener(watcher)
+            previewField?.removeTextChangedListener(watcher)
+            timestampField?.removeTextChangedListener(watcher)
+            senderField = null
+            previewField = null
+            timestampField = null
+            val oldPaint = composeView
+            composeView = null
+            try {
+                oldPaint?.disposeComposition()
+            } finally {
+                if (oldPaint != null) row.overlay.remove(oldPaint)
+                localOwner?.destroy()
+                localOwner = null
+            }
+        }
+
         fun sync() {
             try {
-                if (!isVerifiedInboxRow() || row.width <= 0 || row.height <= 0) return
+                if (!row.isAttachedToWindow || !isVerifiedInboxRow() ||
+                    row.width <= 0 || row.height <= 0) return
                 val sender = findField("conversation_name") ?: return
                 watchSender(sender)
                 val preview = findField("conversation_snippet")
@@ -188,28 +220,42 @@ object MessagesInboxRowBridge {
         }
 
         private fun installPaintOverlay() {
-            // An injected Compose host must use the *existing* app lifecycle.
-            // Never create an independent lifecycle for a Google-owned row.
-            val lifecycleOwner = row.findViewTreeLifecycleOwner()
-            if (lifecycleOwner == null) {
-                Log.w(TAG, "No compatible lifecycle owner; native row retained")
-                return
-            }
-            val paint = ComposeView(row.context).apply {
-                isClickable = false
-                isFocusable = false
-                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-                setViewTreeLifecycleOwner(lifecycleOwner)
-                row.findViewTreeSavedStateRegistryOwner()?.let {
-                    setViewTreeSavedStateRegistryOwner(it)
+            // Google Messages' current row tree does not expose compatible
+            // AndroidX owners. Supply them only to our injected ComposeView,
+            // never to Google's actual View hierarchy.
+            val lifecycle = row.findViewTreeLifecycleOwner()
+            val savedState = row.findViewTreeSavedStateRegistryOwner()
+            val viewModels = row.findViewTreeViewModelStoreOwner()
+            val fallback = if (lifecycle == null || savedState == null ||
+                viewModels == null) InboxRowCompositionOwner() else null
+
+            var paint: ComposeView? = null
+            try {
+                paint = ComposeView(row.context).apply {
+                    isClickable = false
+                    isFocusable = false
+                    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                    setViewTreeLifecycleOwner(lifecycle ?: checkNotNull(fallback))
+                    setViewTreeSavedStateRegistryOwner(savedState ?: checkNotNull(fallback))
+                    setViewTreeViewModelStoreOwner(viewModels ?: checkNotNull(fallback))
+                    setContent { PaintFace() }
                 }
-                setContent { PaintFace() }
+                // ViewGroupOverlay is non-interactive: Google still handles
+                // every row click, long press, trackpad event and scroll.
+                row.overlay.add(paint)
+                composeView = paint
+                localOwner = fallback
+                Log.i(TAG, "Mounted BBOS6 inbox row face" +
+                    if (fallback != null) " (isolated Compose lifecycle)" else "")
+            } catch (failure: Throwable) {
+                try {
+                    paint?.disposeComposition()
+                    if (paint != null) row.overlay.remove(paint)
+                } finally {
+                    fallback?.destroy()
+                }
+                throw failure
             }
-            // A ViewGroupOverlay does not receive input. The original row
-            // remains the only touch, trackpad, click and scroll owner.
-            row.overlay.add(paint)
-            composeView = paint
-            Log.i(TAG, "Mounted BBOS6 row face in native inbox")
         }
 
         @Composable
