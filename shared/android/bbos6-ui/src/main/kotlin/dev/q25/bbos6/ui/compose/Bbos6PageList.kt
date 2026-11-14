@@ -35,6 +35,27 @@ internal object Bbos6PageListNavigation {
         if (count <= 0) return -1
         return (current.coerceIn(0, count - 1) + direction).coerceIn(0, count - 1)
     }
+
+    /**
+     * Hardware long-press must reach the same directory-menu fallback as a
+     * blank-list touch long-press. Row-specific handlers still take priority.
+     * Returns true only when a handler actually receives the event.
+     */
+    fun dispatchLongPress(
+        selectedId: String?,
+        onLongPress: ((String) -> Unit)?,
+        onMenu: ((String?) -> Unit)?
+    ): Boolean {
+        if (selectedId != null && onLongPress != null) {
+            onLongPress(selectedId)
+            return true
+        }
+        if (onMenu != null) {
+            onMenu(selectedId)
+            return true
+        }
+        return false
+    }
 }
 
 /**
@@ -168,10 +189,12 @@ fun Bbos6PageList(
                             longPressTriggered = false
                         }
                         if (down && event.repeatCount > 0 && event.isLongPress &&
-                            !longPressTriggered && onLongPress != null) {
+                            !longPressTriggered &&
+                            Bbos6PageListNavigation.dispatchLongPress(
+                                items.getOrNull(selected)?.id, onLongPress, onMenu
+                            )) {
                             longPressTriggered = true
                             heldConfirm = AndroidKeyEvent.KEYCODE_UNKNOWN
-                            items.getOrNull(selected)?.let { onLongPress(it.id) }
                         }
                         if (!down) {
                             val invoke = heldConfirm == event.keyCode && !event.isCanceled &&
