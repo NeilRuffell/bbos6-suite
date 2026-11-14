@@ -28,6 +28,7 @@ public final class MessagesInspectionHook implements IXposedHookLoadPackage {
     private static final String TARGET = "com.google.android.apps.messaging";
     private static final String TAG = "BBMessagesInspect";
     private static final String INBOX_PROP = "debug.bbmessages.inbox.enabled";
+    private static final String PAGE_PROP = "debug.bbmessages.page.enabled";
     private static final String ROW_CLASS =
         "com.google.android.apps.messaging.home.list.ConversationListItemView";
     private static final int MAX_VIEWS = 240;
@@ -76,10 +77,13 @@ public final class MessagesInspectionHook implements IXposedHookLoadPackage {
                 }
             );
             Log.i(TAG, "Inspection enabled for main Google Messages process");
-            if (isInboxPaintEnabled()) {
+            if (isPageEnabled()) {
+                Log.i(TAG, "Full shared Bbos6PageList enabled (experimental)");
+                hookAdapterBindings(param.classLoader);
+            } else if (isInboxPaintEnabled()) {
                 hookInboxRows(param.classLoader);
             } else {
-                Log.i(TAG, "BBOS6 inbox rendering disabled (set " + INBOX_PROP + "=true)");
+                Log.i(TAG, "BBOS6 inbox rendering disabled (set " + PAGE_PROP + "=true)");
             }
         } catch (Throwable failure) {
             Log.e(TAG, "Unable to install read-only inspection hook", failure);
@@ -87,10 +91,18 @@ public final class MessagesInspectionHook implements IXposedHookLoadPackage {
     }
 
     private static boolean isInboxPaintEnabled() {
+        return propertyEnabled(INBOX_PROP);
+    }
+
+    private static boolean isPageEnabled() {
+        return propertyEnabled(PAGE_PROP);
+    }
+
+    private static boolean propertyEnabled(String name) {
         try {
             Class<?> properties = XposedHelpers.findClass("android.os.SystemProperties", null);
             Object value = XposedHelpers.callStaticMethod(
-                properties, "getBoolean", INBOX_PROP, false
+                properties, "getBoolean", name, false
             );
             return Boolean.TRUE.equals(value);
         } catch (Throwable failure) {
@@ -124,6 +136,28 @@ public final class MessagesInspectionHook implements IXposedHookLoadPackage {
         }
     }
 
+    private static void hookAdapterBindings(ClassLoader loader) {
+        try {
+            Class<?> adapter = XposedHelpers.findClassIfExists("vv", loader);
+            if (adapter == null || adapter.getSuperclass() == null
+                || !"yv".equals(adapter.getSuperclass().getName())) {
+                Log.w(TAG, "Verified native adapter class unavailable; page stays native");
+                return;
+            }
+            XposedBridge.hookAllMethods(adapter, "g", new XC_MethodHook() {
+                @Override
+                protected void afterHookedMethod(MethodHookParam hook) {
+                    if (!GoogleMessagesAdapterBridge.isSnapshotBinding()) {
+                        MessagesInboxPageBridge.onNativeAdapterBound();
+                    }
+                }
+            });
+            Log.i(TAG, "Watching native adapter bind callbacks for full-page refresh");
+        } catch (Throwable failure) {
+            Log.e(TAG, "Native adapter binding watcher unavailable", failure);
+        }
+    }
+
     private static void inspect(Activity activity) {
         try {
             if (activity.isFinishing() || activity.isDestroyed()) {
@@ -135,9 +169,11 @@ public final class MessagesInspectionHook implements IXposedHookLoadPackage {
             inspectTree(root, 0, "root", total);
             Log.i(TAG, "END views=" + total[0]
                 + (total[0] >= MAX_VIEWS ? " (truncated)" : ""));
-            // Structural native-adapter evidence is required before mounting
-            // Bbos6PageList. It never reads message text or invokes bindings.
-            MessagesNativeAdapterInspection.inspect(activity);
+            if (isPageEnabled()) {
+                MessagesInboxPageBridge.tryMount(activity);
+            } else {
+                MessagesNativeAdapterInspection.inspect(activity);
+            }
         } catch (Throwable failure) {
             Log.e(TAG, "Read-only view inspection failed", failure);
         }
