@@ -15,7 +15,7 @@ Vector or a separate always-running overlay service.
 | Notifications | Android NotificationManagerService and SystemUI | Group, focus and present existing notifications; call native actions, dismissals and reply paths |
 | Quick Settings | SystemUI QS host, QSTile objects and TileServices | Display native tile state in BB rows, forward primary/secondary/long actions, and follow the native listening lifecycle |
 | Shade lifecycle | SystemUI notification-shade window and panel controller | Attach the BB page host to the existing native window; use the native expansion/collapse state |
-| Status bar | Android's native status-bar window and views | Preserve real clock, notification, network, battery and privacy indicators; style focus without replacing their owners |
+| Status bar | Android's native status-bar window and views | Preserve native clock, notification, network, battery and privacy views and ownership; temporarily replace notification icon presentation with the current date while a BB popup or shade is visible |
 | Media | Android MediaSessionManager / MediaController | Present and control real active sessions, artwork, position and supported shuffle/repeat functions |
 | Lock screen/security | Android keyguard, bouncer and credential services | Style the lock screen and expose supported native shortcuts; never replace credential verification |
 | Recent applications | Android task management and Launcher3/Quickstep Overview | Replace Quickstep's visual presentation with **one** BBOS6 icon grid, while reusing native task actions, lifecycle and navigation; never mount or conceal a second renderer |
@@ -35,8 +35,11 @@ With `debug.bb7pulldown.native_shade.enabled=true`:
    pages, plus the shared date/media header. Changing pages changes their
    visibility instead of opening another window.
 3. The existing native status-bar window is **separate by Android design**.
-   BB UI keeps its real content visible and adds only a reversible focus
-   background. A small temporary keyboard-focus input surface used outside
+   BB UI preserves the real clock and system indicators, while temporarily
+   hiding only notification indicators and displaying a live date whenever
+   the BB-button popup or either shade page is open. It retains the real
+   notification views and restores their mode when the last BB surface
+   closes. A small temporary keyboard-focus input surface used outside
    the shade is *not* a second shade or a replacement status bar.
 4. While the BB child is mounted, touch is routed to that presentation;
    underlying stock shade views cannot also respond to the same gesture.

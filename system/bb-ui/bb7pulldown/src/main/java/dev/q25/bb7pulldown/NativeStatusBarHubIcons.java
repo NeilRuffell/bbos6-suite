@@ -77,8 +77,8 @@ final class NativeStatusBarHubIcons {
     private static Map<String, Integer> renderedCounts = Collections.emptyMap();
     private static boolean attachmentLogged;
     private static boolean eligibilityWarningLogged;
-    // The BB-button menu temporarily replaces *both* native App indicators
-    // and this separately centered Hub strip with a live date.
+    // The BB-button menu and both shade pages temporarily replace native
+    // App indicators and this separately centered Hub strip with a live date.
     private static boolean menuDateVisible;
 
     private NativeStatusBarHubIcons() {}

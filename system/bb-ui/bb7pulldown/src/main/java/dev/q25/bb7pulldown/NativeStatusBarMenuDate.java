@@ -18,7 +18,8 @@ import java.util.Locale;
 
 /**
  * Temporary date in the REAL SystemUI status bar while the BB-button menu
- * is visible. No duplicate status bar, notification observer, or icon backend.
+ * or either BB shade page is visible. No duplicate status bar, notification
+ * observer, or icon backend.
  *
  * Only the native notification_icon_area is hidden; signal, battery, clock,
  * privacy, and the native notification views stay attached and operational.
@@ -36,7 +37,7 @@ final class NativeStatusBarMenuDate {
 
     private NativeStatusBarMenuDate() {}
 
-    /** Bind after the popup window has been successfully attached. */
+    /** Bind while any BB-button popup or BB shade page is active. */
     static void show(View nativeBar) {
         if (!(nativeBar instanceof FrameLayout) || !nativeBar.isAttachedToWindow()) {
             return;
@@ -104,14 +105,14 @@ final class NativeStatusBarMenuDate {
             suppressIcons();
             refreshTint();
             NativeStatusBarHubIcons.setMenuDateVisible(true);
-            Log.i(TAG, "BB menu date displayed in native status bar");
+            Log.i(TAG, "BB menu/shade date displayed in native status bar");
         } catch (RuntimeException error) {
             hide();
             Log.w(TAG, "Cannot show native status-bar date; icons restored", error);
         }
     }
 
-    /** Restore the native icon area on every popup exit path. */
+    /** Restore native icons only after the last BB menu/shade surface closes. */
     static void hide() {
         if (trackedTree != null && visibilityGuard != null && trackedTree.isAlive()) {
             trackedTree.removeOnPreDrawListener(visibilityGuard);

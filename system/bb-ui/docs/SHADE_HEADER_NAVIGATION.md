@@ -32,16 +32,18 @@ CommandQueue show-recents path (and only falls back to a guarded toggle),
 preventing recursion into the BB-button interception hook. If a shade is
 open, it is dismissed before switching.
 
-While the BB-button popup is visible, the **real SystemUI status bar**
-temporarily displays the current, locale-formatted date centered in place of
-notification indicators. The regular App notification area and the separately
+While the BB-button popup **or either BB shade (Notifications / Quick
+Settings)** is visible, the **real SystemUI status bar** temporarily displays
+the current, locale-formatted date centered in place of notification indicators. The regular App notification area and the separately
 rendered Hub category strip are both suppressed visually, without detaching
 notification views or changing notification data. The date uses Android's
 native TextClock and updates for date/timezone changes. Clock, signal, battery,
-and privacy indicators are untouched. Back, Home, screen-off, task switching,
-shade navigation, and failed popup creation restore the original icon mode.
-Status-bar reinflation while the popup is open rebinds the date to the current
-native PhoneStatusBarView. No extra SystemUI window is created.
+and privacy indicators are untouched. Transitions from the popup into a shade,
+between shade pages, or between a shade and its popup **retain** the date;
+only closing the last BB surface restores the original icon mode. Back, Home,
+screen-off, task switching and failed popup creation follow this same rule.
+Status-bar reinflation while any BB surface is open rebinds the date to the
+current native PhoneStatusBarView. No extra SystemUI window is created.
 
 The BB key is the **only** way to open the popup. Trackpad Up from the first
 notification icon, media row, or first unlocked Quick Settings row stays
@@ -93,23 +95,26 @@ adb -s 202512003630 shell am crash com.android.systemui
 Cross-app task removal and native Recents dispatch still require device
 validation; a successful build does not prove the firmware permits either.
 
-## BB-button menu status-date validation (monorepo)
+## BB-button menu and shade status-date validation (monorepo)
 
 ```sh
 cd ~/Projects/bbos6-suite
 git fetch origin
-git switch feature/vector-bb-menu-status-date
-git pull --ff-only origin feature/vector-bb-menu-status-date
+git switch feature/vector-date-while-shades-open
+git pull --ff-only origin feature/vector-date-while-shades-open
 gradle -p system/bb-ui :app:testDebugUnitTest :app:assembleDebug && \
 adb -s 202512003630 install -r system/bb-ui/app/build/outputs/apk/debug/app-debug.apk && \
 adb -s 202512003630 shell am crash com.android.systemui
 ```
 
 Check both **By application** and **By notification type (Hub)** modes.
-Open the BB-button popup: a live date replaces notification icons but
-clock, connectivity, battery and privacy indicators stay visible.
-Receive notifications while the popup remains open: icons must not appear.
-Dismiss with Back, Home, screen-off, Close Application, Switch Application,
-and by opening either shade page: the appropriate icons must return.
-Also check a mode change while the popup is open, midnight/timezone changes,
-and status-bar reinflation. Device-test results are required before merging.
+Open the BB-button popup, Notifications shade or Quick Settings shade:
+the live date replaces notification icons but clock, connectivity, battery
+and privacy indicators stay visible. Receive notifications while any BB
+surface remains open: icons must not appear. Transition popup -> Notifications,
+popup -> QS, Notifications <-> QS, and shade -> popup -> shade; the date must
+not flicker or disappear. Close the last BB surface using Back, Home,
+screen-off, Close Application or Switch Application: the correct App/Hub
+icons must return. Also check opening a shade directly (without the popup),
+a mode change while a shade is open, midnight/timezone changes, and
+status-bar reinflation. Device-test results are required before merging.

@@ -214,9 +214,9 @@ public final class PullDownHook implements IXposedHookLoadPackage {
                         nativeStatusBar = new WeakReference<>(bar);
                         bar.post(() -> {
                             updateStatusAppearance();
-                            // Reinflation while the BB menu is open must rebind the
-                            // native date to the new real status-bar window.
-                            if (focusWindow != null) NativeStatusBarMenuDate.show(bar);
+                            // Rebind the same native date if the BB menu or either
+                            // BB shade is open during status-bar reinflation.
+                            if (focusWindow != null || shadeHost != null) updateStatusBarDate();
                         });
                     }
                 }
@@ -375,7 +375,8 @@ public final class PullDownHook implements IXposedHookLoadPackage {
         focusWindow = null;
         focusManager = null;
         standaloneHeader = null;
-        NativeStatusBarMenuDate.hide();
+        // Keep the date when the menu closes over an already-open shade.
+        updateStatusBarDate();
         updateStatusAppearance();
         if (root != null && wm != null) {
             try { wm.removeViewImmediate(root); }
@@ -552,10 +553,9 @@ public final class PullDownHook implements IXposedHookLoadPackage {
             popup.setFocusedZone(NAVIGATION.focusedZone());
             root.requestFocus();
             // Presentation only: real notifications remain owned by SystemUI.
-            NativeStatusBarMenuDate.show(nativeStatusBar.get());
+            updateStatusBarDate();
             Log.i(TAG, "BB page popup displayed at bottom-left");
         } catch (Throwable error) {
-            NativeStatusBarMenuDate.hide();
             unregisterSelectorScreenOffReceiver();
             if (root.isAttachedToWindow()) {
                 try { wm.removeViewImmediate(root); }
@@ -568,6 +568,9 @@ public final class PullDownHook implements IXposedHookLoadPackage {
             standaloneHeader = null;
             popupTaskTarget = null;
             if (shadeHost == null) NAVIGATION.leaveStandaloneStatusBar();
+            // If a shade was already open, its status date must survive a
+            // failed attempt to present the popup.
+            updateStatusBarDate();
             Log.e(TAG, "Unable to present BB page popup", error);
         }
     }
@@ -809,6 +812,21 @@ public final class PullDownHook implements IXposedHookLoadPackage {
             Log.i(TAG, "Native QS action with shade retained: " + spec
                     + " (" + action + ")");
         }
+    }
+
+    /**
+     * One presentation state for the BB-button menu and both BB shade pages.
+     * Switching between them must not briefly restore notification icons.
+     * Android's own notification pipeline and icon views remain untouched.
+     */
+    private static void updateStatusBarDate() {
+        if (focusWindow == null && shadeHost == null) {
+            NativeStatusBarMenuDate.hide();
+            return;
+        }
+        View bar = nativeStatusBar.get();
+        if (bar == null) bar = decoratedStatusBar;
+        NativeStatusBarMenuDate.show(bar);
     }
 
     /** Native status bar stays untouched outside the requested UI states. */
@@ -1097,6 +1115,9 @@ public final class PullDownHook implements IXposedHookLoadPackage {
             nativeMedia.start();
             registerFavoritesObserver(context, notifications);
             updateStatusAppearance();
+            // The date persists when opening either shade, including a
+            // transition from the BB-button popup.
+            updateStatusBarDate();
 
             if (nativeMode) {
                 Log.i(TAG, "BB UI session attached inside native shade: page=" + initialPage);
@@ -1289,6 +1310,7 @@ public final class PullDownHook implements IXposedHookLoadPackage {
             openingOrClosing = false;
             // A transient popup can be open over an expanded shade.
             if (focusWindow != null) dismissStatusFocus();
+            else updateStatusBarDate();
             updateStatusAppearance();
             Log.i(TAG, "Unified shade window removed");
         }
