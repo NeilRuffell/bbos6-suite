@@ -133,9 +133,12 @@ This application lives in `apps/files/` of the `bbos6-suite` monorepo.
   scan. Missing or inaccessible paths show an error; no custom Properties
   presentation or storage access is added.
 - Directory lists contain real filesystem entries only, never New Folder or
-  Paste action rows. In an empty folder, press BB Menu or long-press the blank
-  list area for the directory menu (New Folder, Refresh) without a staged
-  clipboard, or (Paste, New Folder, Cancel Copy/Cut) while staging.
+  Paste action rows. In an empty folder, press BB Menu, **long-press the
+  hardware trackpad/DPAD centre or Enter**, or long-touch the blank list area
+  to open the directory menu (New Folder, Refresh) without a staged clipboard,
+  or (Paste, New Folder, Cancel Copy/Cut) while staging. This shared
+  `Bbos6PageList` hardware fallback also handles a missing selected row
+  and does not change row-long-press behavior on populated lists.
 - Rename and New Folder use the shared Q25-proven native
   `Bbos6PopupButtonList` text-input helper.
 - Delete requires explicit BBOS6 confirmation, initially selecting Cancel.
@@ -256,6 +259,19 @@ Existing file operations must remain unchanged.
    Folder type and no calculated size. Use Back to dismiss.
 5. Confirm missing/revoked paths fail safely, the directory listing remains
    responsive, and Music's Properties implementation is unchanged.
+
+### Hardware empty-folder context menu checks
+
+1. In an empty folder with nothing staged, hold the Q25 trackpad/DPAD centre
+   (or Enter). Confirm the directory menu appears with New Folder/Refresh;
+   release the key and verify it does not also activate a row or reopen.
+2. Repeat with the touchscreen long-press and the hardware BB Menu key.
+   All three input routes should expose the same directory commands.
+3. Stage Copy and Cut in turn, navigate into an empty destination folder,
+   and hold the trackpad. Confirm Paste/New Folder/Cancel Copy or Cut appears.
+4. In a populated folder, long-press the trackpad on a selected row and
+   confirm the row-specific menu still opens once, rather than the blank
+   folder menu. Verify ordinary short-click activation remains unchanged.
 
 ### Clipboard indicator checks
 
