@@ -91,6 +91,8 @@ This application lives in `apps/files/` of the `bbos6-suite` monorepo.
   These dimensions are a Q25-tunable approximation, not historical SDK values.
 - Folder rows and storage-root entries display the original BBOS6 **112.png**
   Folders icon, mapped as `bbos6_menu_folders` in the shared index.
+  Folder names are displayed exactly as provided by the filesystem, without
+  appending `/`; folders remain identified internally by `isDirectory`.
   Ordinary files remain text-only until their icon mapping is defined.
 - **Opt-in directory multi-selection:** In a folder, long-press a file or
   folder and choose **Select**. With selection mode active, trackpad
