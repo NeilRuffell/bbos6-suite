@@ -28,7 +28,7 @@ import dev.q25.bbos6.ui.compose.Bbos6MediaListRow
  * This bridge must be explicitly enabled by the Vector module's system
  * property. Disable scope or revert the property for immediate rollback.
  */
-internal object MessagesInboxRowBridge {
+object MessagesInboxRowBridge {
     private const val TAG = "BBMessagesInbox"
     private const val GOOGLE_PACKAGE = "com.google.android.apps.messaging"
     private const val ROW_HEIGHT_DP = 52
