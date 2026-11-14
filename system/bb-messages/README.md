@@ -58,6 +58,46 @@ continuing to masquerade as a working BBOS6 integration. The experimental
 sources remain only for reference while direct Google controller bindings
 are investigated. No production UI replacement is active. Do not merge.
 
+### Q25 model result provides the real ID; adapter correspondence pending (2026-11-14 16:49)
+
+The Q25 real click produced `MODEL_MATCH root=holder candidates=0` in
+the controller/activity-excluding scan, while the actual object returned by
+`asvk.I(int)` was runtime class `aszh`, and a nested field
+`resultOfI.a.I.c` was **the same reference and equal** to the
+`BugleConversationId` argument Google actually passed into
+`asvk.Q(ConversationId)`. The broader result graph scan reported
+`truncated=true`, so only that positive match is established.
+The model also has a distinct `ConversationIdType` field `b`,
+which must not be conflated with the `ConversationId` interface
+argument accepted by Q.
+
+The first detached `asvj` holder showed most of its reference
+fields null, apart from the row `View` and a controller reference,
+which explains why attempting to read a persistent ID from an
+independently bound holder is unsupported.
+
+A new **read-only** `MODEL_SOURCE` check verifies the exact short
+`aszh.a.I.c` field path against Google's actual Q argument and
+compares the integer argument observed on Google's own
+`asvk.I(int)` call against the bound position recorded from the
+verified `vv.g(aac,int)` native adapter callback. Adapter positions
+are held only in a process-local weak map; never printed.
+`MODEL_BIND` reports whether that native binder hook installed.
+No method is invoked by our diagnostics, and no conversation
+identifier or message content is logged.
+
+Build/install the branch with `actionprobe=true`, open a stock
+conversation, and capture:
+
+```sh
+adb -s 202512003630 logcat -d -v time | \
+  grep -E 'BBMessages(Model|Actions).*MODEL_(SOURCE|BIND)'
+```
+
+Do **not** wire `I(int)` to BBOS6 selected indices without that
+correspondence being verified. The rejected overlay remains disabled,
+and PR #19 must remain unmerged pending real Q25 testing.
+
 ### Q25 active-selection field is NOT a per-row ID (2026-11-14 16:46)
 
 The user’s physical click yielded the following verified field sequence:
