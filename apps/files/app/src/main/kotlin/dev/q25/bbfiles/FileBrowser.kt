@@ -2,10 +2,17 @@ package dev.q25.bbfiles
 
 import java.io.File
 import java.io.IOException
+import java.nio.file.Files
 
 /** Storage-specific path validation and directory enumeration, never UI logic. */
 internal object FileBrowser {
-    data class Entry(val file: File, val name: String, val isDirectory: Boolean)
+    data class Entry(
+        val file: File,
+        val name: String,
+        val isDirectory: Boolean,
+        // Read with the directory listing on Dispatchers.IO; never size folders.
+        val sizeBytes: Long? = null
+    )
 
     sealed interface Listing {
         data class Available(val entries: List<Entry>) : Listing
@@ -60,7 +67,17 @@ internal object FileBrowser {
             try {
                 val resolved = candidate.canonicalFile
                 if (isWithin(root, resolved)) {
-                    Entry(resolved, candidate.name, resolved.isDirectory)
+                    val isDirectory = resolved.isDirectory
+                    val size = if (resolved.isFile) {
+                        try {
+                            Files.size(resolved.toPath())
+                        } catch (_: IOException) {
+                            null
+                        } catch (_: SecurityException) {
+                            null
+                        }
+                    } else null
+                    Entry(resolved, candidate.name, isDirectory, size)
                 } else null
             } catch (_: IOException) {
                 null
