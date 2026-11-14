@@ -221,6 +221,7 @@ final class GoogleMessagesAdapterBridge {
             int animations = 0;
             int unexpected = 0;
             int repeatedRefs = 0;
+            java.util.Map<String, Integer> failures = new java.util.TreeMap<>();
             java.util.Set<Object> identities =
                 java.util.Collections.newSetFromMap(
                     new java.util.IdentityHashMap<Object, Boolean>()
@@ -240,23 +241,26 @@ final class GoogleMessagesAdapterBridge {
                     );
                     if (holder == null) {
                         unbound++;
+                        failures.merge("holder_null", 1, Integer::sum);
                         continue;
                     }
                     bindHolderMethod.invoke(adapter, holder, position);
                     View row = holderItemView(holder, nameId);
                     if (row == null) {
                         unbound++;
+                        failures.merge("row_null", 1, Integer::sum);
                     } else if (CONVERSATION_ROW.equals(row.getClass().getName())) {
                         conversations++;
-                        GoogleMessagesConversationBinding.VerifiedHandle binding =
-                            GoogleMessagesConversationBinding.fromBoundConversation(
+                        GoogleMessagesConversationBinding.BindingCheck check =
+                            GoogleMessagesConversationBinding.inspectBoundConversation(
                                 row, holder
                             );
-                        if (binding != null) {
+                        if (check.handle != null) {
                             valid++;
-                            if (!identities.add(binding.conversationId)) repeatedRefs++;
+                            if (!identities.add(check.handle.conversationId)) repeatedRefs++;
                         } else {
                             unbound++;
+                            failures.merge(check.reason, 1, Integer::sum);
                         }
                     } else if (LOTTIE_ROW.equals(row.getClass().getName())
                                && !row.hasOnClickListeners()
@@ -267,6 +271,8 @@ final class GoogleMessagesAdapterBridge {
                     }
                 } catch (Throwable ignored) {
                     unbound++;
+                    failures.merge("bind_exception_" + ignored.getClass().getSimpleName(),
+                        1, Integer::sum);
                 }
             }
             if (!isCurrent() || nativeCount != itemCount()) {
@@ -280,7 +286,8 @@ final class GoogleMessagesAdapterBridge {
                 + " unbound=" + unbound
                 + " animation=" + animations
                 + " unexpected=" + unexpected
-                + " repeatedIdReferences=" + repeatedRefs);
+                + " repeatedIdReferences=" + repeatedRefs
+                + " failureReasons=" + failures);
         } catch (Throwable failure) {
             Log.w(TAG, "HANDLE_PROBE could not inspect bound holders: "
                 + failure.getClass().getSimpleName());
