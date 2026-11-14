@@ -163,6 +163,67 @@ This application lives in `apps/files/` of the `bbos6-suite` monorepo.
 - Empty/inaccessible directories use shared empty-state presentation. The
   special `Recent Files` entry is still a placeholder.
 
+## Android system picker integration (Storage Access Framework)
+
+Files registers an Android `DocumentsProvider` at
+`dev.q25.bbfiles.documents`. Android's native DocumentsUI (not a second
+Files-owned picker activity) discovers it through
+`android.content.action.DOCUMENTS_PROVIDER` and displays **Internal Storage**
+and any mounted **SD Card** as local roots. Other apps can use standard
+`ACTION_OPEN_DOCUMENT`, `ACTION_GET_CONTENT` (via Android's picker),
+`ACTION_CREATE_DOCUMENT`, and `ACTION_OPEN_DOCUMENT_TREE` to browse
+authorized directories and select documents. This does **not** make the Files
+activity a direct handler for those intents.
+
+- Grant **All files access** to Files in Android Settings first. Until the
+  user grants it, the provider exposes **no roots**, rather than bypassing
+  the app's normal permission model. Revoking it immediately blocks document
+  lookups, reads, writes and listings. Storage-root changes are notified on
+  Files activity resume; existing open pickers may need to be reopened.
+- Only the app's current public shared-storage root and mounted removable
+  volumes are exposed, using volume-scoped **opaque relative document IDs**
+  validated against canonical storage paths. `Android/data`, `Android/obb`
+  and other Android-protected paths remain subject to platform restrictions.
+  Files does not expose its private data or other arbitrary filesystem paths.
+- The exported provider is protected by system-only
+  `android.permission.MANAGE_DOCUMENTS`, with narrow user-selected
+  `content://` URI grants from Android. This is separate from the existing,
+  **non-exported** file-sharing `FileProvider`.
+- Supports native picker directory navigation, read/write streams for
+  writable files, document/folder creation, rename and delete. Directory
+  deletion is recursive through the existing bounded FileOperations policy.
+  No overwrites are permitted when creating or renaming. Read-only volumes
+  do not advertise write or create operations; removable media disappearance
+  returns an unavailable-document error. Renamed documents receive updated
+  document IDs. Deletion from a system picker is subject to that picker's
+  own confirmation UI, not the Files app's BBOS6 delete dialog.
+- As a deliberate minimal first release, the provider does not advertise
+  search, recents, thumbnail or cross-folder move/copy APIs. The existing
+  Files UI and its native FileProvider share/open actions are unchanged.
+
+### Q25 picker integration checks
+
+1. Open Files and grant All files access in Android Settings. Launch an
+   external app's native **Open** picker; select **Browse**, then choose
+   the Files provider. Confirm Internal Storage and mounted SD Card appear
+   and can be navigated, and selecting a file returns a readable
+   `content://dev.q25.bbfiles.documents/...` URI.
+2. Test an external app's **Save as** / `ACTION_CREATE_DOCUMENT`: create a
+   new file in a folder, write it, reopen it and verify bytes. Test new
+   directories and an existing-name collision (must not overwrite).
+3. Verify rename and delete of disposable files/folders via a system picker,
+   including that changing a folder's name doesn't expose a stale path.
+   Confirm the existing Files app delete-confirmation workflow is unchanged.
+4. Test `ACTION_OPEN_DOCUMENT_TREE` for a nested directory; validate that
+   the requesting app can access **only** the selected tree. Check ordinary
+   document selections cannot escape into sibling volume roots.
+5. Revoke All files access: provider roots and data become unavailable.
+   Regrant it and reopen the picker. Also remove and reinsert an SD Card;
+   stale document IDs must fail rather than redirect to another volume.
+6. Confirm Files' normal launcher, BBOS6 navigation, favorites, and
+   open/share actions remain unchanged. Verify no new default file picker
+   chooser activity was registered.
+
 ## Storage and safety
 
 All-files access is requested explicitly through Android Settings only when
