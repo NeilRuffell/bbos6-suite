@@ -93,7 +93,8 @@ fun Bbos6Checkbox(
         val bounds = Bbos6CheckboxMetrics.bounds(size.width, size.height, density)
         val topLeft = Offset(bounds.left, bounds.top)
         val boxSize = Size(bounds.edge, bounds.edge)
-        val cornerRadius = CornerRadius(Bbos6CheckboxMetrics.RADIUS_DP * density)
+        val radiusPx = Bbos6CheckboxMetrics.RADIUS_DP * density
+        val cornerRadius = CornerRadius(radiusPx, radiusPx)
 
         // Preserve the original native QS fill, border and stroke colours.
         drawRoundRect(
