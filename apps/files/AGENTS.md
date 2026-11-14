@@ -29,6 +29,14 @@ monorepo. Consult `../../AGENTS.md`, `../../shared/AGENTS.md`,
 - Folder list labels must use the raw `FileBrowser.Entry.name` without an
   appended `/`. The existing `isDirectory` flag controls artwork, navigation,
   and actions; do not encode directory identity in its displayed text.
+- Back from a nested folder must restore highlight and visibility to the
+  folder entry just exited in the parent directory, as in Music's page
+  navigation. Files owns `DirectoryReturnSelection` (parent/child paths);
+  it passes the child file's stable ID to the shared
+  `Bbos6PageList(initialSelectedId = ...)`. Shared resolves the ID and
+  scrolls it into view. Do not manually set list indices or implement
+  per-screen scroll offsets. Clear the pending anchor when opening a
+  different storage entry or folder; missing IDs safely start at row zero.
 - Files directory, indexed-media and Favourites file rows opt into shared
   `Bbos6PageList.trailingTextForId` for platform-formatted file sizes.
   Obtain folder-browsing byte lengths in `FileBrowser.list` on
