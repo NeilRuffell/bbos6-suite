@@ -29,6 +29,8 @@ public final class MessagesInspectionHook implements IXposedHookLoadPackage {
     private static final String TAG = "BBMessagesInspect";
     private static final String INBOX_PROP = "debug.bbmessages.inbox.enabled";
     private static final String PAGE_PROP = "debug.bbmessages.page.enabled";
+    private static final String ACTION_PROBE_PROP =
+        "debug.bbmessages.actionprobe.enabled";
     private static final String ROW_CLASS =
         "com.google.android.apps.messaging.home.list.ConversationListItemView";
     private static final int MAX_VIEWS = 240;
@@ -77,7 +79,11 @@ public final class MessagesInspectionHook implements IXposedHookLoadPackage {
                 }
             );
             Log.i(TAG, "Inspection enabled for main Google Messages process");
-            if (isPageEnabled()) {
+            if (isActionProbeEnabled()) {
+                // Native navigation investigation takes precedence over
+                // the broken page experiment: leave Google UI untouched.
+                Log.i(TAG, "Native action diagnostics enabled; stock Google UI retained");
+            } else if (isPageEnabled()) {
                 Log.i(TAG, "Full shared Bbos6PageList enabled (experimental)");
                 hookAdapterBindings(param.classLoader);
             } else if (isInboxPaintEnabled()) {
@@ -96,6 +102,10 @@ public final class MessagesInspectionHook implements IXposedHookLoadPackage {
 
     private static boolean isPageEnabled() {
         return propertyEnabled(PAGE_PROP);
+    }
+
+    private static boolean isActionProbeEnabled() {
+        return propertyEnabled(ACTION_PROBE_PROP);
     }
 
     private static boolean propertyEnabled(String name) {
@@ -170,6 +180,10 @@ public final class MessagesInspectionHook implements IXposedHookLoadPackage {
     private static void inspect(Activity activity) {
         try {
             if (activity.isFinishing() || activity.isDestroyed()) {
+                return;
+            }
+            if (isActionProbeEnabled()) {
+                MessagesNativeActionInspection.inspect(activity);
                 return;
             }
             View root = activity.getWindow().getDecorView();
