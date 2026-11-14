@@ -67,7 +67,7 @@ final class MessagesNativeActionInspection {
                 else attachedFailures.merge(check.reason, 1, Integer::sum);
             }
             Log.i(TAG, "ATTACHED_HANDLE_PROBE inspected=" + attached
-                + " verified=" + attachedValid
+                + " structural=" + attachedValid
                 + " failureReasons=" + attachedFailures);
             bridge.inspectDetachedActionShape();
             bridge.verifyBoundConversationHandles();
