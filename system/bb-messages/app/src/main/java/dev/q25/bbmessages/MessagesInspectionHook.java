@@ -80,16 +80,16 @@ public final class MessagesInspectionHook implements IXposedHookLoadPackage {
             );
             Log.i(TAG, "Inspection enabled for main Google Messages process");
             if (isActionProbeEnabled()) {
-                // Native navigation investigation takes precedence over
-                // the broken page experiment: leave Google UI untouched.
                 Log.i(TAG, "Native action diagnostics enabled; stock Google UI retained");
-            } else if (isPageEnabled()) {
-                Log.i(TAG, "Full shared Bbos6PageList enabled (experimental)");
-                hookAdapterBindings(param.classLoader);
-            } else if (isInboxPaintEnabled()) {
-                hookInboxRows(param.classLoader);
+            } else if (isPageEnabled() || isInboxPaintEnabled()) {
+                // The 750ms delayed full-page view swap and row overlay
+                // were rejected by Q25 acceptance: the native Google inbox
+                // flashes first, a second list is mounted over it, and
+                // detached ViewHolder clicks cannot open conversations.
+                // Do not silently restore that invalid architecture.
+                Log.w(TAG, "Legacy overlay modes disabled; native Google inbox retained");
             } else {
-                Log.i(TAG, "BBOS6 inbox rendering disabled (set " + PAGE_PROP + "=true)");
+                Log.i(TAG, "Controller-only investigation mode; native UI retained");
             }
         } catch (Throwable failure) {
             Log.e(TAG, "Unable to install read-only inspection hook", failure);
@@ -192,11 +192,11 @@ public final class MessagesInspectionHook implements IXposedHookLoadPackage {
             inspectTree(root, 0, "root", total);
             Log.i(TAG, "END views=" + total[0]
                 + (total[0] >= MAX_VIEWS ? " (truncated)" : ""));
-            if (isPageEnabled()) {
-                MessagesInboxPageBridge.tryMount(activity);
-            } else {
-                MessagesNativeAdapterInspection.inspect(activity);
-            }
+            // Do not mount a second list over Google's RecyclerView.
+            // Keep structural inspection only until direct native
+            // navigation/controller bindings and pre-draw replacement
+            // have been verified on Q25.
+            MessagesNativeAdapterInspection.inspect(activity);
         } catch (Throwable failure) {
             Log.e(TAG, "Read-only view inspection failed", failure);
         }
