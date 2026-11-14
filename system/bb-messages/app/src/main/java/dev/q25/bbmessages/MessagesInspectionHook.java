@@ -144,14 +144,23 @@ public final class MessagesInspectionHook implements IXposedHookLoadPackage {
                 Log.w(TAG, "Verified native adapter class unavailable; page stays native");
                 return;
             }
-            XposedBridge.hookAllMethods(adapter, "g", new XC_MethodHook() {
-                @Override
-                protected void afterHookedMethod(MethodHookParam hook) {
-                    if (!GoogleMessagesAdapterBridge.isSnapshotBinding()) {
-                        MessagesInboxPageBridge.onNativeAdapterBound();
+            Class<?> holder = XposedHelpers.findClassIfExists("aac", loader);
+            if (holder == null) {
+                Log.w(TAG, "Verified native holder class unavailable; page stays native");
+                return;
+            }
+            // Hook the exact verified vv.g(aac,int) binder only, not every
+            // obfuscated method sharing the single-letter name "g".
+            XposedHelpers.findAndHookMethod(adapter, "g", holder, int.class,
+                new XC_MethodHook() {
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam hook) {
+                        if (!GoogleMessagesAdapterBridge.isSnapshotBinding()) {
+                            MessagesInboxPageBridge.onNativeAdapterBound();
+                        }
                     }
                 }
-            });
+            );
             Log.i(TAG, "Watching native adapter bind callbacks for full-page refresh");
         } catch (Throwable failure) {
             Log.e(TAG, "Native adapter binding watcher unavailable", failure);
