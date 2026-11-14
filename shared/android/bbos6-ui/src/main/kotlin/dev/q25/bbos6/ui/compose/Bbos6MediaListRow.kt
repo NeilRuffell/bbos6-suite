@@ -132,7 +132,8 @@ fun Bbos6MediaListRow(
     textHorizontalPaddingDp: Int = 16,
     artworkPaddingDp: Int = 8,
     colorScheme: Bbos6MediaListRowColorScheme = Bbos6MediaListRowColorScheme.DARK,
-    multiSelected: Boolean = false
+    multiSelected: Boolean = false,
+    showSelectionCheckbox: Boolean = false
 ) {
     require(rowHeightDp > 0) { "rowHeightDp must be positive" }
     require(artworkSlotSizeDp > 0) { "artworkSlotSizeDp must be positive" }
@@ -218,18 +219,6 @@ fun Bbos6MediaListRow(
                 )
             }
         }
-        if (multiSelected) {
-            BasicText(
-                text = "✓",
-                modifier = Modifier.padding(end = 12.dp),
-                style = TextStyle(
-                    color = if (highlighted || resolvedColorScheme == Bbos6MediaListRowColorScheme.DARK)
-                        Color.White else Color(0xFF135482),
-                    fontSize = 18.sp,
-                    platformStyle = PlatformTextStyle(includeFontPadding = false)
-                )
-            )
-        }
         if (showRemoveAction) {
             Box(
                 modifier = Modifier
@@ -262,6 +251,15 @@ fun Bbos6MediaListRow(
                         textAlign = TextAlign.Center)
                 )
             }
+        }
+        if (showSelectionCheckbox) {
+            // Passive: the host row handles touch and trackpad activation.
+            // The checked and unchecked states occupy the same right-edge slot.
+            Bbos6Checkbox(
+                checked = multiSelected,
+                highlighted = highlighted,
+                modifier = Modifier.padding(end = 8.dp)
+            )
         }
     }
 }

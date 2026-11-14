@@ -81,8 +81,10 @@ This application lives in `apps/files/` of the `bbos6-suite` monorepo.
   folder and choose **Select**. With selection mode active, trackpad
   click/Enter and touch taps toggle selected items, leaving the original
   open-file/open-folder behavior unchanged outside that mode. The path bar
-  shows the selection count, and selected rows use the shared row face and
-  marker. Press BB Menu or long-press to open **Select All**, **Deselect All**,
+  shows the selection count. Every row shows the shared `Bbos6Checkbox` at
+  the far right, checked only for selected items; the row remains the sole
+  touch/trackpad focus target. The checkbox disappears outside multi-select
+  mode. Press BB Menu or long-press to open **Select All**, **Deselect All**,
   **Copy Selected**, **Cut Selected**, **Delete Selected**, or **Cancel
   Selection**. Back exits selection mode before navigating up. Bulk deletion
   requires explicit confirmation with Cancel preselected. Bulk paste uses the

@@ -210,6 +210,7 @@ fun Bbos6PageList(
                 highlighted = hasFocus && selected == index,
                 multiSelected = multiSelectEnabled && multiSelection.isActive &&
                     item.id in multiSelection.selectedIds,
+                showSelectionCheckbox = multiSelectEnabled && multiSelection.isActive,
                 showRemoveAction = false,
                 onRemove = null,
                 modifier = Modifier
