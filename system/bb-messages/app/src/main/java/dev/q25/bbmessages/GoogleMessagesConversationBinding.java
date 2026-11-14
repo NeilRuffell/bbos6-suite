@@ -1,6 +1,9 @@
 package dev.q25.bbmessages;
 
 import android.util.Log;
+import android.view.View;
+
+import de.robv.android.xposed.XposedHelpers;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -45,6 +48,57 @@ final class GoogleMessagesConversationBinding {
         } catch (Throwable failure) {
             Log.w(TAG, "ID_DIRECT expected holder field path unavailable: "
                 + failure.getClass().getSimpleName());
+            return null;
+        }
+    }
+
+    /** A validated native action/data binding, never a fabricated row ID. */
+    static final class VerifiedHandle {
+        final Object controller;
+        final Object conversationId;
+        final Object nativeHolder;
+
+        VerifiedHandle(Object controller, Object conversationId, Object nativeHolder) {
+            this.controller = controller;
+            this.conversationId = conversationId;
+            this.nativeHolder = nativeHolder;
+        }
+    }
+
+    /**
+     * Links a native bound holder to its actual controller and ConversationId.
+     * This does not invoke Q or P. The caller must ensure the adapter has not
+     * changed and refresh/revalidate selection before future navigation.
+     */
+    static VerifiedHandle fromBoundConversation(View row, Object holder) {
+        if (row == null || holder == null
+            || !"com.google.android.apps.messaging.home.list.ConversationListItemView"
+                .equals(row.getClass().getName())
+            || !HOLDER.equals(holder.getClass().getName())) return null;
+        try {
+            Object info = XposedHelpers.getObjectField(row, "mListenerInfo");
+            if (info == null) return null;
+            Object clickWrapper = XposedHelpers.getObjectField(info, "mOnClickListener");
+            if (clickWrapper == null || !"fzih".equals(clickWrapper.getClass().getName()))
+                return null;
+            Object delegate = readInstanceField(clickWrapper, "c");
+            if (delegate == null
+                || !CLICK_DELEGATE.equals(delegate.getClass().getName())
+                || readInstanceField(delegate, "b") != holder) return null;
+            Object controller = readInstanceField(delegate, "a");
+            if (controller == null || !CONTROLLER.equals(controller.getClass().getName()))
+                return null;
+            Object id = conversationIdFromHolder(holder);
+            if (id == null) return null;
+            Class<?> idClass = Class.forName(
+                CONVERSATION_ID, false, holder.getClass().getClassLoader()
+            );
+            java.lang.reflect.Method open = controller.getClass()
+                .getDeclaredMethod("Q", idClass);
+            if (open.getReturnType() != void.class
+                || Modifier.isStatic(open.getModifiers())) return null;
+            return new VerifiedHandle(controller, id, holder);
+        } catch (Throwable failure) {
             return null;
         }
     }
