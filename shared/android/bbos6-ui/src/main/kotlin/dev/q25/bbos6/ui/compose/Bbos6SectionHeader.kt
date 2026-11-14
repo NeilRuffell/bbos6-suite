@@ -38,13 +38,17 @@ enum class Bbos6SectionHeaderStyle {
  * The header does not request focus or intercept keyboard/trackpad input.
  * [trailingContent] is an optional, caller-owned passive status area. Without
  * it, layout and typography remain identical to the original section header.
+ * [titleOverflow] opts a header into start- or middle-ellipsis (e.g. a
+ * filesystem path showing its rightmost/current directory) without changing
+ * the default end-ellipsis behaviour of other consumers.
  */
 @Composable
 fun Bbos6SectionHeader(
     title: String,
     modifier: Modifier = Modifier,
     style: Bbos6SectionHeaderStyle = Bbos6SectionHeaderStyle.BEVELED,
-    trailingContent: (@Composable () -> Unit)? = null
+    trailingContent: (@Composable () -> Unit)? = null,
+    titleOverflow: TextOverflow = TextOverflow.Ellipsis
 ) {
     val compact = style == Bbos6SectionHeaderStyle.FLAT_BLACK_COMPACT
     Box(
@@ -77,7 +81,7 @@ fun Bbos6SectionHeader(
                 text = title,
                 style = titleStyle,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = titleOverflow
             )
         } else {
             Row(
@@ -89,7 +93,7 @@ fun Bbos6SectionHeader(
                     modifier = Modifier.weight(1f),
                     style = titleStyle,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = titleOverflow
                 )
                 Spacer(Modifier.width(6.dp))
                 trailingContent()
