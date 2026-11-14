@@ -247,12 +247,11 @@ owners; the anchor and Compose overlay are removed together on detach.
 If the mount fails, the original row is retained and further attempts are
 suppressed until that row reattaches, preventing repeated stack-trace spam.
 
-**The overlay-parent correction is not yet build-verified or tested on Q25.** If it cannot
-create the Compose host, the hook logs the exception and does not shrink
-the original row. Captured logs must include `BBMessagesInbox` lines; a
-successful "Mounted BBOS6 inbox row face" indicates the host was installed,
-not necessarily that it rendered correctly. Sender and preview are displayed with the
-canonical blue BBOS6 selected-row face when Google actually focuses the row.
+The Q25 build/install succeeded and logcat confirmed repeated
+`Mounted BBOS6 inbox row face (isolated Compose lifecycle)`. User device
+testing then confirmed that overlay scrolling and list appearance did **not**
+match Files, because Google remained the list controller. That verified
+overlay remains a legacy experiment and is not the accepted design.
 
 This is an **experimental visual replacement**, not yet an accepted production
 hook. Google remains responsible for conversation IDs and activation. Unread
@@ -306,9 +305,10 @@ Alternatively disable BB Messages scope in Vector and restart the app.
   it never persists or logs message data or sends/changes messages.
 - The hook is limited to the main Google Messages process. If the verified
   inbox view class is unavailable, it leaves the native inbox intact.
-- Overlay/Compose lifecycle interoperability in the third-party process
-  requires hardware testing; the row-local lifecycle fallback is not yet
-  verified by a successful build or Q25 rendering test.
+- The legacy overlay's mount succeeded on Q25, but its interaction
+  geometry differs from Files. The new full-page Bbos6PageList integration
+  still requires build/device acceptance for scrolling, native conversation
+  actions, updates, keyboard, trackpad, touch and Back.
 - Shared UI components must change under `shared/` first. Google-specific
   view discovery, display binding and opt-in configuration remain here.
 - Do not merge until Q25 inspection, device acceptance and explicit approval.
