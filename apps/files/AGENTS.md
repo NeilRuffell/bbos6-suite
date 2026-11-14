@@ -62,6 +62,27 @@ monorepo. Consult `../../AGENTS.md`, `../../shared/AGENTS.md`,
   other header/client, including Files home and Settings.
   Files owns its Copy/Cut indicator, clipboard state and cancel/paste actions;
   no other app gets an indicator by default.
+- Files is an Android Storage Access Framework source through app-owned
+  `FilesDocumentsProvider` (authority `dev.q25.bbfiles.documents`).
+  Android's system DocumentsUI handles `ACTION_OPEN_DOCUMENT`,
+  `ACTION_CREATE_DOCUMENT`, `ACTION_OPEN_DOCUMENT_TREE` and
+  `ACTION_GET_CONTENT` (via the system picker): do not register those
+  intents on `FilesActivity` without implementing an actual picker result.
+  The provider is exported **only** with
+  `android.permission.MANAGE_DOCUMENTS` and user-selected URI grants;
+  the existing file-sharing `FileProvider` stays non-exported.
+  Roots are public primary/removable shared storage **only when**
+  `Environment.isExternalStorageManager()`; never bypass a revoked grant
+  or publish app-private paths. `FilesDocumentIds` must reject traversal,
+  cross-volume IDs and canonical paths outside the current selected root.
+  Native system file picker operations use the existing validated
+  `FileOperations` for directory creation, rename and recursive delete.
+  Files, not shared UI, owns these SAF storage behaviors. Provider methods
+  must report read-only/unmounted volumes safely; document IDs are scoped to
+  volume identifiers and do not expose absolute paths. Notify DocumentsUI
+  roots on Files resume when storage access/SD mount changes. Manual Q25
+  testing must cover native open/save/tree pickers, read/write streams,
+  collisions, permission revocation and removable-volume changes.
 - Android storage access is explicitly user granted; protected/private
   app storage remains restricted. All file operations validate canonical
   volume boundaries, refuse overwrite, and run off the UI thread.
