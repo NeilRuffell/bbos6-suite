@@ -13,6 +13,7 @@ import java.util.WeakHashMap;
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedBridge;
+import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
 
 /**
@@ -26,6 +27,9 @@ import de.robv.android.xposed.callbacks.XC_LoadPackage;
 public final class MessagesInspectionHook implements IXposedHookLoadPackage {
     private static final String TARGET = "com.google.android.apps.messaging";
     private static final String TAG = "BBMessagesInspect";
+    private static final String INBOX_PROP = "debug.bbmessages.inbox.enabled";
+    private static final String ROW_CLASS =
+        "com.google.android.apps.messaging.home.list.ConversationListItemView";
     private static final int MAX_VIEWS = 240;
     private static final int MAX_DEPTH = 14;
     private static final int MAX_CHILDREN_PER_GROUP = 45;
@@ -72,8 +76,51 @@ public final class MessagesInspectionHook implements IXposedHookLoadPackage {
                 }
             );
             Log.i(TAG, "Inspection enabled for main Google Messages process");
+            if (isInboxPaintEnabled()) {
+                hookInboxRows(param.classLoader);
+            } else {
+                Log.i(TAG, "BBOS6 inbox rendering disabled (set " + INBOX_PROP + "=true)");
+            }
         } catch (Throwable failure) {
             Log.e(TAG, "Unable to install read-only inspection hook", failure);
+        }
+    }
+
+    private static boolean isInboxPaintEnabled() {
+        try {
+            Class<?> properties = XposedHelpers.findClass("android.os.SystemProperties", null);
+            Object value = XposedHelpers.callStaticMethod(
+                properties, "getBoolean", INBOX_PROP, false
+            );
+            return Boolean.TRUE.equals(value);
+        } catch (Throwable failure) {
+            Log.w(TAG, "Cannot read inbox opt-in property; preserving native inbox", failure);
+            return false;
+        }
+    }
+
+    private static void hookInboxRows(ClassLoader loader) {
+        try {
+            Class<?> rowClass = XposedHelpers.findClassIfExists(ROW_CLASS, loader);
+            if (rowClass == null) {
+                Log.w(TAG, "Verified Google Messages row class not found; native inbox retained");
+                return;
+            }
+            XposedBridge.hookAllConstructors(rowClass, new XC_MethodHook() {
+                @Override
+                protected void afterHookedMethod(MethodHookParam param) {
+                    if (!(param.thisObject instanceof ViewGroup)) return;
+                    try {
+                        MessagesInboxRowBridge.attachToRow((ViewGroup) param.thisObject);
+                    } catch (Throwable failure) {
+                        Log.e(TAG, "Row renderer failed; native row retained", failure);
+                    }
+                }
+            });
+            Log.i(TAG, "BBOS6 inbox row rendering enabled for verified native list");
+        } catch (Throwable failure) {
+            Log.e(TAG, "Unable to hook verified inbox row class; native list retained",
+                failure);
         }
     }
 
