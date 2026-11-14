@@ -102,8 +102,19 @@ This application lives in `apps/files/` of the `bbos6-suite` monorepo.
 - Regular file tap: native Android `ACTION_VIEW` with a temporary, read-only
   `FileProvider` URI grant. Files opens in a compatible installed Android app.
 - Long-press a file/folder or press BB Menu: shared `Bbos6ContextMenuDialog`.
-  Item actions: Open, Share (files only), Copy, Cut, Rename and Delete.
-  The same menu also offers **New Folder** and Paste when available.
+  The first nine tiles use a fixed 3×3 order:
+  `Cut | Copy | Rename`, `Properties | Open | Delete`,
+  `Select | Share | New Folder`. Share is visibly disabled for directories,
+  preserving tile positions. Optional Add/Remove from Favorites, Paste, and
+  Cancel Copy/Cut appear in a separate group below this grid. Existing
+  Favourites, MediaStore and multi-selection menus remain independent.
+- **Properties** opens the existing shared `Bbos6PropertiesDialog` for files
+  and folders. Files reads authorized filesystem metadata on `Dispatchers.IO`
+  and displays name, containing location, type, available modification date,
+  and byte-derived formatted size for **files only**. Folder size is omitted,
+  rather than showing a misleading directory-entry size or running a recursive
+  scan. Missing or inaccessible paths show an error; no custom Properties
+  presentation or storage access is added.
 - Directory lists contain real filesystem entries only, never New Folder or
   Paste action rows. In an empty folder, press BB Menu or long-press the blank
   list area for the directory menu (New Folder, Paste, Refresh).
@@ -198,6 +209,19 @@ Existing file operations must remain unchanged.
 6. Revoke storage permission and verify favorites request native Android
    access rather than bypassing storage restrictions. If present, test SD card
    removal and remount behavior.
+
+### File context menu and Properties checks
+
+1. Long-press or BB Menu on a file and confirm the three rows read
+   Cut/Copy/Rename; Properties/Open/Delete; Select/Share/New Folder.
+2. Repeat on a directory: Share stays in place but is disabled.
+3. Confirm Add/Remove from Favorites, Paste and Cancel Copy/Cut still work
+   in their separate group without altering primary tile positions.
+4. Open Properties on a file: validate its name, parent location, MIME type
+   (or File), size, and modification time. Open on a directory: validate
+   Folder type and no calculated size. Use Back to dismiss.
+5. Confirm missing/revoked paths fail safely, the directory listing remains
+   responsive, and Music's Properties implementation is unchanged.
 
 ### Clipboard indicator checks
 
