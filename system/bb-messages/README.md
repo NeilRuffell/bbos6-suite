@@ -58,6 +58,40 @@ continuing to masquerade as a working BBOS6 integration. The experimental
 sources remain only for reference while direct Google controller bindings
 are investigated. No production UI replacement is active. Do not merge.
 
+### Q25 pre-click identity unavailable in both row types (2026-11-14 16:43)
+
+A successful user build/installation on Q25 confirmed
+`ATTACHED_HANDLE_PROBE inspected=5 verified=0
+failureReasons={id_unavailable=5}` and
+`HANDLE_PROBE nativeItems=8 sampled=8 conversations=8 verified=0
+unbound=8 failureReasons={id_unavailable=8}`.
+Both attached and freshly created detached holders expose their original
+click delegates and controller, but the exact `ConversationId` lookup
+fails **before** a user click. The prior real click verified that the
+same field path contains Google's exact navigation argument while
+`asvk.Q(ConversationId)` is invoked. It is not established *when*
+this field becomes available or whether the identity can be obtained
+outside the stock click sequence.
+
+Read-only `ID_STAGE` instrumentation now reports only the runtime
+**class names** (or null/missing stage) along the exact
+`asvj.r.f.H.H` path for: one native attached row at inspection,
+one detached bound row, entry into Google's real `asvb.onClick`,
+after actual `asvk.L` and `asvk.I`, and before actual `asvk.Q`.
+These hooks never invoke or change methods, read text, print IDs,
+or enable a view overlay. A valid direct controller binding must
+pass before enabling any BBOS6 navigation.
+
+After building/installing the branch with `actionprobe=true`,
+restart stock Google Messages, open one conversation, then capture:
+
+```sh
+adb -s 202512003630 logcat -d -v time | grep 'BBMessagesActions.*ID_STAGE'
+```
+
+The shared BBOS6 helpers remain untouched; this is application-specific
+Google controller inspection. PR #19 remains unmerged.
+
 ### Q25 attached identity succeeds, detached binding fails (2026-11-14 16:41)
 
 The user built and installed the previous branch successfully.
