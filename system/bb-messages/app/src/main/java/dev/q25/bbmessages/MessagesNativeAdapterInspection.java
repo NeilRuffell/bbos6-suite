@@ -5,6 +5,7 @@ import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
@@ -54,6 +55,7 @@ final class MessagesNativeAdapterInspection {
             }
 
             printRecyclerAdapterAccessors(recycler.getClass());
+            printRecyclerAdapterFields(recycler.getClass());
             if (adapter == null) {
                 Log.w(TAG, "Adapter not identified; retain Google inbox");
                 return;
@@ -72,6 +74,16 @@ final class MessagesNativeAdapterInspection {
                 Log.i(TAG, "ADAPTER itemCount=" + count);
             } catch (Throwable failure) {
                 Log.w(TAG, "Native getItemCount unavailable: "
+                    + failure.getClass().getSimpleName());
+            }
+
+            try {
+                Object stable = de.robv.android.xposed.XposedHelpers.callMethod(
+                    adapter, "hasStableIds"
+                );
+                Log.i(TAG, "ADAPTER hasStableIds=" + stable);
+            } catch (Throwable failure) {
+                Log.w(TAG, "Native hasStableIds unavailable: "
                     + failure.getClass().getSimpleName());
             }
 
@@ -99,9 +111,35 @@ final class MessagesNativeAdapterInspection {
                     + " clickable=" + first.hasOnClickListeners()
                     + " longClickable=" + first.isLongClickable()
                     + " focusable=" + first.isFocusable());
+                try {
+                    Object position = de.robv.android.xposed.XposedHelpers.callMethod(
+                        recycler, "getChildAdapterPosition", first
+                    );
+                    Log.i(TAG, "ROW firstAdapterPosition=" + position);
+                } catch (Throwable failure) {
+                    Log.w(TAG, "Native getChildAdapterPosition unavailable: "
+                        + failure.getClass().getSimpleName());
+                }
             }
         } catch (Throwable failure) {
             Log.e(TAG, "Read-only native adapter inspection failed", failure);
+        }
+    }
+
+    private static void printRecyclerAdapterFields(Class<?> recyclerType) {
+        Class<?> type = recyclerType;
+        int depth = 0;
+        while (type != null && type != Object.class && depth++ < 3) {
+            int emitted = 0;
+            for (Field field : type.getDeclaredFields()) {
+                if (!field.getType().getName().contains("RecyclerView$")) continue;
+                if (emitted++ >= 18) break;
+                // Field types only. Never read or log private conversation models.
+                Log.i(TAG, "RECYCLER_FIELD class=" + type.getName()
+                    + " type=" + field.getType().getName()
+                    + " name=" + field.getName());
+            }
+            type = type.getSuperclass();
         }
     }
 
