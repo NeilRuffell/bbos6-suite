@@ -60,6 +60,9 @@ final class MessagesNativeActionInspection {
                 describe(row, "attached", attached++);
                 GoogleMessagesConversationBinding.BindingCheck check =
                     GoogleMessagesConversationBinding.inspectAttachedConversation(row);
+                if (attached == 1) {
+                    GoogleMessagesConversationBinding.logAttachedPathForProbe(row);
+                }
                 if (check.handle != null) attachedValid++;
                 else attachedFailures.merge(check.reason, 1, Integer::sum);
             }
