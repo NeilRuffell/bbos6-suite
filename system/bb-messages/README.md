@@ -121,6 +121,84 @@ This is the required adapter evidence before implementing the one-list
 replacement and native action bridge. **No full-page replacement is enabled
 in this diagnostic commit.** Existing Google inbox content is retained.
 
+## Shared full-page inbox experiment — build/device test pending
+
+**Implementation now exists behind an independent flag:**
+`debug.bbmessages.page.enabled=true`. This mode bypasses the older
+`debug.bbmessages.inbox.enabled` per-row overlay and mounts the
+pre-existing `MessagesInboxList → Bbos6PageList` as the **sole visible
+inbox list controller**. No alternative scroll, focus, selection or list
+helper is implemented in BB Messages.
+
+For the currently verified Google Messages build, the
+`GoogleMessagesAdapterBridge` snapshots **every** adapter position,
+using Google's own `yv.n(...)` / `yv.o(...)` ViewHolder wrappers.
+Each native conversation is read from already-bound `conversation_name`,
+`conversation_snippet` and any available timestamp text. No message
+database, external SMS API or separate data store is introduced.
+The snapshot fails closed if any position cannot bind to a conversation
+row with native click and long-click actions, or if the native item count
+changes while reading.
+
+Google's native RecyclerView is preserved **attached and measured but
+invisible** behind the Compose page in a reversible wrapper. The
+`Bbos6PageList` renders all rows and controls touch, trackpad, focus and
+scrolling. Bound Google native ViewHolder click/long-click listeners are
+invoked on activation, never synthetic message intents. The module hooks
+Google's observed `vv.g(aac,int)` bind method to coalesce model
+refreshes; binds originating in a snapshot are ignored.
+
+**Important limitations for Q25 acceptance:**
+
+- Google's `hG(int)` returned invalid/non-distinct IDs in the device log.
+  Temporary snapshot-position keys are used and the shared list selection
+  is reset on content changes. These are not stable conversation IDs.
+- Presence of native click listeners on detached ViewHolders does **not**
+  prove they can activate a conversation; physical click and long-click
+  tests must verify behavior before this mode is accepted.
+- Native adapter updates, receiving a new SMS, returning from a
+  conversation, Back and original toolbar/FAB behavior need device tests.
+- If any snapshot or native activation fails, the host attempts to restore
+  the original Google RecyclerView, leaving message data untouched.
+- The inspected Java class and method names are Google-version-specific.
+  Other Google Messages versions fail closed.
+
+**Do not consider this finished or merge it until Q25 acceptance.**
+
+### Build and enable the full-page experiment
+
+```sh
+cd ~/Projects/bbos6-suite
+git fetch origin
+git switch feature/messages-inbox-shared-subtitles
+git pull --ff-only origin feature/messages-inbox-shared-subtitles
+gradle -p system/bb-messages :bbos6-ui:verifyKotlinOnly :bbos6-ui:testDebugUnitTest :app:assembleDebug && \
+adb -s 202512003630 install -r system/bb-messages/app/build/outputs/apk/debug/app-debug.apk
+
+adb -s 202512003630 shell setprop debug.bbmessages.inbox.enabled false
+adb -s 202512003630 shell setprop debug.bbmessages.bindprobe.enabled false
+adb -s 202512003630 shell setprop debug.bbmessages.page.enabled true
+adb -s 202512003630 logcat -c
+adb -s 202512003630 shell am force-stop com.google.android.apps.messaging
+adb -s 202512003630 shell monkey -p com.google.android.apps.messaging 1
+sleep 3
+adb -s 202512003630 logcat -d -v time | grep -E 'BBMessagesPage|BBMessagesAdapter|FATAL EXCEPTION'
+```
+
+The first status to check is `Mounted shared Bbos6PageList count=N`.
+Then test 8/8 conversations visible (or the current actual count), trackpad
+up/down and click, long-press, touch scroll, Back from a conversation and
+incoming message reordering. The log has no sender/message contents.
+
+### Disable without uninstalling
+
+```sh
+adb -s 202512003630 shell setprop debug.bbmessages.page.enabled false
+adb -s 202512003630 shell setprop debug.bbmessages.inbox.enabled false
+adb -s 202512003630 shell am force-stop com.google.android.apps.messaging
+adb -s 202512003630 shell monkey -p com.google.android.apps.messaging 1
+```
+
 ## Implementation: experimental opt-in
 
 The default module mode is inspection only; **Google Messages remains intact**.
