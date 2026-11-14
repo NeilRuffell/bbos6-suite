@@ -70,8 +70,12 @@ final class MessagesNativeAdapterInspection {
                 Object count = de.robv.android.xposed.XposedHelpers.callMethod(
                     adapter, "getItemCount"
                 );
-                // An integer count contains no message data.
-                Log.i(TAG, "ADAPTER itemCount=" + count);
+                // Log only a numeric count, never an arbitrary object.
+                if (count instanceof Number) {
+                    Log.i(TAG, "ADAPTER itemCount=" + ((Number) count).intValue());
+                } else {
+                    Log.w(TAG, "ADAPTER getItemCount returned non-numeric result");
+                }
             } catch (Throwable failure) {
                 Log.w(TAG, "Native getItemCount unavailable: "
                     + failure.getClass().getSimpleName());
@@ -81,7 +85,11 @@ final class MessagesNativeAdapterInspection {
                 Object stable = de.robv.android.xposed.XposedHelpers.callMethod(
                     adapter, "hasStableIds"
                 );
-                Log.i(TAG, "ADAPTER hasStableIds=" + stable);
+                if (stable instanceof Boolean) {
+                    Log.i(TAG, "ADAPTER hasStableIds=" + stable);
+                } else {
+                    Log.w(TAG, "ADAPTER hasStableIds returned non-boolean result");
+                }
             } catch (Throwable failure) {
                 Log.w(TAG, "Native hasStableIds unavailable: "
                     + failure.getClass().getSimpleName());
@@ -115,7 +123,12 @@ final class MessagesNativeAdapterInspection {
                     Object position = de.robv.android.xposed.XposedHelpers.callMethod(
                         recycler, "getChildAdapterPosition", first
                     );
-                    Log.i(TAG, "ROW firstAdapterPosition=" + position);
+                    if (position instanceof Number) {
+                        Log.i(TAG, "ROW firstAdapterPosition="
+                            + ((Number) position).intValue());
+                    } else {
+                        Log.w(TAG, "ROW position returned non-numeric result");
+                    }
                 } catch (Throwable failure) {
                     Log.w(TAG, "Native getChildAdapterPosition unavailable: "
                         + failure.getClass().getSimpleName());
