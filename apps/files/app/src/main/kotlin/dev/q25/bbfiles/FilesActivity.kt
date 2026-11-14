@@ -31,6 +31,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.core.content.FileProvider
 import dev.q25.bbos6.ui.Bbos6PopupButtonList
 import dev.q25.bbos6.ui.R as Bbos6UiR
@@ -257,6 +258,7 @@ private fun FilesPage(
 
     var currentRoot by remember { mutableStateOf<StorageRoot?>(null) }
     var currentFolder by remember { mutableStateOf<File?>(null) }
+    var returnSelection by remember { mutableStateOf<DirectoryReturnSelection?>(null) }
     var shortcutRoot by remember { mutableStateOf<File?>(null) }
     var shortcutLabel by remember { mutableStateOf<String?>(null) }
     var returnToFavorites by remember { mutableStateOf(false) }
@@ -301,6 +303,7 @@ private fun FilesPage(
             return
         }
         if (favorite.isDirectory) {
+            returnSelection = null
             currentRoot = volume
             currentFolder = file
             shortcutRoot = file
@@ -315,6 +318,7 @@ private fun FilesPage(
     }
 
     fun openHomeItem(id: String) {
+        returnSelection = null
         if (id == "settings") {
             // Settings is an app page, not a storage destination.
             settingsPage = true
@@ -424,13 +428,19 @@ private fun FilesPage(
         val boundary = shortcutRoot ?: root.directory
         val parent = FileBrowser.parentWithin(boundary, folder)
         if (parent == null) {
+            returnSelection = null
             currentRoot = null
             currentFolder = null
             shortcutRoot = null
             shortcutLabel = null
             favoritesPage = returnToFavorites
             returnToFavorites = false
-        } else currentFolder = parent
+        } else {
+            // Back from a child directory should highlight that child in the
+            // parent, not the first row of a freshly created page list.
+            returnSelection = DirectoryReturnSelection(parent.path, folder.path)
+            currentFolder = parent
+        }
     }
 
     fun mutate(
@@ -595,6 +605,10 @@ private fun FilesPage(
                 else -> "Files"
             },
             style = Bbos6SectionHeaderStyle.FLAT_BLACK_COMPACT,
+            // Keep the current directory visible when the path exceeds the
+            // width left beside the pending clipboard indicator.
+            titleOverflow = if (root != null && folder != null)
+                TextOverflow.StartEllipsis else TextOverflow.Ellipsis,
             trailingContent = if (pendingClipboard != null && accessGranted) {
                 {
                     ClipboardStatusIndicator(
@@ -730,7 +744,7 @@ private fun FilesPage(
                         val rows = contents.entries.map { entry ->
                             Bbos6ListSelectionItem(
                                 id = entry.file.path,
-                                label = if (entry.isDirectory) "${entry.name}/" else entry.name
+                                label = entry.name
                             )
                         }
                         key(folder.path) {
@@ -739,6 +753,7 @@ private fun FilesPage(
                                     items = rows,
                                     multiSelectEnabled = true,
                                     multiSelectionState = multiSelection,
+                                    initialSelectedId = returnSelection?.selectedIdFor(folder),
                                     rowHeightDp = 52,
                                     artworkSlotSizeDp = 36,
                                     textHorizontalPaddingDp = 4,
@@ -756,8 +771,10 @@ private fun FilesPage(
                                     onActivate = { id ->
                                         if (operationBusy) return@Bbos6PageList
                                         byPath[id]?.let { entry ->
-                                            if (entry.isDirectory) currentFolder = entry.file
-                                            else {
+                                            if (entry.isDirectory) {
+                                                returnSelection = null
+                                                currentFolder = entry.file
+                                            } else {
                                                 val failure = openOrShare(
                                                     root.directory, entry.file, false
                                                 )
@@ -845,37 +862,34 @@ private fun FilesPage(
             FavoritePolicy.create(it.id, it.directory, selected.file)
         }
         val alreadyPinned = bookmark != null && FavoritePolicy.contains(favorites, bookmark)
-        // Fixed 3×3 primary grid. A disabled Share tile retains the same
-        // position for folders; optional commands follow in a separate group.
-        val primaryActions = listOf(
-            Bbos6ContextAction.text("cut", "Cut"),
-            Bbos6ContextAction.text("copy", "Copy"),
-            Bbos6ContextAction.text("rename", "Rename"),
-            Bbos6ContextAction.text("properties", "Properties"),
-            Bbos6ContextAction.text("open", "Open"),
-            Bbos6ContextAction.text("delete", "Delete"),
-            Bbos6ContextAction.text("select", "Select"),
-            Bbos6ContextAction("share", "Share", enabled = !selected.isDirectory),
-            Bbos6ContextAction.text("new", "New Folder")
-        )
-        val extraActions = buildList {
-            if (bookmark != null) {
-                add(Bbos6ContextAction.text(
+        // Clipboard mode deliberately replaces all item actions. It never
+        // pastes into a touched file/folder; paste targets currentFolder.
+        val menuGroups = if (clipboard != null) {
+            listOf(FilesClipboardMenu.actions(clipboard?.cut == true))
+        } else {
+            // Stable 3×3 primary grid when no transfer is pending.
+            val primaryActions = listOf(
+                Bbos6ContextAction.text("cut", "Cut"),
+                Bbos6ContextAction.text("copy", "Copy"),
+                Bbos6ContextAction.text("rename", "Rename"),
+                Bbos6ContextAction.text("properties", "Properties"),
+                Bbos6ContextAction.text("open", "Open"),
+                Bbos6ContextAction.text("delete", "Delete"),
+                Bbos6ContextAction.text("select", "Select"),
+                Bbos6ContextAction("share", "Share", enabled = !selected.isDirectory),
+                Bbos6ContextAction.text("new", "New Folder")
+            )
+            val favoriteActions = if (bookmark != null) listOf(
+                Bbos6ContextAction.text(
                     if (alreadyPinned) "unfavorite" else "favorite",
                     if (alreadyPinned) "Remove from Favorites" else "Add to Favorites"
-                ))
-            }
-            if (clipboard != null) {
-                add(Bbos6ContextAction.text("paste", "Paste"))
-                add(Bbos6ContextAction.text(
-                    "cancel_clipboard",
-                    if (clipboard?.cut == true) "Cancel Cut" else "Cancel Copy"
-                ))
-            }
+                )
+            ) else emptyList()
+            if (favoriteActions.isEmpty()) listOf(primaryActions)
+            else listOf(primaryActions, favoriteActions)
         }
         Bbos6ContextMenuDialog(
-            groups = if (extraActions.isEmpty()) listOf(primaryActions)
-                else listOf(primaryActions, extraActions),
+            groups = menuGroups,
             onDismissRequest = { menuEntry = null },
             onAction = { action ->
                 menuEntry = null
@@ -888,8 +902,10 @@ private fun FilesPage(
                         propertiesRequest = PropertiesRequest(selectedRoot.directory, selected)
                     }
                     "open" -> {
-                        if (selected.isDirectory) currentFolder = selected.file
-                        else openOrShare(selectedRoot.directory, selected.file, false)?.let {
+                        if (selected.isDirectory) {
+                            returnSelection = null
+                            currentFolder = selected.file
+                        } else openOrShare(selectedRoot.directory, selected.file, false)?.let {
                             popup = InfoPopup(selected.name, it)
                         }
                     }
@@ -1012,17 +1028,12 @@ private fun FilesPage(
     }
 
     if (folderMenu && root != null && folder != null) {
-        val actions = buildList {
-            add(Bbos6ContextAction.text("new", "New Folder"))
-            if (clipboard != null) {
-                add(Bbos6ContextAction.text("paste", "Paste"))
-                add(Bbos6ContextAction.text(
-                    "cancel_clipboard",
-                    if (clipboard?.cut == true) "Cancel Cut" else "Cancel Copy"
-                ))
-            }
-            add(Bbos6ContextAction.text("refresh", "Refresh"))
-        }
+        val actions = if (clipboard != null) {
+            FilesClipboardMenu.actions(clipboard?.cut == true)
+        } else listOf(
+            Bbos6ContextAction.text("new", "New Folder"),
+            Bbos6ContextAction.text("refresh", "Refresh")
+        )
         Bbos6ContextMenuDialog(
             groups = listOf(actions),
             onDismissRequest = { folderMenu = false },
