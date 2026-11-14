@@ -48,7 +48,7 @@ class FilesDocumentsProvider : DocumentsProvider() {
             (state == Environment.MEDIA_MOUNTED || state == Environment.MEDIA_MOUNTED_READ_ONLY)
         ) {
             found += Root(
-                "primary", "Internal Storage", primary,
+                "primary", "BB Files — Internal Storage", primary,
                 state == Environment.MEDIA_MOUNTED && primary.canWrite()
             )
         }
