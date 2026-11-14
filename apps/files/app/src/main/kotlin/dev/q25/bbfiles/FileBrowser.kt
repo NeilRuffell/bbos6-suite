@@ -19,6 +19,15 @@ internal object FileBrowser {
         data class Unavailable(val reason: String) : Listing
     }
 
+    /** Nullable if size cannot be read; never use directory metadata as a folder size. */
+    fun fileSizeBytes(file: File): Long? = try {
+        if (file.isFile) Files.size(file.toPath()) else null
+    } catch (_: IOException) {
+        null
+    } catch (_: SecurityException) {
+        null
+    }
+
     /** Keeps navigation below the selected storage root, including canonical symlinks. */
     fun isWithin(root: File, candidate: File): Boolean = try {
         candidate.canonicalFile.toPath().startsWith(root.canonicalFile.toPath())
@@ -68,15 +77,7 @@ internal object FileBrowser {
                 val resolved = candidate.canonicalFile
                 if (isWithin(root, resolved)) {
                     val isDirectory = resolved.isDirectory
-                    val size = if (resolved.isFile) {
-                        try {
-                            Files.size(resolved.toPath())
-                        } catch (_: IOException) {
-                            null
-                        } catch (_: SecurityException) {
-                            null
-                        }
-                    } else null
+                    val size = fileSizeBytes(resolved)
                     Entry(resolved, candidate.name, isDirectory, size)
                 } else null
             } catch (_: IOException) {
