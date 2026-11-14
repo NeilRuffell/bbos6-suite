@@ -12,6 +12,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
+import androidx.lifecycle.ViewTreeLifecycleOwner
+import androidx.savedstate.ViewTreeSavedStateRegistryOwner
 import dev.q25.bbos6.ui.compose.Bbos6MediaListRow
 
 /**
@@ -117,8 +119,12 @@ internal object MessagesInboxRowBridge {
 
                 updateText()
                 if (composeView == null) installPaintOverlay()
-                resizeRow()
-                syncOverlaySize()
+                // Do not shrink or alter Google's native list until the
+                // canonical BBOS6 paint host is mounted successfully.
+                if (composeView != null) {
+                    resizeRow()
+                    syncOverlaySize()
+                }
                 focused = row.hasFocus()
             } catch (failure: Throwable) {
                 Log.e(TAG, "Failed to paint inbox row; native row preserved", failure)
@@ -180,10 +186,21 @@ internal object MessagesInboxRowBridge {
         }
 
         private fun installPaintOverlay() {
+            // An injected Compose host must use the *existing* app lifecycle.
+            // Never create an independent lifecycle for a Google-owned row.
+            val lifecycleOwner = ViewTreeLifecycleOwner.get(row)
+            if (lifecycleOwner == null) {
+                Log.w(TAG, "No compatible ViewTreeLifecycleOwner; native row retained")
+                return
+            }
             val paint = ComposeView(row.context).apply {
                 isClickable = false
                 isFocusable = false
                 importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                ViewTreeLifecycleOwner.set(this, lifecycleOwner)
+                ViewTreeSavedStateRegistryOwner.get(row)?.let {
+                    ViewTreeSavedStateRegistryOwner.set(this, it)
+                }
                 setContent { PaintFace() }
             }
             // A ViewGroupOverlay does not receive input. The original row
