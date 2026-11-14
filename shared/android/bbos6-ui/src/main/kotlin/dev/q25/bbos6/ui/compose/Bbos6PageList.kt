@@ -43,7 +43,10 @@ internal object Bbos6PageListNavigation {
  * This controller owns exactly one focus zone and handles DPAD/trackpad
  * movement, Enter/center activation on key release, touch activation,
  * selection retention, scrolling and optional long-press/Menu action dispatch. The\n * caller owns row IDs, context actions and screen navigation.
- * Presentation delegates to the canonical Bbos6MediaListRow.
+ * Presentation delegates to the canonical Bbos6MediaListRow. The optional
+ * [trailingTextForId] displays caller-owned short metadata at the right of
+ * the title, immediately before the selection checkbox when active.
+ * Its default is null for all existing consumers.
  *
  * Use Bbos6SectionHeader separately for non-selectable page headings.
  */
@@ -61,7 +64,8 @@ fun Bbos6PageList(
     artworkPaddingDp: Int = 2,
     reserveArtworkSlotForMissing: Boolean = false,
     multiSelectEnabled: Boolean = false,
-    multiSelectionState: Bbos6PageListMultiSelectionState? = null
+    multiSelectionState: Bbos6PageListMultiSelectionState? = null,
+    trailingTextForId: (String) -> String? = { null }
 ) {
     require(rowHeightDp > 0) { "Row height must be positive" }
     require(artworkSlotSizeDp > 0 && artworkSlotSizeDp <= rowHeightDp) {
@@ -198,10 +202,11 @@ fun Bbos6PageList(
     ) {
         itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
             val itemArtwork = artworkForId(item.id)
+            val trailingText = trailingTextForId(item.id)
             Bbos6MediaListRow(
                 title = item.label,
                 subtitle = null,
-                duration = null,
+                duration = trailingText,
                 trackNumber = null,
                 showArtwork = itemArtwork != null || reserveArtworkSlotForMissing,
                 artwork = itemArtwork,
@@ -229,7 +234,8 @@ fun Bbos6PageList(
                         )
                     }
                     .semantics(mergeDescendants = true) {
-                        contentDescription = item.label
+                        contentDescription = if (trailingText == null) item.label
+                            else "${item.label}, $trailingText"
                         if (multiSelectEnabled && multiSelection.isActive) {
                             stateDescription = if (item.id in multiSelection.selectedIds)
                                 "Selected" else "Not selected"

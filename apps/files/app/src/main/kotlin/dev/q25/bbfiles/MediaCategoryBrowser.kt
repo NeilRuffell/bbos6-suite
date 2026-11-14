@@ -61,7 +61,12 @@ internal object DocumentMimePolicy {
 }
 
 internal object MediaCategoryBrowser {
-    data class Entry(val uri: Uri, val name: String, val mime: String) {
+    data class Entry(
+        val uri: Uri,
+        val name: String,
+        val mime: String,
+        val sizeBytes: Long? = null
+    ) {
         val id: String get() = uri.toString()
     }
 
@@ -80,7 +85,8 @@ internal object MediaCategoryBrowser {
         val projection = arrayOf(
             BaseColumns._ID,
             MediaStore.MediaColumns.DISPLAY_NAME,
-            MediaStore.MediaColumns.MIME_TYPE
+            MediaStore.MediaColumns.MIME_TYPE,
+            MediaStore.MediaColumns.SIZE
         )
         val isDocuments = category == IndexedMediaCategory.DOCUMENTS
         val selection = if (isDocuments) {
@@ -97,6 +103,7 @@ internal object MediaCategoryBrowser {
                 val idColumn = it.getColumnIndexOrThrow(BaseColumns._ID)
                 val nameColumn = it.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
                 val mimeColumn = it.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE)
+                val sizeColumn = it.getColumnIndex(MediaStore.MediaColumns.SIZE)
                 while (it.moveToNext()) {
                     val name = it.getString(nameColumn)?.takeIf(String::isNotBlank) ?: continue
                     val mime = it.getString(mimeColumn)?.takeIf(String::isNotBlank)
@@ -105,7 +112,10 @@ internal object MediaCategoryBrowser {
                     found += Entry(
                         uri = ContentUris.withAppendedId(collection, it.getLong(idColumn)),
                         name = name,
-                        mime = mime
+                        mime = mime,
+                        sizeBytes = if (sizeColumn >= 0 && !it.isNull(sizeColumn)) {
+                            it.getLong(sizeColumn).takeIf { bytes -> bytes >= 0L }
+                        } else null
                     )
                 }
             }

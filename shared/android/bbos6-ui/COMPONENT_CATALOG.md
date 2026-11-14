@@ -426,6 +426,21 @@ The 36dp / 4dp horizontal dimensions are Q25-tunable approximations, not
 verified historical BBOS SDK constants. Test selection, touch targets,
 trackpad focus and icon alignment on device.
 
+### Optional trailing row metadata
+
+`Bbos6PageList(trailingTextForId = { id -> textOrNull })` optionally paints
+one short, non-interactive trailing label using the existing
+`Bbos6MediaListRow` duration/trailing-text slot. It defaults to null,
+preserving other apps and pages. When multi-selection is enabled, the
+passive `Bbos6Checkbox` remains at the far right and the trailing text
+naturally sits immediately to its left. Long titles ellipsize, and the
+row remains the only touch/DPAD/trackpad focus owner. The optional
+trailing text is also included in the row's accessibility description.
+
+Files opts into this hook for formatted file lengths only, obtained as
+byte counts during background directory enumeration. Folders pass null.
+The shared UI never queries a filesystem or formats units.
+
 ### Uniform page-list icon sizing
 
 `Bbos6PageList` now defaults to `artworkPaddingDp = 2` for all pages.

@@ -24,6 +24,21 @@ class FileBrowserTest {
         )
     }
 
+    @Test fun fileRowsHaveByteSizesAndFoldersDoNot() {
+        val root = temp.newFolder("sizes")
+        File(root, "Folder").mkdir()
+        File(root, "empty.dat").writeBytes(byteArrayOf())
+        File(root, "full.dat").writeText("test")
+
+        val entries = (FileBrowser.list(root, root) as FileBrowser.Listing.Available)
+            .entries.associateBy { it.name }
+
+        assertTrue(entries.getValue("Folder").isDirectory)
+        assertEquals(null, entries.getValue("Folder").sizeBytes)
+        assertEquals(0L, entries.getValue("empty.dat").sizeBytes)
+        assertEquals(4L, entries.getValue("full.dat").sizeBytes)
+    }
+
     @Test fun guardsRootAndParent() {
         val root = temp.newFolder("root")
         val inner = File(root, "inner").apply { mkdir() }

@@ -239,6 +239,7 @@ private fun FilesPage(
     val favoritesStore = remember(context) { FavoritesStore(context) }
     var favorites by remember(favoritesStore) { mutableStateOf(favoritesStore.load()) }
     val favoriteById = remember(favorites) { favorites.associateBy { it.id } }
+    var favoriteFileSizes by remember { mutableStateOf<Map<String, Long>>(emptyMap()) }
     // Home is navigation only. Pinned shortcuts appear inside Favourites.
     val homeItems = remember(roots) {
         buildList {
@@ -556,6 +557,23 @@ private fun FilesPage(
         }
     }
 
+    LaunchedEffect(
+        favoritesPage, favorites, roots, accessGranted, refreshCounter, resumeCounter
+    ) {
+        favoriteFileSizes = if (favoritesPage && accessGranted) {
+            withContext(Dispatchers.IO) {
+                favorites.mapNotNull { favorite ->
+                    if (favorite.isDirectory) return@mapNotNull null
+                    val volume = roots.firstOrNull { it.id == favorite.storageId }
+                        ?: return@mapNotNull null
+                    val file = FavoritePolicy.resolve(volume.directory, favorite)
+                        ?: return@mapNotNull null
+                    FileBrowser.fileSizeBytes(file)?.let { favorite.id to it }
+                }.toMap()
+            }
+        } else emptyMap()
+    }
+
     val visibleCategory = indexedCategory
     // The activity's root consumes the system status-bar inset so the
     // shared header and every Files screen start below clock/notification icons.
@@ -610,6 +628,11 @@ private fun FilesPage(
                             artworkForId = { id ->
                                 if (favoriteById[id]?.isDirectory == true) favouritedFolderIcon else null
                             },
+                            trailingTextForId = { id ->
+                                favoriteFileSizes[id]?.let { sizeBytes ->
+                                    Formatter.formatShortFileSize(context, sizeBytes)
+                                }
+                            },
                             onActivate = { id ->
                                 favoriteById[id]?.let { activateFavorite(it) }
                             },
@@ -647,6 +670,11 @@ private fun FilesPage(
                                     rowHeightDp = 52,
                                     artworkSlotSizeDp = 36,
                                     textHorizontalPaddingDp = 4,
+                                    trailingTextForId = { id ->
+                                        byId[id]?.sizeBytes?.let { sizeBytes ->
+                                            Formatter.formatShortFileSize(context, sizeBytes)
+                                        }
+                                    },
                                     onActivate = { id ->
                                         byId[id]?.let { entry ->
                                             openIndexed(entry, false)?.let {
@@ -719,6 +747,11 @@ private fun FilesPage(
                                             if (id in favouritedFolderPaths) favouritedFolderIcon
                                             else folderIcon
                                         } else null
+                                    },
+                                    trailingTextForId = { id ->
+                                        byPath[id]?.sizeBytes?.let { sizeBytes ->
+                                            Formatter.formatShortFileSize(context, sizeBytes)
+                                        }
                                     },
                                     onActivate = { id ->
                                         if (operationBusy) return@Bbos6PageList

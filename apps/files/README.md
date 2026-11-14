@@ -78,6 +78,16 @@ This application lives in `apps/files/` of the `bbos6-suite` monorepo.
 - Home and directory lists retain their original 52dp vertical row height.
   The BB 9900 Files reference informs tighter **horizontal** layout only:
   a 36dp icon slot and 4dp label inset reduce the gap between icon and text.
+- File rows in folder browsing, Favourites and indexed Images, Videos,
+  Audio and Documents display platform-formatted sizes on the far right,
+  without another row component. Folders show nothing. Folder browsing
+  obtains bytes in `FileBrowser.list` on `Dispatchers.IO`; Favourites
+  resolve valid bookmarked files and read sizes in a background effect;
+  indexed categories query `MediaStore.MediaColumns.SIZE`. If a value is
+  unavailable, no size is shown. The shared page list's optional
+  `trailingTextForId` displays each size before the right-edge
+  multi-selection checkbox, automatically shifting it left in selection
+  mode. Home, Settings and Music retain their existing layouts.
   These dimensions are a Q25-tunable approximation, not historical SDK values.
 - Folder rows and storage-root entries display the original BBOS6 **112.png**
   Folders icon, mapped as `bbos6_menu_folders` in the shared index.
@@ -209,6 +219,20 @@ Existing file operations must remain unchanged.
 6. Revoke storage permission and verify favorites request native Android
    access rather than bypassing storage restrictions. If present, test SD card
    removal and remount behavior.
+
+### File size row checks
+
+1. Open a folder containing an empty file, a non-empty file, a long-named
+   file, and a folder: sizes should appear for the files only (including
+   zero-byte files), on the right edge.
+2. Enter multi-selection: checkboxes must occupy the far-right slot and
+   push the sizes left without obscuring long, ellipsized file names.
+3. Toggle selection with trackpad/DPAD and touch; row focus, highlight,
+   scroll-edge behaviour and clipboard actions must remain unchanged.
+4. Verify Favourites and all four indexed media categories display sizes
+   for valid files, omit unavailable sizes, and show no folder size.
+5. Verify Home, Settings and Music retain their existing row layouts;
+   no navigation or selection behavior changes in Favourites/indexed media.
 
 ### File context menu and Properties checks
 
