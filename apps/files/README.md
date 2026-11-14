@@ -78,6 +78,13 @@ This application lives in `apps/files/` of the `bbos6-suite` monorepo.
 - Home and directory lists retain their original 52dp vertical row height.
   The BB 9900 Files reference informs tighter **horizontal** layout only:
   a 36dp icon slot and 4dp label inset reduce the gap between icon and text.
+- Folder-browsing file rows show a platform-formatted file size aligned to
+  the far right, without adding another row component. Folders have no size
+  label. `FileBrowser.list` obtains byte lengths on `Dispatchers.IO`; if
+  unavailable, the row leaves the size blank. The shared page list's
+  optional `trailingTextForId` displays it before the existing right-edge
+  multi-selection checkbox, automatically shifting it left in selection
+  mode. Other lists and Music do not opt into this feature.
   These dimensions are a Q25-tunable approximation, not historical SDK values.
 - Folder rows and storage-root entries display the original BBOS6 **112.png**
   Folders icon, mapped as `bbos6_menu_folders` in the shared index.
@@ -209,6 +216,18 @@ Existing file operations must remain unchanged.
 6. Revoke storage permission and verify favorites request native Android
    access rather than bypassing storage restrictions. If present, test SD card
    removal and remount behavior.
+
+### File size row checks
+
+1. Open a folder containing an empty file, a non-empty file, a long-named
+   file, and a folder: sizes should appear for the files only (including
+   zero-byte files), on the right edge.
+2. Enter multi-selection: checkboxes must occupy the far-right slot and
+   push the sizes left without obscuring long, ellipsized file names.
+3. Toggle selection with trackpad/DPAD and touch; row focus, highlight,
+   scroll-edge behaviour and clipboard actions must remain unchanged.
+4. Verify Home, indexed media lists, Favourites, Settings and Music retain
+   their existing row layouts.
 
 ### File context menu and Properties checks
 
