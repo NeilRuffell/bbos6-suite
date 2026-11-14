@@ -170,6 +170,8 @@ Files registers an Android `DocumentsProvider` at
 Files-owned picker activity) discovers it through
 `android.content.action.DOCUMENTS_PROVIDER` and displays **Internal Storage**
 and mounted **SD Cards with stable volume UUIDs** as local roots.
+The primary picker root is labeled **BB Files — Internal Storage** to
+separate it from Android's own storage entry.
 Other apps can use standard
 `ACTION_OPEN_DOCUMENT`, `ACTION_GET_CONTENT` (via Android's picker),
 `ACTION_CREATE_DOCUMENT`, and `ACTION_OPEN_DOCUMENT_TREE` to browse
