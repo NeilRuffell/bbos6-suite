@@ -251,6 +251,11 @@ final class GoogleMessagesAdapterBridge {
                         failures.merge("row_null", 1, Integer::sum);
                     } else if (CONVERSATION_ROW.equals(row.getClass().getName())) {
                         conversations++;
+                        if (position == 0) {
+                            GoogleMessagesConversationBinding.logHolderPathStage(
+                                holder, "detached_before_click"
+                            );
+                        }
                         GoogleMessagesConversationBinding.BindingCheck check =
                             GoogleMessagesConversationBinding.inspectBoundConversation(
                                 row, holder
