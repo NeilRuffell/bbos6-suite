@@ -164,8 +164,8 @@ assets and `icon-index.csv` are maintained **only** there.
 ```bash
 cd ~/Projects/bbos6-suite
 git fetch origin
-git switch feature/files-actions-and-open
-git pull --ff-only origin feature/files-actions-and-open
+git switch master
+git pull --ff-only origin master
 gradle -p apps/files :bbos6-ui:verifyKotlinOnly :bbos6-ui:testDebugUnitTest :app:testDebugUnitTest :app:assembleRelease
 adb -s 202512003630 install -r apps/files/app/build/outputs/apk/release/app-release.apk
 ```
