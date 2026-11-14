@@ -49,6 +49,18 @@ view-tree inspection. These contain class and method signatures, adapter
 count and native capability flags **only**, never sender/message text, IDs or
 contact values. The inspection does not bind, mutate or select conversations.
 
+On the Q25 build tested 2026-11-14, Google Messages exposes an obfuscated
+`RecyclerView` implementation with **no method named `getAdapter`**
+(`NoSuchMethodError`). It contained five visible native rows at the sampled
+moment. This does **not** establish the adapter's total item count or confirm
+any stable conversation identifiers.
+
+The next diagnostic revision prints a bounded inventory of *declared and
+runtime class names* for non-primitive RecyclerView instance fields. This
+lets us locate an R8-renamed adapter reference without guessing method names.
+It never logs any field values, contact names, message objects, or message text.
+It does not yet replace the Google-owned inbox with `Bbos6PageList`.
+
 To inspect the stock adapter, **disable the old visual experiment first**:
 
 ```sh
