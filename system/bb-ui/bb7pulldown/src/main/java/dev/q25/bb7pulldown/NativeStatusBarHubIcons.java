@@ -77,8 +77,23 @@ final class NativeStatusBarHubIcons {
     private static Map<String, Integer> renderedCounts = Collections.emptyMap();
     private static boolean attachmentLogged;
     private static boolean eligibilityWarningLogged;
+    // The BB-button menu temporarily replaces *both* native App indicators
+    // and this separately centered Hub strip with a live date.
+    private static boolean menuDateVisible;
 
     private NativeStatusBarHubIcons() {}
+
+    static void setMenuDateVisible(boolean visible) {
+        if (menuDateVisible == visible) return;
+        menuDateVisible = visible;
+        if (visible) {
+            if (strip != null) strip.setVisibility(View.GONE);
+        } else {
+            // Reapply whichever icon mode is currently selected, including
+            // changes made while the transient BB-button menu was open.
+            schedule();
+        }
+    }
 
     static void install(ClassLoader loader) {
         if (installed) return;
@@ -264,6 +279,10 @@ final class NativeStatusBarHubIcons {
                 || host == null || centeredHost == null
                 || !nativeContainer.isAttachedToWindow()
                 || strip.getParent() != centeredHost) return;
+        if (menuDateVisible) {
+            strip.setVisibility(View.GONE);
+            return;
+        }
         if (!NotificationShadeModePolicy.TYPES.equals(currentMode)) {
             restoreNative();
             strip.setVisibility(View.GONE);
@@ -472,7 +491,7 @@ final class NativeStatusBarHubIcons {
         ViewTreeObserver tree = area.getViewTreeObserver();
         if (!tree.isAlive()) return;
         visibilityGuard = () -> {
-            if (NotificationShadeModePolicy.TYPES.equals(currentMode)
+            if (!menuDateVisible && NotificationShadeModePolicy.TYPES.equals(currentMode)
                     && strip != null && strip.getVisibility() == View.VISIBLE) {
                 suppressNativeChildren();
             }

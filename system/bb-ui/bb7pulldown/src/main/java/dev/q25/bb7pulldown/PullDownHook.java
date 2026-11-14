@@ -212,7 +212,12 @@ public final class PullDownHook implements IXposedHookLoadPackage {
                     if (param.thisObject instanceof View) {
                         View bar = (View) param.thisObject;
                         nativeStatusBar = new WeakReference<>(bar);
-                        bar.post(PullDownHook::updateStatusAppearance);
+                        bar.post(() -> {
+                            updateStatusAppearance();
+                            // Reinflation while the BB menu is open must rebind the
+                            // native date to the new real status-bar window.
+                            if (focusWindow != null) NativeStatusBarMenuDate.show(bar);
+                        });
                     }
                 }
             });
@@ -370,6 +375,7 @@ public final class PullDownHook implements IXposedHookLoadPackage {
         focusWindow = null;
         focusManager = null;
         standaloneHeader = null;
+        NativeStatusBarMenuDate.hide();
         updateStatusAppearance();
         if (root != null && wm != null) {
             try { wm.removeViewImmediate(root); }
@@ -545,8 +551,11 @@ public final class PullDownHook implements IXposedHookLoadPackage {
             if (shadeHost == null) NAVIGATION.enterStandaloneStatusBar();
             popup.setFocusedZone(NAVIGATION.focusedZone());
             root.requestFocus();
+            // Presentation only: real notifications remain owned by SystemUI.
+            NativeStatusBarMenuDate.show(nativeStatusBar.get());
             Log.i(TAG, "BB page popup displayed at bottom-left");
         } catch (Throwable error) {
+            NativeStatusBarMenuDate.hide();
             unregisterSelectorScreenOffReceiver();
             if (root.isAttachedToWindow()) {
                 try { wm.removeViewImmediate(root); }
