@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import java.lang.ref.WeakReference
 
 /**
  * A real BBOS6 inbox: ONE shared Bbos6PageList controller.
@@ -37,6 +38,16 @@ object MessagesInboxPageBridge {
         "com.google.android.apps.messaging.main.MainActivity"
     private const val NATIVE_RECYCLER =
         "android.support.v7.widget.RecyclerView"
+    private var currentSession: WeakReference<Session>? = null
+
+    /**
+     * Google adapter bind callback (not a new scrolling/input controller).
+     * Coalesce native data refreshes on the main thread.
+     */
+    @JvmStatic
+    fun onNativeAdapterBound() {
+        currentSession?.get()?.scheduleRefresh()
+    }
 
     @JvmStatic
     fun tryMount(activity: Activity) {
@@ -54,6 +65,7 @@ object MessagesInboxPageBridge {
 
             val session = Session(parent, recycler, adapter, snapshot)
             session.mount()
+            currentSession = WeakReference(session)
         } catch (failure: Throwable) {
             Log.e(TAG, "Shared inbox mount rejected; Google inbox retained", failure)
         }
@@ -137,7 +149,7 @@ object MessagesInboxPageBridge {
                         override fun onViewDetachedFromWindow(v: View) {
                             // On Activity teardown release our compose lifecycle.
                             // Rollback never mutates Google's conversation data.
-                            if (!restoring) release()
+                            if (!restoring) rollback()
                         }
                     }
                 )
@@ -148,7 +160,7 @@ object MessagesInboxPageBridge {
             }
         }
 
-        private fun scheduleRefresh() {
+        fun scheduleRefresh() {
             if (closed || scheduled) return
             scheduled = true
             host.post {
@@ -214,6 +226,7 @@ object MessagesInboxPageBridge {
         private fun release() {
             if (closed) return
             closed = true
+            if (currentSession?.get() === this) currentSession = null
             recycler.removeOnLayoutChangeListener(refreshListener)
             try {
                 compose.disposeComposition()
