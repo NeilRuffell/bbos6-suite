@@ -12,13 +12,14 @@ import java.lang.reflect.Modifier;
 /**
  * Read-only, version-specific Google Messages adapter inspection.
  *
- * Logs Java class/method signatures and structural counts ONLY.
- * Never logs a conversation, contact, message, adapter element, object
- * toString(), or any message model/field value.
+ * Logs Java class/method signatures, structural counts, and native
+ * adapter capability flags only. Never logs a conversation, contact,
+ * message, adapter element, object toString(), or model/field value.
  *
- * This is required before replacing the native RecyclerView with the
- * existing shared Bbos6PageList controller: only the adapter can describe
- * off-screen conversations and preserve native actions.
+ * A separately opted-in bounded bind probe may create/bind detached native
+ * ViewHolders, but never clicks, replaces or scrolls the stock inbox.
+ * This inspection precedes wiring the existing shared Bbos6PageList to
+ * off-screen conversation data and native action dispatch.
  */
 final class MessagesNativeAdapterInspection {
     private static final String TAG = "BBMessagesAdapter";
