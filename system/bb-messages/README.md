@@ -58,6 +58,43 @@ continuing to masquerade as a working BBOS6 integration. The experimental
 sources remain only for reference while direct Google controller bindings
 are investigated. No production UI replacement is active. Do not merge.
 
+### Q25 verified real activation and controller tracing (2026-11-14 16:27)
+
+On the stock Google Messages inbox, Q25 device logs confirmed the
+actual dispatch sequence for a physical conversation tap:
+
+`fzih.onClick → asvb.onClick`, both entered with the native row
+attached, then returned without a logged exception. A physical
+long-press dispatched `fzig.onLongClick → asvc.onLongClick`; both
+returned `handled=true`. The preceding introspection showed both
+inner delegates capture `asvk` and native ViewHolder `asvj`.
+These are the **verified callbacks**, not a verified standalone
+navigation-controller method or stable conversation identity.
+
+The action probe now traces **synchronous method calls** on those two
+captured class types while the real native `asvb`/`asvc` callback is
+executing. For safety it installs hooks only if each class declares
+at most 80 methods, logs up to 24 calls per user action, and logs
+only method class/name, parameter count and return type. It does
+not call target methods, inspect arguments, modify results, intercept
+messages or read model values. If navigation dispatch is asynchronous,
+the path may be incomplete; do not assume absent calls imply absence
+of functionality.
+
+After building, enable the already established action probe, restart
+Google Messages, physically tap and long-press native inbox rows, and
+capture:
+
+```sh
+adb -s 202512003630 logcat -d -v time | \
+  grep -E 'BBMessagesActions.*(TRACE_PATH|TRACE enter|TRACE exit)'
+```
+
+Use the resulting exact controller signatures to replace detached
+ViewHolder clicks with a directly verified native action binding
+before attempting BBOS6 presentation replacement. The rejected
+overlays remain disabled. No feature acceptance or merge yet.
+
 ### Q25 attached versus detached navigation trace (2026-11-14 16:23)
 
 Q25 build and install passed. All five attached native conversation
