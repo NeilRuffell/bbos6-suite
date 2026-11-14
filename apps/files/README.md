@@ -17,6 +17,11 @@ This application lives in `apps/files/` of the `bbos6-suite` monorepo.
   bar with no gradient or border, 2dp horizontal text inset and 15sp regular
   white text, based on the supplied original BlackBerry File Folders image.
   Other consumers retain the original beveled section-header appearance.
+  The shared header's optional trailing slot displays a passive Files-owned
+  pending Copy/Cut badge with item count on the far right. Long paths
+  ellipsize before the badge; the 28dp flat-black header and trackpad
+  focus remain unchanged. The badge stays visible while navigating
+  Files pages and disappears when nothing is staged.
 - Home navigation: Internal Storage, SD Card (when mounted), Recent Files,
   **Favourites**, Images, Downloads, Audio, Documents, Videos and **Settings**
   (final row). Settings opens a dedicated Files page using the existing
@@ -127,6 +132,12 @@ destination roots. They refuse collisions, invalid names, self-nesting folders
 and symbolic-link copies. File sharing/opening uses a non-exported Android
 `FileProvider` with per-URI read permission, never `file://`.
 The clipboard is in-memory; nothing is changed until Paste is selected.
+Copy and Cut replace the previous staged selection. Both modes clear after a
+fully successful Paste. If only some items transfer, the badge counts only
+remaining failed items and those items alone are available for retry; an
+error popup reports the failures. Folder and item context menus expose
+Cancel Copy / Cancel Cut to discard a staged operation without changing files.
+Storage permission revocation or source-volume removal also clears it.
 Deletion has no undo. Test with disposable files before trying valuable data.
 
 ## Source ownership
@@ -187,6 +198,21 @@ Existing file operations must remain unchanged.
 6. Revoke storage permission and verify favorites request native Android
    access rather than bypassing storage restrictions. If present, test SD card
    removal and remount behavior.
+
+### Clipboard indicator checks
+
+1. Stage one file with Copy, then several with Cut Selected. Verify the
+   flat-black path bar shows the correct icon, mode and count, on home and
+   across directory changes; long paths must ellipsize before the badge.
+2. Cancel Copy or Cut from the normal folder/item context menu. Verify the
+   badge and Paste/Cancel actions disappear without any file changes.
+3. Paste successfully in both modes and verify the badge disappears. Copy
+   must preserve the source; Cut must move the source.
+4. Cause a multi-item collision in the destination. Verify the popup
+   reports failures, the badge count reflects only failed items and retry
+   processes only them. Existing destinations must not be overwritten.
+5. Verify multi-selection counts, Back/trackpad, Settings and Music headers
+   remain unaffected, including while a clipboard operation is pending.
 
 ### Existing functionality checks
 
