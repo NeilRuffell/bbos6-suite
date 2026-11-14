@@ -43,6 +43,22 @@ final class MessagesNativeAdapterInspection {
                 + " attached=" + recycler.isAttachedToWindow()
                 + " visibleNativeRows=" + recycler.getChildCount());
 
+            // Prefer the exact Q25-verified obfuscated adapter signature.
+            // The full-page shared helper will use the same bridge once its
+            // data and native action bindings pass device tests.
+            GoogleMessagesAdapterBridge nativeBridge =
+                GoogleMessagesAdapterBridge.resolve(recycler);
+            if (nativeBridge != null) {
+                nativeBridge.inspectItemIdentity();
+                if (isBoundRowProbeEnabled()) {
+                    nativeBridge.inspectOffscreenBinding();
+                } else {
+                    Log.i(TAG, "BIND_PROBE disabled (opt-in system property)");
+                }
+                return;
+            }
+
+            // Fallback structural inspection for an unsupported Google build.
             Object adapter = null;
             try {
                 // Introspection only; never invoke adapter binding or edits.
@@ -137,6 +153,20 @@ final class MessagesNativeAdapterInspection {
             }
         } catch (Throwable failure) {
             Log.e(TAG, "Read-only native adapter inspection failed", failure);
+        }
+    }
+
+    private static boolean isBoundRowProbeEnabled() {
+        try {
+            Class<?> properties = de.robv.android.xposed.XposedHelpers.findClass(
+                "android.os.SystemProperties", null
+            );
+            Object enabled = de.robv.android.xposed.XposedHelpers.callStaticMethod(
+                properties, "getBoolean", "debug.bbmessages.bindprobe.enabled", false
+            );
+            return Boolean.TRUE.equals(enabled);
+        } catch (Throwable failure) {
+            return false;
         }
     }
 
