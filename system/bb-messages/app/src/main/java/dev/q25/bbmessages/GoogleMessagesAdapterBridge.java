@@ -167,6 +167,43 @@ final class GoogleMessagesAdapterBridge {
         }
     }
 
+
+    /**
+     * Inspect the listener class on a newly bound, detached native row, and
+     * compare it with the stock attached row inspected separately. This is
+     * structural only; never invoke the listener or perform a click.
+     */
+    void inspectDetachedActionShape() {
+        if (!isCurrent()) return;
+        try {
+            int count = itemCount();
+            if (count <= 0) return;
+            BRIDGE_BIND.set(true);
+            try {
+                int nameId = recycler.getResources().getIdentifier(
+                    "conversation_name", "id", TARGET_PACKAGE
+                );
+                Object type = itemTypeMethod.invoke(adapter, 0);
+                if (!(type instanceof Integer)) return;
+                Object holder = createHolderMethod.invoke(
+                    adapter, recycler, (Integer) type
+                );
+                if (holder == null) return;
+                bindHolderMethod.invoke(adapter, holder, 0);
+                View view = holderItemView(holder, nameId);
+                if (view != null && CONVERSATION_ROW.equals(
+                        view.getClass().getName())) {
+                    MessagesNativeActionInspection.describe(view, "detached", 0);
+                }
+            } finally {
+                BRIDGE_BIND.remove();
+            }
+        } catch (Throwable failure) {
+            Log.w(TAG, "Detached native action-shape inspection failed: "
+                + failure.getClass().getSimpleName());
+        }
+    }
+
     private void probePosition(int index, String label) {
         try {
             Object type = itemTypeMethod.invoke(adapter, index);
