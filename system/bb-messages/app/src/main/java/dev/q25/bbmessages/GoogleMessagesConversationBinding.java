@@ -11,10 +11,11 @@ import java.lang.reflect.Modifier;
 /**
  * Q25-version-specific, Google-owned conversation identity extraction.
  *
- * A real Q25 stock inbox click passed the exact same ConversationId object
- * found at asvj.r.f.H.H into asvk.Q(ConversationId). This bridge follows
- * that observed field path directly; it never guesses an identifier from
- * display text, list position, or a detached click handler.
+ * During a real Q25 inbox click, an activity-scoped transient selection
+ * at asvj.r.f.H.H matches the object passed to asvk.Q(ConversationId).
+ * That is NOT the bound row's stable identity. This bridge validates only
+ * controller/holder structure before a click; the real per-row ID must be
+ * resolved through Google's model for the selected adapter position.
  *
  * This class NEVER invokes Google's controller, and its outputs must be
  * validated against real Google actions and refreshed bound model state
@@ -113,15 +114,16 @@ final class GoogleMessagesConversationBinding {
         }
     }
 
-    /** A validated native action/data binding, never a fabricated row ID. */
+    /**
+     * STRUCTURAL controller/holder reference only. Never treat it as a
+     * ConversationId, valid navigation action or durable adapter identity.
+     */
     static final class VerifiedHandle {
         final Object controller;
-        final Object conversationId;
         final Object nativeHolder;
 
-        VerifiedHandle(Object controller, Object conversationId, Object nativeHolder) {
+        VerifiedHandle(Object controller, Object nativeHolder) {
             this.controller = controller;
-            this.conversationId = conversationId;
             this.nativeHolder = nativeHolder;
         }
     }
@@ -168,18 +170,26 @@ final class GoogleMessagesConversationBinding {
             if (controller == null || !CONTROLLER.equals(controller.getClass().getName())) {
                 return new BindingCheck(null, "controller_type");
             }
-            Object id = conversationIdFromHolder(holder);
-            if (id == null) return new BindingCheck(null, "id_unavailable");
             Class<?> idClass = Class.forName(
                 CONVERSATION_ID, false, holder.getClass().getClassLoader()
             );
+            java.lang.reflect.Method select = controller.getClass()
+                .getDeclaredMethod("I", int.class);
             java.lang.reflect.Method open = controller.getClass()
                 .getDeclaredMethod("Q", idClass);
+            if (select.getReturnType() == void.class
+                || !"aszr".equals(select.getReturnType().getName())
+                || Modifier.isStatic(select.getModifiers())) {
+                return new BindingCheck(null, "selection_signature");
+            }
             if (open.getReturnType() != void.class
                 || Modifier.isStatic(open.getModifiers())) {
                 return new BindingCheck(null, "open_signature");
             }
-            return new BindingCheck(new VerifiedHandle(controller, id, holder), "verified");
+            // NO ConversationId is stored here. The previous
+            // asvj.r.f.H.H path is activity-global and transient.
+            return new BindingCheck(new VerifiedHandle(controller, holder),
+                "structural_only");
         } catch (Throwable failure) {
             return new BindingCheck(null,
                 "reflection_" + failure.getClass().getSimpleName());
