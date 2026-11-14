@@ -21,8 +21,22 @@ monorepo. Consult `../../AGENTS.md`, `../../shared/AGENTS.md`,
   Favourites or indexed MediaStore views implicitly.
 - `Bbos6PageList` is the common full-page trackpad controller. Shared
   onLongPress and onMenu callbacks own input routing, including an empty list;
-  Files owns commands. New Folder and Paste live in the context menus, not
-  artificial selectable directory rows.
+  Files owns commands. A trackpad/DPAD-centre or Enter **long press with no
+  selected row** must dispatch `onMenu(null)`, just like touching/long-pressing
+  blank list space; with a row selected, preserve normal row long-press.
+  New Folder and Paste live in the context menus, not artificial selectable
+  directory rows.
+- Folder list labels must use the raw `FileBrowser.Entry.name` without an
+  appended `/`. The existing `isDirectory` flag controls artwork, navigation,
+  and actions; do not encode directory identity in its displayed text.
+- Back from a nested folder must restore highlight and visibility to the
+  folder entry just exited in the parent directory, as in Music's page
+  navigation. Files owns `DirectoryReturnSelection` (parent/child paths);
+  it passes the child file's stable ID to the shared
+  `Bbos6PageList(initialSelectedId = ...)`. Shared resolves the ID and
+  scrolls it into view. Do not manually set list indices or implement
+  per-screen scroll offsets. Clear the pending anchor when opening a
+  different storage entry or folder; missing IDs safely start at row zero.
 - Files directory, indexed-media and Favourites file rows opt into shared
   `Bbos6PageList.trailingTextForId` for platform-formatted file sizes.
   Obtain folder-browsing byte lengths in `FileBrowser.list` on
@@ -42,6 +56,10 @@ monorepo. Consult `../../AGENTS.md`, `../../shared/AGENTS.md`,
   Do not add status-bar-specific padding inside `Bbos6SectionHeader`
   or individual pages. Its optional passive `trailingContent` slot reserves
   width at the right, ellipsizing long paths without changing header height.
+  Files selects shared `titleOverflow = TextOverflow.StartEllipsis` only
+  for directory paths, preserving the current folder at the right and moving
+  truncation dots to the **left**. Default end-ellipsis remains for every
+  other header/client, including Files home and Settings.
   Files owns its Copy/Cut indicator, clipboard state and cancel/paste actions;
   no other app gets an indicator by default.
 - Android storage access is explicitly user granted; protected/private
@@ -85,11 +103,19 @@ monorepo. Consult `../../AGENTS.md`, `../../shared/AGENTS.md`,
   existing flat-black path header and dark popups. Do not duplicate theme
   UI or add per-screen foreground overrides; future opt-in belongs in shared.
   Keep future Files settings business logic in this app, not shared UI.
-- Files owns the directory item's fixed 3x3 context menu order:
-  Cut/Copy/Rename, Properties/Open/Delete, Select/Share/New Folder.
-  Keep Share present but disabled on folders so the grid remains stable.
-  Favourites and clipboard commands belong in a second menu group; keep the
-  indexed media, Favourites and multi-select menus independent.
+- With no clipboard staged, Files owns the directory item's fixed 3x3
+  context menu order: Cut/Copy/Rename, Properties/Open/Delete,
+  Select/Share/New Folder. Keep Share present but disabled on folders so
+  the grid remains stable. Bookmark commands follow in a second group.
+  When Copy/Cut is pending, both item and blank-folder directory menus
+  instead show only Paste, New Folder and Cancel Copy/Cut, supplied by the
+  single Files-owned `FilesClipboardMenu` action policy. Paste and New
+  Folder always target the **current** folder, never the long-pressed row.
+  Normal row activation (including entering directories) remains enabled.
+  New Folder must not clear the clipboard; cancelling or successful Paste
+  restores the regular menu, while partial paste failures retain the
+  reduced menu for retry. Do not replace Favourites, indexed media or
+  active multi-selection menus: those are not directory paste destinations.
   Properties uses shared `Bbos6PropertiesDialog` and `Bbos6PropertyRow`;
   Files alone reads actual, authorized filesystem metadata off the UI
   thread using `FilePropertiesReader`. Do not derive folder size from

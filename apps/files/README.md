@@ -18,9 +18,12 @@ This application lives in `apps/files/` of the `bbos6-suite` monorepo.
   white text, based on the supplied original BlackBerry File Folders image.
   Other consumers retain the original beveled section-header appearance.
   The shared header's optional trailing slot displays a passive Files-owned
-  pending Copy/Cut badge with item count on the far right. Long paths
-  ellipsize before the badge; the 28dp flat-black header and trackpad
-  focus remain unchanged. The badge stays visible while navigating
+  pending Copy/Cut badge with item count on the far right. Long directory
+  paths **start-ellipsize** (dots on the left, current/rightmost folder
+  remains visible) before the badge, whether or not a transfer is staged.
+  The header uses the shared `titleOverflow` option, not a Files-specific
+  text renderer. The 28dp flat-black header, trackpad focus and badge
+  geometry remain unchanged. The badge stays visible while navigating
   Files pages and disappears when nothing is staged.
 - Home navigation: Internal Storage, SD Card (when mounted), Recent Files,
   **Favourites**, Images, Downloads, Audio, Documents, Videos and **Settings**
@@ -91,6 +94,8 @@ This application lives in `apps/files/` of the `bbos6-suite` monorepo.
   These dimensions are a Q25-tunable approximation, not historical SDK values.
 - Folder rows and storage-root entries display the original BBOS6 **112.png**
   Folders icon, mapped as `bbos6_menu_folders` in the shared index.
+  Folder names are displayed exactly as provided by the filesystem, without
+  appending `/`; folders remain identified internally by `isDirectory`.
   Ordinary files remain text-only until their icon mapping is defined.
 - **Opt-in directory multi-selection:** In a folder, long-press a file or
   folder and choose **Select**. With selection mode active, trackpad
@@ -109,15 +114,28 @@ This application lives in `apps/files/` of the `bbos6-suite` monorepo.
   Multi-selection state resets when leaving the current directory.
 - Shared `Bbos6PageList` DPAD, trackpad click/hold, touch tap/hold and BB Menu key navigation.
 - Back navigates to parent; headers display the relative folder path.
+  Returning from a nested directory selects its entry in the parent,
+  keeping the previously entered folder highlighted and visible instead
+  of resetting to the first row. Files passes a stable child path to the
+  existing shared `Bbos6PageList(initialSelectedId)`; the list owns the
+  viewport scrolling. Missing entries fall back to the first row.
+  Nested Back navigation updates the target at every level.
 - Regular file tap: native Android `ACTION_VIEW` with a temporary, read-only
   `FileProvider` URI grant. Files opens in a compatible installed Android app.
 - Long-press a file/folder or press BB Menu: shared `Bbos6ContextMenuDialog`.
-  The first nine tiles use a fixed 3×3 order:
+  With no pending clipboard, the first nine tiles use a fixed 3×3 order:
   `Cut | Copy | Rename`, `Properties | Open | Delete`,
   `Select | Share | New Folder`. Share is visibly disabled for directories,
-  preserving tile positions. Optional Add/Remove from Favorites, Paste, and
-  Cancel Copy/Cut appear in a separate group below this grid. Existing
-  Favourites, MediaStore and multi-selection menus remain independent.
+  preserving tile positions. Optional Add/Remove from Favorites appears in
+  a second group. **While Copy or Cut is pending**, all directory item and
+  blank-folder context menus show only `Paste | New Folder | Cancel Copy/Cut`
+  (in that order). Paste and New Folder operate in the **current folder**,
+  not inside a long-pressed directory. Folder navigation by normal tap or
+  trackpad click still works, and making a folder does not discard the
+  clipboard. On Paste success or cancellation, the original 3×3 menu
+  returns; failed transfers keep the simplified menu for retry.
+  Existing Favourites, MediaStore and multi-selection menus remain independent,
+  since those pages are not direct directory paste destinations.
 - **Properties** opens the existing shared `Bbos6PropertiesDialog` for files
   and folders. Files reads authorized filesystem metadata on `Dispatchers.IO`
   and displays name, containing location, type, available modification date,
@@ -126,8 +144,12 @@ This application lives in `apps/files/` of the `bbos6-suite` monorepo.
   scan. Missing or inaccessible paths show an error; no custom Properties
   presentation or storage access is added.
 - Directory lists contain real filesystem entries only, never New Folder or
-  Paste action rows. In an empty folder, press BB Menu or long-press the blank
-  list area for the directory menu (New Folder, Paste, Refresh).
+  Paste action rows. In an empty folder, press BB Menu, **long-press the
+  hardware trackpad/DPAD centre or Enter**, or long-touch the blank list area
+  to open the directory menu (New Folder, Refresh) without a staged clipboard,
+  or (Paste, New Folder, Cancel Copy/Cut) while staging. This shared
+  `Bbos6PageList` hardware fallback also handles a missing selected row
+  and does not change row-long-press behavior on populated lists.
 - Rename and New Folder use the shared Q25-proven native
   `Bbos6PopupButtonList` text-input helper.
 - Delete requires explicit BBOS6 confirmation, initially selecting Cancel.
@@ -157,7 +179,8 @@ Copy and Cut replace the previous staged selection. Both modes clear after a
 fully successful Paste. If only some items transfer, the badge counts only
 remaining failed items and those items alone are available for retry; an
 error popup reports the failures. Folder and item context menus expose
-Cancel Copy / Cancel Cut to discard a staged operation without changing files.
+the simplified Paste / New Folder / Cancel Copy or Cut action set while
+staging; Cancel discards the staged operation without changing any files.
 Storage permission revocation or source-volume removal also clears it.
 Deletion has no undo. Test with disposable files before trying valuable data.
 
@@ -220,6 +243,18 @@ Existing file operations must remain unchanged.
    access rather than bypassing storage restrictions. If present, test SD card
    removal and remount behavior.
 
+### Directory Back-selection checks
+
+1. Enter a folder that is far down a long parent directory list, then press
+   Back. The highlighted row in the parent must be the folder just exited
+   and should be scrolled into view, not the top row.
+2. Repeat with trackpad click, touchscreen row tap, and context-menu Open.
+   At each nested level, Back should highlight the directory you just left.
+3. Rename/delete a directory before a listing refresh, or otherwise have
+   a missing saved row: the list must fall back safely without crashing.
+4. Verify Home, Favourites, indexed media and Music navigation still work.
+   Check that multi-select, scroll-edge alignment and long-press are intact.
+
 ### File size row checks
 
 1. Open a folder containing an empty file, a non-empty file, a long-named
@@ -239,27 +274,58 @@ Existing file operations must remain unchanged.
 1. Long-press or BB Menu on a file and confirm the three rows read
    Cut/Copy/Rename; Properties/Open/Delete; Select/Share/New Folder.
 2. Repeat on a directory: Share stays in place but is disabled.
-3. Confirm Add/Remove from Favorites, Paste and Cancel Copy/Cut still work
-   in their separate group without altering primary tile positions.
+3. Confirm Add/Remove from Favorites remains in a separate group in normal
+   mode. Stage Copy/Cut and confirm only Paste/New Folder/Cancel Cut or Copy
+   is shown, both on a selected item and via an empty-folder context menu.
 4. Open Properties on a file: validate its name, parent location, MIME type
    (or File), size, and modification time. Open on a directory: validate
    Folder type and no calculated size. Use Back to dismiss.
 5. Confirm missing/revoked paths fail safely, the directory listing remains
    responsive, and Music's Properties implementation is unchanged.
 
+### Hardware empty-folder context menu checks
+
+1. In an empty folder with nothing staged, hold the Q25 trackpad/DPAD centre
+   (or Enter). Confirm the directory menu appears with New Folder/Refresh;
+   release the key and verify it does not also activate a row or reopen.
+2. Repeat with the touchscreen long-press and the hardware BB Menu key.
+   All three input routes should expose the same directory commands.
+3. Stage Copy and Cut in turn, navigate into an empty destination folder,
+   and hold the trackpad. Confirm Paste/New Folder/Cancel Copy or Cut appears.
+4. In a populated folder, long-press the trackpad on a selected row and
+   confirm the row-specific menu still opens once, rather than the blank
+   folder menu. Verify ordinary short-click activation remains unchanged.
+
+### Directory path truncation checks
+
+1. Navigate into nested folders until the complete breadcrumb exceeds the
+   Q25 width. Confirm the path begins with an ellipsis and preserves the
+   rightmost/current folder name; a short path displays normally.
+2. Stage Copy or Cut: the badge remains at the far right, and the reduced
+   available width truncates **older path segments on the left**, never the
+   current folder suffix when it fits.
+3. Repeat with multi-selection active, confirm the selected-count suffix
+   remains on the right, and verify Files home/Settings and Music keep their
+   existing end-ellipsis behaviour.
+
 ### Clipboard indicator checks
 
 1. Stage one file with Copy, then several with Cut Selected. Verify the
    flat-black path bar shows the correct icon, mode and count, on home and
    across directory changes; long paths must ellipsize before the badge.
-2. Cancel Copy or Cut from the normal folder/item context menu. Verify the
-   badge and Paste/Cancel actions disappear without any file changes.
-3. Paste successfully in both modes and verify the badge disappears. Copy
+2. Stage Copy or Cut, then open context menus on a file, folder, and blank
+   folder area. Each must show only Paste, New Folder and Cancel Copy/Cut.
+   Create and enter a new folder; verify staging remains, then Paste there.
+   Confirm Paste uses the currently open directory, not the selected row.
+3. Cancel Copy or Cut from the reduced folder/item context menu. Verify the
+   badge disappears and the regular 3x3 menu returns without file changes.
+4. Paste successfully in both modes and verify the badge disappears. Copy
    must preserve the source; Cut must move the source.
-4. Cause a multi-item collision in the destination. Verify the popup
+5. Cause a multi-item collision in the destination. Verify the popup
    reports failures, the badge count reflects only failed items and retry
-   processes only them. Existing destinations must not be overwritten.
-5. Verify multi-selection counts, Back/trackpad, Settings and Music headers
+   processes only them via the simplified menu. Existing destinations
+   must not be overwritten.
+6. Verify multi-selection counts, Back/trackpad, Settings and Music headers
    remain unaffected, including while a clipboard operation is pending.
 
 ### Existing functionality checks

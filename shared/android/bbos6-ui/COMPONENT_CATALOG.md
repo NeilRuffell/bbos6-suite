@@ -364,6 +364,14 @@ remaining width and ellipsizes before the trailing content. No application
 state, focus routing, padding for system bars or clipboard actions are owned
 by the helper. Files opts into the slot for its pending Copy/Cut badge.
 
+The optional `titleOverflow: TextOverflow` parameter defaults to
+`TextOverflow.Ellipsis` (end ellipsis) for all existing clients. Files opts
+into `TextOverflow.StartEllipsis` only while showing a directory path, so
+long paths preserve the **current/rightmost folder** and truncate earlier
+ancestors at the left. It works in both header layouts (with or without
+`trailingContent`) without custom text measurement or splitting path data.
+This requires the existing Compose 1.8 API provided by the April 2025 BOM.
+
 ## Optional multi-selection for full-page lists
 
 `Bbos6PageList` keeps its original single-item activation unless the caller
@@ -401,6 +409,15 @@ retention and the managed-focus policy. Consumers decide labels, available
 entries, navigation destinations, and actions. Compose-only: no copy of
 Music's native `MusicListView` or its data/business logic.
 
+To restore the highlighted row when recreating a page (such as Back from
+a nested directory), callers can provide `initialSelectedId`. This optional,
+one-time initial selection anchor uses **stable row ID**, not row index or
+display text. The existing page-list scrolling logic brings that row into
+the viewport and maintains the ordinary single-focus-zone interaction.
+If the ID is missing or null, selection starts at the first row as before.
+The caller owns navigation history and deciding which ID to restore.
+Existing Music, Settings, and other page lists are unchanged by default.
+
 Place `Bbos6SectionHeader` above the list if the page needs a heading.
 Trackpad, keyboard, touch and viewport-edge behavior require Q25 verification
 before this helper is merged to `master`.
@@ -408,10 +425,15 @@ before this helper is merged to `master`.
 The optional `onLongPress(itemId)` callback handles touch long press,
 accessibility long click, and native key-long-press for center/Enter; `onMenu(itemId?)`
 handles the hardware Menu key, including an empty list. When the list is empty,
-long-pressing the blank surface (or an accessibility long-click) also invokes
-`onMenu(null)`, allowing the host to offer directory-level actions without
-injecting fake selectable rows. Both callbacks remain app-owned actions (e.g.,
-file manager context menus), not shared filesystem code.
+**touch long-press, accessibility long-click, and trackpad/DPAD-center or Enter
+key long-press** all invoke `onMenu(null)` rather than silently doing nothing,
+allowing the host to offer directory-level actions without injecting fake
+selectable rows. On a valid selected row, the key long-press invokes
+`onLongPress(id)` first, falling back to `onMenu(id)` only if no row
+long-press handler exists. A dispatched key long-press suppresses normal
+activation on key release; it cannot fire twice for one held key.
+Both callbacks remain app-owned actions (e.g., file manager context menus),
+not shared filesystem code.
 These routes require device verification before merging.
 
 ### Independent page-list dimensions
