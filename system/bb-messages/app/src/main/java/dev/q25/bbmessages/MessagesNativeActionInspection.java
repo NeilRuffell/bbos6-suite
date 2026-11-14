@@ -97,6 +97,12 @@ final class MessagesNativeActionInspection {
             Class<?> type = handler.getClass();
             Log.i(TAG, "HANDLER source=" + source + " ordinal=" + ordinal
                 + " role=" + name + " class=" + type.getName());
+            if (ordinal == 0) {
+                // The real Google controller is likely captured by the
+                // inner delegate rather than the fzih/fzig view wrapper.
+                // Report the next level of reference *types* only.
+                inspectDelegateShape(handler, name, source);
+            }
             int emitted = 0;
             for (Class<?> cursor = type;
                  cursor != null && cursor != Object.class && emitted < MAX_CAPTURE_FIELDS;
@@ -125,6 +131,58 @@ final class MessagesNativeActionInspection {
             }
         } catch (Throwable failure) {
             Log.w(TAG, "HANDLER unavailable role=" + name + " error="
+                + failure.getClass().getSimpleName());
+        }
+    }
+
+    /**
+     * Wrapper fzih/fzig delegates to Q25-observed asvb/asvc callbacks.
+     * Inspect their captured reference class types to locate the actual
+     * Google navigation controller without reading any captured data.
+     */
+    private static void inspectDelegateShape(
+        Object wrapper, String role, String source
+    ) {
+        try {
+            for (Field field : wrapper.getClass().getDeclaredFields()) {
+                if (Modifier.isStatic(field.getModifiers())
+                    || field.getType().isPrimitive()) continue;
+                field.setAccessible(true);
+                Object candidate = field.get(wrapper);
+                if (candidate == null) continue;
+                String typeName = candidate.getClass().getName();
+                if (!"asvb".equals(typeName) && !"asvc".equals(typeName)) continue;
+
+                int reported = 0;
+                Class<?> type = candidate.getClass();
+                for (Field captured : type.getDeclaredFields()) {
+                    if (Modifier.isStatic(captured.getModifiers())
+                        || captured.getType().isPrimitive()) continue;
+                    if (reported++ >= 12) break;
+                    String runtime = "inaccessible";
+                    try {
+                        captured.setAccessible(true);
+                        Object value = captured.get(candidate);
+                        runtime = value == null
+                            ? "null" : value.getClass().getName();
+                    } catch (Throwable ignored) { }
+                    Log.i(TAG, "DELEGATE_FIELD source=" + source
+                        + " role=" + role
+                        + " delegate=" + typeName
+                        + " capturedName=" + captured.getName()
+                        + " declared=" + captured.getType().getName()
+                        + " runtime=" + runtime);
+                }
+                for (java.lang.reflect.Method method : type.getDeclaredMethods()) {
+                    if (method.getParameterTypes().length != 1
+                        || method.getParameterTypes()[0] != View.class) continue;
+                    Log.i(TAG, "DELEGATE_METHOD class=" + typeName
+                        + " name=" + method.getName()
+                        + " returns=" + method.getReturnType().getName());
+                }
+            }
+        } catch (Throwable failure) {
+            Log.w(TAG, "Delegate structural inspection unavailable: "
                 + failure.getClass().getSimpleName());
         }
     }
