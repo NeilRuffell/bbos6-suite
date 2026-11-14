@@ -199,6 +199,149 @@ final class GoogleMessagesAdapterBridge {
         }
     }
 
+
+    /**
+     * Complete native adapter snapshot for the existing Bbos6PageList.
+     * Fail closed for unsupported row types or partial/inconsistent datasets.
+     *
+     * IDs are deliberately snapshot-position keys, NOT Google conversation IDs.
+     * The Compose host resets its selection on dataset changes because this
+     * Google build's hG(int) returns no stable IDs.
+     */
+    java.util.List<NativeConversationRow> snapshot() throws Exception {
+        if (!isCurrent()) throw new IllegalStateException("Adapter changed");
+        int count = itemCount();
+        if (count > 1000) throw new IllegalStateException("Inbox exceeds safe snapshot cap");
+        int nameId = recycler.getResources().getIdentifier(
+            "conversation_name", "id", TARGET_PACKAGE
+        );
+        int snippetId = recycler.getResources().getIdentifier(
+            "conversation_snippet", "id", TARGET_PACKAGE
+        );
+        int timestampId = recycler.getResources().getIdentifier(
+            "conversation_timestamp_and_unread_badge", "id", TARGET_PACKAGE
+        );
+        if (nameId == 0 || snippetId == 0) {
+            throw new IllegalStateException("Native conversation field IDs missing");
+        }
+        java.util.ArrayList<NativeConversationRow> rows =
+            new java.util.ArrayList<>(count);
+        for (int index = 0; index < count; index++) {
+            Object type = itemTypeMethod.invoke(adapter, index);
+            if (!(type instanceof Integer)) {
+                throw new IllegalStateException("Invalid native view type");
+            }
+            Object holder = createHolderMethod.invoke(adapter, recycler, (Integer) type);
+            if (holder == null) throw new IllegalStateException("No native ViewHolder");
+            bindHolderMethod.invoke(adapter, holder, index);
+            View view = holderItemView(holder, nameId);
+            if (view == null || !view.getClass().getName().equals(
+                    "com.google.android.apps.messaging.home.list.ConversationListItemView")) {
+                throw new IllegalStateException("Unexpected native row class");
+            }
+            View senderView = view.findViewById(nameId);
+            View snippetView = view.findViewById(snippetId);
+            if (!(senderView instanceof TextView) ||
+                !(snippetView instanceof TextView) ||
+                !view.hasOnClickListeners() || !view.isLongClickable()) {
+                throw new IllegalStateException("Native row/action binding incomplete");
+            }
+            String sender = ((TextView) senderView).getText().toString();
+            String preview = ((TextView) snippetView).getText().toString();
+            if (sender.trim().isEmpty()) {
+                throw new IllegalStateException("Empty conversation title");
+            }
+            String timestamp = null;
+            if (timestampId != 0) {
+                View container = view.findViewById(timestampId);
+                TextView value = findTextDescendant(container);
+                if (value != null) timestamp = value.getText().toString();
+            }
+            rows.add(new NativeConversationRow(index, sender, preview,
+                timestamp, view, holder));
+        }
+        if (!isCurrent() || count != itemCount()) {
+            throw new IllegalStateException("Adapter updated during snapshot");
+        }
+        return rows;
+    }
+
+    private boolean isCurrent() {
+        try {
+            Field field = recycler.getClass().getDeclaredField("n");
+            field.setAccessible(true);
+            return field.get(recycler) == adapter;
+        } catch (Throwable failure) {
+            return false;
+        }
+    }
+
+    /**
+     * Native click listeners can act on a detached bound ViewHolder, as a
+     * property of Google's implementation, but functional success still
+     * requires actual Q25 navigation testing. No homegrown conversation
+     * intents or synthetic message IDs are used.
+     */
+    boolean activate(NativeConversationRow selected, boolean longPress) {
+        try {
+            if (!isCurrent() || selected == null ||
+                selected.index < 0 || selected.index >= itemCount()) return false;
+            Object type = itemTypeMethod.invoke(adapter, selected.index);
+            if (!(type instanceof Integer)) return false;
+            Object holder = createHolderMethod.invoke(adapter, recycler, (Integer) type);
+            if (holder == null) return false;
+            bindHolderMethod.invoke(adapter, holder, selected.index);
+            int nameId = recycler.getResources().getIdentifier(
+                "conversation_name", "id", TARGET_PACKAGE
+            );
+            View nativeRow = holderItemView(holder, nameId);
+            if (nativeRow == null || !nativeRow.hasOnClickListeners()) return false;
+            return longPress ? nativeRow.performLongClick() : nativeRow.performClick();
+        } catch (Throwable failure) {
+            Log.e(TAG, "Native conversation action failed; no synthetic fallback", failure);
+            return false;
+        }
+    }
+
+    static final class NativeConversationRow {
+        final int index;
+        final String sender;
+        final String preview;
+        final String timestamp;
+        // Keep the native holder alive for this snapshot's bound action data.
+        @SuppressWarnings("unused") final View nativeRow;
+        @SuppressWarnings("unused") final Object holder;
+
+        NativeConversationRow(
+            int index, String sender, String preview, String timestamp,
+            View nativeRow, Object holder
+        ) {
+            this.index = index;
+            this.sender = sender;
+            this.preview = preview;
+            this.timestamp = timestamp;
+            this.nativeRow = nativeRow;
+            this.holder = holder;
+        }
+
+        public String getId() { return "position:" + index; }
+        public String getSender() { return sender; }
+        public String getPreview() { return preview; }
+        public String getTimestamp() { return timestamp; }
+    }
+
+    private static TextView findTextDescendant(View view) {
+        if (view instanceof TextView) return (TextView) view;
+        if (view instanceof ViewGroup) {
+            ViewGroup parent = (ViewGroup) view;
+            for (int i = 0; i < parent.getChildCount(); i++) {
+                TextView result = findTextDescendant(parent.getChildAt(i));
+                if (result != null) return result;
+            }
+        }
+        return null;
+    }
+
     private static View holderItemView(Object holder, int senderId) {
         Class<?> type = holder.getClass();
         View fallback = null;
