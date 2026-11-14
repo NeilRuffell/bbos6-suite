@@ -7,8 +7,9 @@ import dev.q25.bbos6.ui.compose.Bbos6ListSelectionItem
 import dev.q25.bbos6.ui.compose.Bbos6PageList
 
 /**
- * Application-specific display model. Does not query messages or hold a
- * Google Messages object. IDs and actions must come from a verified bridge.
+ * Application-specific display model. Does not query messages directly.
+ * The Google adapter bridge supplies complete snapshots, temporary position
+ * keys and native action callbacks. Those keys are not conversation IDs.
  */
 data class MessagesInboxRow(
     val id: String,
@@ -20,9 +21,10 @@ data class MessagesInboxRow(
 /**
  * Compact inbox presentation using the existing BBOS6 list controller.
  *
- * The future Google Messages adapter owns the real inbox lifecycle, stable
- * conversation IDs, row updates, click/long-press action dispatch, and teardown.
- * This component makes no assumption about Google Messages internals.
+ * GoogleMessagesAdapterBridge and MessagesInboxPageBridge own target-app
+ * data extraction, native action dispatch, refresh and teardown. This
+ * composable delegates all scrolling, trackpad/DPAD, touch and selection
+ * mechanics to the canonical shared Bbos6PageList used by Files.
  */
 @Composable
 fun MessagesInboxList(
