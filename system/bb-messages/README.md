@@ -58,6 +58,43 @@ continuing to masquerade as a working BBOS6 integration. The experimental
 sources remain only for reference while direct Google controller bindings
 are investigated. No production UI replacement is active. Do not merge.
 
+### Q25 exact native conversation/controller binding (2026-11-14 16:37)
+
+On a real stock Google inbox click, the Q25 probe found the **exact
+same Java object** that Google supplied to `asvk.Q(ConversationId)`
+at the bound native holder path `asvj.r.f.H.H`
+(`referenceMatch=true`, `equalityMatch=true`). The broad graph
+probe still reported `depthCapReached=true` and
+`fieldCapReached=true`; its search was incomplete overall.
+The direct, four-field **identified path** is now independently
+validated against Google's actual navigation argument. No other
+positions' mappings were verified by that single action.
+
+Added `GoogleMessagesConversationBinding`, a Google-specific
+read-only bridge that resolves exactly `asvj.r.f.H.H` to a verified
+`ConversationId`, and checks the real callback's `asvb.a`
+controller, `asvb.b` holder identity, native row click wrapper,
+and `asvk.Q(ConversationId):void` signature. No view overlay,
+synthetic ID, detached click, or custom BBOS6 helper is introduced.
+
+In action-probe mode, `ID_DIRECT` checks that identity during a
+real Google click. `HANDLE_PROBE` samples up to 40 native adapter
+positions and reports the number of **verified per-row controller
+bindings**, animations, failures, and duplicate object references,
+without logging contact data or IDs. All Google UI and navigation
+remain untouched. Future presentation must use the canonical shared
+`Bbos6PageList` and obtain each selected conversation's *current*
+validated handle rather than a stale position or display label.
+
+Q25 build/installation/device acceptance for the new direct
+bindings remain outstanding. Full source-time replacement and
+SMS/MMS/RCS fidelity are **not** claimed complete.
+
+```sh
+adb -s 202512003630 logcat -d -v time | \
+  grep -E 'BBMessagesActions.*ID_DIRECT|BBMessagesAdapter.*HANDLE_PROBE'
+```
+
 ### Q25 incomplete ConversationId provenance scan (2026-11-14 16:34)
 
 Q25 read-only probe reached the configured **48-object limit** while
