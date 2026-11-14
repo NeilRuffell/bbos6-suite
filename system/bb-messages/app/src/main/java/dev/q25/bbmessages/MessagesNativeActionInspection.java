@@ -50,12 +50,22 @@ final class MessagesNativeActionInspection {
                 + " adapterItemCount=" + bridge.itemCount());
 
             int attached = 0;
+            int attachedValid = 0;
+            java.util.Map<String, Integer> attachedFailures =
+                new java.util.TreeMap<>();
             for (int i = 0; i < recycler.getChildCount()
                  && attached < MAX_ATTACHED; i++) {
                 View row = findConversationRow(recycler.getChildAt(i), 0);
                 if (row == null) continue;
                 describe(row, "attached", attached++);
+                GoogleMessagesConversationBinding.BindingCheck check =
+                    GoogleMessagesConversationBinding.inspectAttachedConversation(row);
+                if (check.handle != null) attachedValid++;
+                else attachedFailures.merge(check.reason, 1, Integer::sum);
             }
+            Log.i(TAG, "ATTACHED_HANDLE_PROBE inspected=" + attached
+                + " verified=" + attachedValid
+                + " failureReasons=" + attachedFailures);
             bridge.inspectDetachedActionShape();
             bridge.verifyBoundConversationHandles();
             // Controller identity is structurally verified but opening a
