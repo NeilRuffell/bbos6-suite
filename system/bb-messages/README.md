@@ -149,6 +149,30 @@ adb -s 202512003630 logcat -d -v time | \
   grep -E 'BBMessagesPage|BBMessagesAdapter.*(ROW_KIND|ROW_KINDS)|FATAL EXCEPTION'
 ```
 
+### Q25 full-page Compose host lifecycle correction (2026-11-14 16:03)
+
+After the row-kind diagnostic change, the complete native adapter snapshot
+passed, but the full-page ComposeView could not attach:
+`ViewTreeLifecycleOwner not found from
+com.google.android.apps.messaging.ui.ImeDetectCoordinatorLayout`.
+The injected FrameLayout and ComposeView already carried local owners;
+Compose's default **window recomposer** nevertheless looked up the
+Google-owned outer content view, where no compatible lifecycle owner
+was available. The existing exception rollback restored Google's inbox.
+
+The page host now uses AndroidX
+`View.createLifecycleAwareWindowRecomposer(lifecycle = owner.lifecycle)`
+and calls `ComposeView.setParentCompositionContext(...)` **before**
+attaching ComposeView. The recomposer belongs only to the injected host
+and is cancelled on detachment or lifecycle destruction. No tags or
+AndroidX owners are inserted on the Google-owned root. The normal shared
+`Bbos6PageList` remains the single list controller.
+
+**Not yet build- or device-verified.** Q25 must confirm that the page mounts,
+that its rows match Files' scrolling/navigation behavior, and that native
+Google conversation click/long-click/actions still function. Disable the
+page property and force-stop Google Messages to return to the stock inbox.
+
 ## Shared full-page inbox experiment — build/device test pending
 
 **Implementation now exists behind an independent flag:**
