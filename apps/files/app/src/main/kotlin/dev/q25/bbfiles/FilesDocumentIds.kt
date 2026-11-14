@@ -14,7 +14,7 @@ internal object FilesDocumentIds {
             val relative = root.canonicalFile.toPath()
                 .relativize(file.canonicalFile.toPath())
                 .toString().replace(File.separatorChar, '/')
-            "$" + "{rootId}:$" + "relative"
+            "$rootId:$relative"
         }
     } catch (_: IOException) {
         null
@@ -22,24 +22,26 @@ internal object FilesDocumentIds {
         null
     }
 
-    fun resolve(rootId: String, root: File, documentId: String): File? = try {
-        val prefix = "$" + "{rootId}:"
-        if (':' in rootId || !documentId.startsWith(prefix)) return null
-        val relative = documentId.removePrefix(prefix)
-        if (relative.isNotEmpty() && (
-                relative.startsWith('/') || relative.endsWith('/') ||
-                    relative.split('/').any {
-                        it.isEmpty() || it == "." || it == ".." ||
-                            '\\' in it || it.any { character -> character.code < 32 }
-                    }
-                )
-        ) return null
-        val file = if (relative.isEmpty()) root.canonicalFile
-        else File(root, relative).canonicalFile
-        file.takeIf { FileBrowser.isWithin(root, it) }
-    } catch (_: IOException) {
-        null
-    } catch (_: SecurityException) {
-        null
+    fun resolve(rootId: String, root: File, documentId: String): File? {
+        return try {
+            val prefix = "$rootId:"
+            if (':' in rootId || !documentId.startsWith(prefix)) return null
+            val relative = documentId.removePrefix(prefix)
+            if (relative.isNotEmpty() && (
+                    relative.startsWith('/') || relative.endsWith('/') ||
+                        relative.split('/').any {
+                            it.isEmpty() || it == "." || it == ".." ||
+                                '\\' in it || it.any { character -> character.code < 32 }
+                        }
+                    )
+            ) return null
+            val file = if (relative.isEmpty()) root.canonicalFile
+            else File(root, relative).canonicalFile
+            file.takeIf { FileBrowser.isWithin(root, it) }
+        } catch (_: IOException) {
+            null
+        } catch (_: SecurityException) {
+            null
+        }
     }
 }
