@@ -12,8 +12,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
-import androidx.lifecycle.ViewTreeLifecycleOwner
-import androidx.savedstate.ViewTreeSavedStateRegistryOwner
+import androidx.lifecycle.findViewTreeLifecycleOwner
+import androidx.lifecycle.setViewTreeLifecycleOwner
+import androidx.savedstate.findViewTreeSavedStateRegistryOwner
+import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import dev.q25.bbos6.ui.compose.Bbos6MediaListRow
 
 /**
@@ -188,18 +190,18 @@ object MessagesInboxRowBridge {
         private fun installPaintOverlay() {
             // An injected Compose host must use the *existing* app lifecycle.
             // Never create an independent lifecycle for a Google-owned row.
-            val lifecycleOwner = ViewTreeLifecycleOwner.get(row)
+            val lifecycleOwner = row.findViewTreeLifecycleOwner()
             if (lifecycleOwner == null) {
-                Log.w(TAG, "No compatible ViewTreeLifecycleOwner; native row retained")
+                Log.w(TAG, "No compatible lifecycle owner; native row retained")
                 return
             }
             val paint = ComposeView(row.context).apply {
                 isClickable = false
                 isFocusable = false
                 importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-                ViewTreeLifecycleOwner.set(this, lifecycleOwner)
-                ViewTreeSavedStateRegistryOwner.get(row)?.let {
-                    ViewTreeSavedStateRegistryOwner.set(this, it)
+                setViewTreeLifecycleOwner(lifecycleOwner)
+                row.findViewTreeSavedStateRegistryOwner()?.let {
+                    setViewTreeSavedStateRegistryOwner(it)
                 }
                 setContent { PaintFace() }
             }
