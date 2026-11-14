@@ -26,6 +26,9 @@ monorepo. Consult `../../AGENTS.md`, `../../shared/AGENTS.md`,
   blank list space; with a row selected, preserve normal row long-press.
   New Folder and Paste live in the context menus, not artificial selectable
   directory rows.
+- Folder list labels must use the raw `FileBrowser.Entry.name` without an
+  appended `/`. The existing `isDirectory` flag controls artwork, navigation,
+  and actions; do not encode directory identity in its displayed text.
 - Files directory, indexed-media and Favourites file rows opt into shared
   `Bbos6PageList.trailingTextForId` for platform-formatted file sizes.
   Obtain folder-browsing byte lengths in `FileBrowser.list` on
