@@ -29,6 +29,7 @@ final class MessagesNativeActionTrace {
         final String kind;
         final Object nativeDelegate;
         Object resultOfI;
+        Integer argumentOfI;
         int events;
         int depth = 1;
 
@@ -52,6 +53,48 @@ final class MessagesNativeActionTrace {
         // a genuine user click, never invoke methods speculatively.
         traceControllerClass(loader, "asvk");
         traceControllerClass(loader, "asvj");
+        installNativeBindObserver(loader);
+    }
+
+    /**
+     * Observe Google's existing vv.g(aac,int) adapter binds. This reads the
+     * same native position Google already supplied to its ViewHolder; it
+     * does not call bind, create holders or affect navigation.
+     */
+    private static void installNativeBindObserver(ClassLoader loader) {
+        try {
+            Class<?> adapter = XposedHelpers.findClassIfExists("vv", loader);
+            Class<?> holder = XposedHelpers.findClassIfExists("aac", loader);
+            if (adapter == null || holder == null
+                || adapter.getSuperclass() == null
+                || !"yv".equals(adapter.getSuperclass().getName())) {
+                Log.w(TAG, "MODEL_BIND verified adapter/holder unavailable");
+                return;
+            }
+            java.lang.reflect.Method bind = adapter.getDeclaredMethod(
+                "g", holder, int.class
+            );
+            if (bind.getReturnType() != void.class) {
+                Log.w(TAG, "MODEL_BIND unsupported signature");
+                return;
+            }
+            XposedBridge.hookMethod(bind, new XC_MethodHook() {
+                @Override
+                protected void afterHookedMethod(MethodHookParam p) {
+                    if (p.hasThrowable()
+                        || GoogleMessagesAdapterBridge.isSnapshotBinding()
+                        || p.args.length != 2
+                        || !(p.args[1] instanceof Integer)) return;
+                    MessagesNativeRowModelInspection.observeNativeBind(
+                        p.args[0], (Integer) p.args[1]
+                    );
+                }
+            });
+            Log.i(TAG, "MODEL_BIND installed");
+        } catch (Throwable e) {
+            Log.w(TAG, "MODEL_BIND unavailable="
+                + e.getClass().getSimpleName());
+        }
     }
 
     private static void startAction(String name, Object nativeDelegate) {
@@ -130,6 +173,11 @@ final class MessagesNativeActionTrace {
                             ActionScope state = ACTIVE_ACTION.get();
                             if (state == null || state.events >= MAX_EVENTS_PER_ACTION) return;
                             state.events++;
+                            if ("asvk".equals(name) && "I".equals(method.getName())
+                                && hook.args != null && hook.args.length == 1
+                                && hook.args[0] instanceof Integer) {
+                                state.argumentOfI = (Integer) hook.args[0];
+                            }
                             Log.i(TAG, "TRACE_PATH action=" + state.kind
                                 + " call=" + name + "." + method.getName()
                                 + " params=" + method.getParameterCount()
@@ -153,9 +201,9 @@ final class MessagesNativeActionTrace {
                                     GoogleMessagesConversationBinding.matchesGoogleOpen(
                                         state.nativeDelegate, hook.args[0]
                                     );
-                                    MessagesNativeRowModelInspection.compareOnRealOpen(
+                                    MessagesNativeRowModelInspection.compareActualResolvedModel(
                                         state.nativeDelegate, state.resultOfI,
-                                        hook.args[0]
+                                        state.argumentOfI, hook.args[0]
                                     );
                                 }
                             }
