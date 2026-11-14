@@ -2,12 +2,15 @@ package dev.q25.bbfiles
 
 import android.content.ActivityNotFoundException
 import android.content.ClipData
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
 import android.os.storage.StorageManager
 import android.provider.Settings
+import android.text.format.DateFormat
+import android.text.format.Formatter
 import android.webkit.MimeTypeMap
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -39,6 +42,8 @@ import dev.q25.bbos6.ui.compose.Bbos6ListSelectionItem
 import dev.q25.bbos6.ui.compose.Bbos6PageList
 import dev.q25.bbos6.ui.compose.rememberBbos6PageListMultiSelectionState
 import dev.q25.bbos6.ui.compose.Bbos6PopupAction
+import dev.q25.bbos6.ui.compose.Bbos6PropertiesDialog
+import dev.q25.bbos6.ui.compose.Bbos6PropertyRow
 import dev.q25.bbos6.ui.compose.Bbos6PopupButtonDialog
 import dev.q25.bbos6.ui.compose.Bbos6SectionHeader
 import dev.q25.bbos6.ui.compose.Bbos6SectionHeaderStyle
@@ -46,6 +51,7 @@ import dev.q25.bbos6.ui.compose.Bbos6ThemeSelector
 import dev.q25.bbos6.ui.compose.Bbos6ThemeSurface
 import java.io.File
 import java.io.IOException
+import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -54,6 +60,31 @@ import kotlinx.coroutines.withContext
 private data class StorageRoot(val id: String, val label: String, val directory: File)
 private data class InfoPopup(val title: String, val message: String)
 private data class ClipboardItem(val root: File, val sources: List<File>, val cut: Boolean)
+private data class PropertiesRequest(val root: File, val entry: FileBrowser.Entry)
+
+/** Platform formatting stays in Files; the shared dialog accepts only presentation rows. */
+private fun filePropertyRows(
+    context: Context,
+    metadata: FilePropertiesReader.Metadata
+): List<Bbos6PropertyRow> = buildList {
+    add(Bbos6PropertyRow.Text("Name: ${metadata.name}"))
+    add(Bbos6PropertyRow.Text("Location: ${metadata.location}"))
+    val type = if (metadata.isDirectory) "Folder" else {
+        metadata.extension?.let { extension ->
+            MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
+        } ?: "File"
+    }
+    add(Bbos6PropertyRow.Inline("Type:", type))
+    metadata.sizeBytes?.let { size ->
+        add(Bbos6PropertyRow.Trailing("Size:", Formatter.formatShortFileSize(context, size)))
+    }
+    metadata.modifiedMillis?.let { modified ->
+        val date = Date(modified)
+        val formatted = DateFormat.getMediumDateFormat(context).format(date) +
+            " " + DateFormat.getTimeFormat(context).format(date)
+        add(Bbos6PropertyRow.Trailing("Last Modified:", formatted))
+    }
+}
 
 /** File-manager UI: no privileged operations beyond explicitly granted Android access. */
 class FilesActivity : ComponentActivity() {
@@ -236,6 +267,8 @@ private fun FilesPage(
     var pendingAfterPermission by remember { mutableStateOf<String?>(null) }
     var popup by remember { mutableStateOf<InfoPopup?>(null) }
     var menuEntry by remember { mutableStateOf<FileBrowser.Entry?>(null) }
+    var propertiesRequest by remember { mutableStateOf<PropertiesRequest?>(null) }
+    var propertiesRows by remember { mutableStateOf<List<Bbos6PropertyRow>?>(null) }
     var favoriteMenu by remember { mutableStateOf<FileFavorite?>(null) }
     var folderMenu by remember { mutableStateOf(false) }
     var deleteTarget by remember { mutableStateOf<FileBrowser.Entry?>(null) }
@@ -363,6 +396,27 @@ private fun FilesPage(
         }
     }
 
+    LaunchedEffect(propertiesRequest, accessGranted) {
+        val request = propertiesRequest ?: return@LaunchedEffect
+        propertiesRows = null
+        if (!accessGranted) {
+            propertiesRequest = null
+            return@LaunchedEffect
+        }
+        val metadata = withContext(Dispatchers.IO) {
+            FilePropertiesReader.read(request.root, request.entry.file, request.entry.name)
+        }
+        if (metadata == null) {
+            propertiesRequest = null
+            popup = InfoPopup(
+                "Properties Unavailable",
+                "The selected file or folder is no longer accessible."
+            )
+        } else {
+            propertiesRows = filePropertyRows(context, metadata)
+        }
+    }
+
     fun navigateUp() {
         val root = currentRoot ?: return
         val folder = currentFolder ?: return
@@ -438,7 +492,7 @@ private fun FilesPage(
             accessTarget == null && popup == null && menuEntry == null &&
             favoriteMenu == null && mediaMenuEntry == null &&
             !folderMenu && !multiSelectionMenu && deleteTarget == null &&
-            multiDeleteTargets == null && !operationBusy
+            multiDeleteTargets == null && propertiesRequest == null && !operationBusy
     ) {
         if (multiSelection.isActive) {
             multiSelection.exit()
@@ -758,22 +812,26 @@ private fun FilesPage(
             FavoritePolicy.create(it.id, it.directory, selected.file)
         }
         val alreadyPinned = bookmark != null && FavoritePolicy.contains(favorites, bookmark)
-        val actions = buildList {
-            add(Bbos6ContextAction.text("select", "Select"))
-            add(Bbos6ContextAction.text("open", "Open"))
-            if (!selected.isDirectory) add(Bbos6ContextAction.text("share", "Share"))
-            add(Bbos6ContextAction.text("copy", "Copy"))
-            add(Bbos6ContextAction.text("cut", "Cut"))
-            add(Bbos6ContextAction.text("rename", "Rename"))
-            add(Bbos6ContextAction.text("delete", "Delete"))
+        // Fixed 3×3 primary grid. A disabled Share tile retains the same
+        // position for folders; optional commands follow in a separate group.
+        val primaryActions = listOf(
+            Bbos6ContextAction.text("cut", "Cut"),
+            Bbos6ContextAction.text("copy", "Copy"),
+            Bbos6ContextAction.text("rename", "Rename"),
+            Bbos6ContextAction.text("properties", "Properties"),
+            Bbos6ContextAction.text("open", "Open"),
+            Bbos6ContextAction.text("delete", "Delete"),
+            Bbos6ContextAction.text("select", "Select"),
+            Bbos6ContextAction("share", "Share", enabled = !selected.isDirectory),
+            Bbos6ContextAction.text("new", "New Folder")
+        )
+        val extraActions = buildList {
             if (bookmark != null) {
                 add(Bbos6ContextAction.text(
                     if (alreadyPinned) "unfavorite" else "favorite",
                     if (alreadyPinned) "Remove from Favorites" else "Add to Favorites"
                 ))
             }
-            // Directory-level actions remain available when an item is selected.
-            add(Bbos6ContextAction.text("new", "New Folder"))
             if (clipboard != null) {
                 add(Bbos6ContextAction.text("paste", "Paste"))
                 add(Bbos6ContextAction.text(
@@ -783,7 +841,8 @@ private fun FilesPage(
             }
         }
         Bbos6ContextMenuDialog(
-            groups = listOf(actions),
+            groups = if (extraActions.isEmpty()) listOf(primaryActions)
+                else listOf(primaryActions, extraActions),
             onDismissRequest = { menuEntry = null },
             onAction = { action ->
                 menuEntry = null
@@ -791,14 +850,20 @@ private fun FilesPage(
                 if (!accessGranted || operationBusy) return@Bbos6ContextMenuDialog
                 when (action.id) {
                     "select" -> multiSelection.enter(selected.file.path)
+                    "properties" -> {
+                        propertiesRows = null
+                        propertiesRequest = PropertiesRequest(selectedRoot.directory, selected)
+                    }
                     "open" -> {
                         if (selected.isDirectory) currentFolder = selected.file
                         else openOrShare(selectedRoot.directory, selected.file, false)?.let {
                             popup = InfoPopup(selected.name, it)
                         }
                     }
-                    "share" -> openOrShare(selectedRoot.directory, selected.file, true)?.let {
-                        popup = InfoPopup(selected.name, it)
+                    "share" -> if (!selected.isDirectory) {
+                        openOrShare(selectedRoot.directory, selected.file, true)?.let {
+                            popup = InfoPopup(selected.name, it)
+                        }
                     }
                     "copy", "cut" -> {
                         clipboard = ClipboardItem(
@@ -819,6 +884,16 @@ private fun FilesPage(
                     "paste" -> pasteItem()
                     "cancel_clipboard" -> clipboard = null
                 }
+            }
+        )
+    }
+
+    if (propertiesRequest != null && accessGranted) {
+        Bbos6PropertiesDialog(
+            items = propertiesRows ?: listOf(Bbos6PropertyRow.Text("Loading properties…")),
+            onDismissRequest = {
+                propertiesRequest = null
+                propertiesRows = null
             }
         )
     }
