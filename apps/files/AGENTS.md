@@ -23,10 +23,13 @@ monorepo. Consult `../../AGENTS.md`, `../../shared/AGENTS.md`,
   onLongPress and onMenu callbacks own input routing, including an empty list;
   Files owns commands. New Folder and Paste live in the context menus, not
   artificial selectable directory rows.
-- Files directory rows opt into shared `Bbos6PageList.trailingTextForId`
-  for locale-formatted, read-only file sizes. Obtain file lengths in
-  `FileBrowser.list` on `Dispatchers.IO`, never during Compose rendering.
-  Folders provide no size; unavailable sizes are omitted. The existing
+- Files directory, indexed-media and Favourites file rows opt into shared
+  `Bbos6PageList.trailingTextForId` for platform-formatted file sizes.
+  Obtain folder-browsing byte lengths in `FileBrowser.list` on
+  `Dispatchers.IO`, MediaStore lengths from the existing indexed query
+  (`MediaColumns.SIZE`), and Favourites sizes from validated on-disk
+  shortcuts in a background effect. Never query file sizes while rendering.
+  Folders provide no size; unavailable values are omitted. The existing
   shared row places sizes immediately left of multi-selection checkboxes,
   keeping the checkbox on the far right and the row as the focus owner.
   Do not duplicate row UI or enable trailing sizes in Music.
