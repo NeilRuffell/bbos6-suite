@@ -58,6 +58,49 @@ continuing to masquerade as a working BBOS6 integration. The experimental
 sources remain only for reference while direct Google controller bindings
 are investigated. No production UI replacement is active. Do not merge.
 
+### Q25 verified native index-to-conversation contract (2026-11-14 16:52)
+
+The user built and tested the action-probe branch on the Q25. Actual
+Google Messages conversation activation produced:
+
+```text
+MODEL_BIND installed
+MODEL_SOURCE resultClass=aszh path=resultOfI.a.I.c
+  failedAt=none typedId=true
+  referenceMatch=true equalityMatch=true
+  nativeBinderSeen=true nativeBindEvents=10
+  selectionIndexPresent=true selectionMatchesNativePosition=true
+```
+
+This verifies **one actual physical conversation activation**:
+the index Google passed into `asvk.I(int)` equals the clicked holder's
+native `vv.g(aac,int)` position, and the resulting `aszh.a.I.c`
+is the exact `ConversationId` subsequently supplied to
+`asvk.Q(ConversationId)`.
+
+**Safety and scope:** The observation alone does not prove `I(int)`
+can be called independently without side effects, nor that the index
+remains valid when rows are inserted/reordered or the adapter changes.
+Do not invent a conversation ID, invoke `Q` from stale row positions,
+or enable the rejected after-draw BBOS6 overlay. Before activating a
+BBOS6 row, the integration must validate the current native adapter
+and selection/controller context, establish safe use of Google's
+model accessor, and retain native functionality.
+
+The previous `GoogleMessagesConversationBinding.VerifiedHandle`
+incorrectly required `asvj.r.f.H.H`, a transient **activity-wide**
+selection field, to be populated before any click. This has been
+corrected: per-row `HANDLE_PROBE` and `ATTACHED_HANDLE_PROBE`
+now report **structural** controller/holder readiness only, not
+identity or navigation success. `VerifiedHandle` stores no
+`ConversationId`. Actual model identity remains verified
+separately by `MODEL_SOURCE` during Google's own actions.
+
+For another Q25 validation, tap two **different** native inbox
+conversations (returning to the inbox between them) and inspect
+`MODEL_SOURCE` for each. No rebuild is needed for this comparison
+if the same diagnostic version is still installed.
+
 ### Q25 model result provides the real ID; adapter correspondence pending (2026-11-14 16:49)
 
 The Q25 real click produced `MODEL_MATCH root=holder candidates=0` in
