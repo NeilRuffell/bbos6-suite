@@ -58,6 +58,39 @@ continuing to masquerade as a working BBOS6 integration. The experimental
 sources remain only for reference while direct Google controller bindings
 are investigated. No production UI replacement is active. Do not merge.
 
+### Q25 attached identity succeeds, detached binding fails (2026-11-14 16:41)
+
+The user built and installed the previous branch successfully.
+`HANDLE_PROBE nativeItems=8 sampled=8 conversations=8 verified=0
+unbound=8` showed that none of the eight freshly created, offscreen
+ViewHolders satisfied the complete conversation/controller binding.
+However, the same device produced
+`ID_DIRECT present=true referenceMatch=true equalityMatch=true
+controllerVerified=true` on a real, *attached* conversation tap.
+The verified direct path is valid for that actual click; its availability
+on a detached bound holder is **not** established.
+
+The next diagnostic now categorizes all offscreen binding failures
+(`HANDLE_PROBE failureReasons`) and independently checks up to five
+**attached** native inbox rows using their own verified click
+delegate (`BBMessagesActions ATTACHED_HANDLE_PROBE`). These
+checks do not invoke navigation, modify the Google UI, or log
+conversation IDs, contacts, or message contents. Do not assume
+detached ViewHolders are suitable data sources for a replacement.
+
+After updating the same feature branch, build/install, start stock
+Google Messages with `debug.bbmessages.actionprobe.enabled=true`,
+and run:
+
+```sh
+adb -s 202512003630 logcat -d -v time | \
+  grep -E '(ATTACHED_HANDLE_PROBE|HANDLE_PROBE|ID_DIRECT)'
+```
+
+This will distinguish a lifecycle-dependent identity from a code-level
+binding mismatch. Existing shared BBOS6 helpers are unchanged; the
+rejected overlay modes remain disabled and PR #19 unmerged.
+
 ### Q25 exact native conversation/controller binding (2026-11-14 16:37)
 
 On a real stock Google inbox click, the Q25 probe found the **exact
