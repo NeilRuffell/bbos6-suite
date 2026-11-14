@@ -36,6 +36,12 @@ internal object Bbos6PageListNavigation {
         return (current.coerceIn(0, count - 1) + direction).coerceIn(0, count - 1)
     }
 
+    /** Resolve a caller-provided initial row by stable ID, never an old index. */
+    fun initialIndex(items: List<Bbos6ListSelectionItem>, initialSelectedId: String?): Int {
+        if (initialSelectedId == null) return 0
+        return items.indexOfFirst { it.id == initialSelectedId }.takeIf { it >= 0 } ?: 0
+    }
+
     /**
      * Hardware long-press must reach the same directory-menu fallback as a
      * blank-list touch long-press. Row-specific handlers still take priority.
@@ -68,6 +74,10 @@ internal object Bbos6PageListNavigation {
  * [trailingTextForId] displays caller-owned short metadata at the right of
  * the title, immediately before the selection checkbox when active.
  * Its default is null for all existing consumers.
+ * [initialSelectedId] is an optional one-time selection anchor for a newly
+ * created list. It resolves by stable row ID, then uses the normal shared
+ * viewport/scroll policy to bring that row into view. Missing IDs start at
+ * the first row; existing consumers retain the same default behaviour.
  *
  * Use Bbos6SectionHeader separately for non-selectable page headings.
  */
@@ -86,7 +96,8 @@ fun Bbos6PageList(
     reserveArtworkSlotForMissing: Boolean = false,
     multiSelectEnabled: Boolean = false,
     multiSelectionState: Bbos6PageListMultiSelectionState? = null,
-    trailingTextForId: (String) -> String? = { null }
+    trailingTextForId: (String) -> String? = { null },
+    initialSelectedId: String? = null
 ) {
     require(rowHeightDp > 0) { "Row height must be positive" }
     require(artworkSlotSizeDp > 0 && artworkSlotSizeDp <= rowHeightDp) {
@@ -107,7 +118,9 @@ fun Bbos6PageList(
     val listState = rememberLazyListState()
     val rememberedSelection = rememberBbos6PageListMultiSelectionState()
     val multiSelection = multiSelectionState ?: rememberedSelection
-    var selected by rememberSaveable { mutableIntStateOf(0) }
+    var selected by rememberSaveable {
+        mutableIntStateOf(Bbos6PageListNavigation.initialIndex(items, initialSelectedId))
+    }
     var hasFocus by remember { mutableStateOf(false) }
     var heldConfirm by remember { mutableIntStateOf(AndroidKeyEvent.KEYCODE_UNKNOWN) }
     var longPressTriggered by remember { mutableStateOf(false) }
