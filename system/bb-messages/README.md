@@ -8,8 +8,11 @@ BBOS6 UI library in `../../shared/android/bbos6-ui/`.
 
 The first milestone is to identify the actual conversation-list host, its
 stable conversation identifiers, lifecycle and click/long-press actions on
-the installed Google Messages version. The module currently **does not**
-replace any views, access message contents, or change message handling.
+the installed Google Messages version. A compact `MessagesInboxList` presenter
+now consumes caller-provided rows and uses `Bbos6PageList`, with sender,
+preview and timestamp. It is not yet mounted into Google Messages. The module
+currently **does not** replace any views, access message contents, or change
+message handling.
 
 The hook logs **view class names and resource identifiers only** on
 resumption of a Google Messages Activity. It does not log displayed text,
