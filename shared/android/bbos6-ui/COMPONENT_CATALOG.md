@@ -364,6 +364,14 @@ remaining width and ellipsizes before the trailing content. No application
 state, focus routing, padding for system bars or clipboard actions are owned
 by the helper. Files opts into the slot for its pending Copy/Cut badge.
 
+The optional `titleOverflow: TextOverflow` parameter defaults to
+`TextOverflow.Ellipsis` (end ellipsis) for all existing clients. Files opts
+into `TextOverflow.StartEllipsis` only while showing a directory path, so
+long paths preserve the **current/rightmost folder** and truncate earlier
+ancestors at the left. It works in both header layouts (with or without
+`trailingContent`) without custom text measurement or splitting path data.
+This requires the existing Compose 1.8 API provided by the April 2025 BOM.
+
 ## Optional multi-selection for full-page lists
 
 `Bbos6PageList` keeps its original single-item activation unless the caller
