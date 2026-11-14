@@ -27,6 +27,14 @@ final class GoogleMessagesAdapterBridge {
     private static final String TARGET_PACKAGE =
         "com.google.android.apps.messaging";
 
+    // The adapter bind hook must ignore binds initiated by our own
+    // full-page snapshot to avoid recursive UI refreshes.
+    private static final ThreadLocal<Boolean> BRIDGE_BIND = new ThreadLocal<>();
+
+    static boolean isSnapshotBinding() {
+        return Boolean.TRUE.equals(BRIDGE_BIND.get());
+    }
+
     private final ViewGroup recycler;
     private final Object adapter;
     private final Method countMethod;
@@ -209,6 +217,15 @@ final class GoogleMessagesAdapterBridge {
      * Google build's hG(int) returns no stable IDs.
      */
     java.util.List<NativeConversationRow> snapshot() throws Exception {
+        BRIDGE_BIND.set(true);
+        try {
+            return snapshotBoundRows();
+        } finally {
+            BRIDGE_BIND.remove();
+        }
+    }
+
+    private java.util.List<NativeConversationRow> snapshotBoundRows() throws Exception {
         if (!isCurrent()) throw new IllegalStateException("Adapter changed");
         int count = itemCount();
         if (count > 1000) throw new IllegalStateException("Inbox exceeds safe snapshot cap");
@@ -290,7 +307,12 @@ final class GoogleMessagesAdapterBridge {
             if (!(type instanceof Integer)) return false;
             Object holder = createHolderMethod.invoke(adapter, recycler, (Integer) type);
             if (holder == null) return false;
-            bindHolderMethod.invoke(adapter, holder, selected.index);
+            BRIDGE_BIND.set(true);
+            try {
+                bindHolderMethod.invoke(adapter, holder, selected.index);
+            } finally {
+                BRIDGE_BIND.remove();
+            }
             int nameId = recycler.getResources().getIdentifier(
                 "conversation_name", "id", TARGET_PACKAGE
             );
