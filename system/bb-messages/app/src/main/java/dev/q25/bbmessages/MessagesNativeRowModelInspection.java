@@ -9,6 +9,8 @@ import java.lang.reflect.Modifier;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Set;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 /**
  * Read-only investigation of where Google's per-row ConversationId lives.
@@ -30,6 +32,78 @@ final class MessagesNativeRowModelInspection {
     private static final int MAX_OBJECTS = 128;
     private static final int MAX_FIELDS = 20;
     private static final int MAX_SHAPE_FIELDS = 18;
+
+    // Native Google vv.g(aac,int) binds the ViewHolder to an adapter
+    // position. Only bound-position integers are retained, with weak holder
+    // keys. This is NOT a conversation identifier or a navigation handle.
+    private static final Map<Object, Integer> BOUND_POSITIONS = new WeakHashMap<>();
+    private static int boundEvents;
+
+    static synchronized void observeNativeBind(Object holder, int position) {
+        if (holder == null || !"asvj".equals(holder.getClass().getName())
+            || position < 0) return;
+        if (BOUND_POSITIONS.size() >= 512) BOUND_POSITIONS.clear();
+        BOUND_POSITIONS.put(holder, position);
+        boundEvents++;
+    }
+
+    private static synchronized Integer nativePosition(Object holder) {
+        return BOUND_POSITIONS.get(holder);
+    }
+
+    private static synchronized int bindCount() {
+        return boundEvents;
+    }
+
+    /**
+     * The model resolved through Google's own asvk.I(int) call is
+     * compared with the real ConversationId passed into asvk.Q.
+     * Never call I/Q ourselves. Never log positions or IDs.
+     */
+    static void compareActualResolvedModel(
+        Object delegate, Object resultOfI, Integer iArgument, Object actualId
+    ) {
+        if (delegate == null || !"asvb".equals(delegate.getClass().getName())
+            || actualId == null) return;
+        try {
+            Object holder = getField(delegate, "b");
+            if (holder == null || !"asvj".equals(holder.getClass().getName()))
+                return;
+            Object idCandidate = null;
+            String failedAt = "none";
+            Object node = resultOfI;
+            if (node == null) failedAt = "resultOfI";
+            String[] fields = {"a", "I", "c"};
+            for (String field : fields) {
+                if (node == null) break;
+                node = getField(node, field);
+                if (node == null) failedAt = field;
+            }
+            Class<?> idType = Class.forName(
+                ID_INTERFACE, false, delegate.getClass().getClassLoader()
+            );
+            if (node != null && idType.isInstance(node)) idCandidate = node;
+            Integer nativeIndex = nativePosition(holder);
+            boolean reference = idCandidate != null && idCandidate == actualId;
+            boolean equal = idCandidate != null && idCandidate.equals(actualId);
+            Log.i(TAG, "MODEL_SOURCE resultClass="
+                + (resultOfI == null ? "null" : resultOfI.getClass().getName())
+                + " path=resultOfI.a.I.c"
+                + " failedAt=" + failedAt
+                + " typedId=" + (idCandidate != null)
+                + " referenceMatch=" + reference
+                + " equalityMatch=" + equal
+                + " nativeBinderSeen=" + (nativeIndex != null)
+                + " nativeBindEvents=" + bindCount()
+                + " selectionIndexPresent=" + (iArgument != null)
+                + " selectionMatchesNativePosition="
+                + (nativeIndex != null && iArgument != null
+                    && nativeIndex.intValue() == iArgument.intValue()));
+        } catch (Throwable failure) {
+            Log.w(TAG, "MODEL_SOURCE read-only linkage unavailable="
+                + failure.getClass().getSimpleName());
+        }
+    }
 
     private MessagesNativeRowModelInspection() { }
 
