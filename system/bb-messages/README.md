@@ -121,6 +121,34 @@ This is the required adapter evidence before implementing the one-list
 replacement and native action bridge. **No full-page replacement is enabled
 in this diagnostic commit.** Existing Google inbox content is retained.
 
+### Q25 row-kind rejection (2026-11-14 16:00)
+
+The first full-page mount attempt failed safely with
+`IllegalStateException: Unexpected native row class` during the
+complete adapter snapshot. Prior diagnostics verified only the first and
+last native items. They did **not** prove all eight positions are
+conversations. Google Messages remained visible.
+
+The bridge now reports which adapter position caused that failure and,
+on rejection, logs a bounded, structural `ROW_KIND` record for **every**
+native adapter entry (up to 64). Records contain position, actual row
+and ViewHolder classes, and booleans for the sender/snippet and native
+click/long-click controls. No raw message text, contact information,
+conversation IDs, adapter object values or click actions are logged.
+
+This inspection is necessary before choosing how non-conversation native
+entries should be represented by the existing BBOS6 helpers. Do not
+blindly omit unknown rows or declare the complete shared-list replacement
+functional merely because the adapter's first/last entries bind.
+
+To run this diagnostic with page mode enabled, build/install the branch
+and restart Google Messages using the commands below, then capture:
+
+```sh
+adb -s 202512003630 logcat -d -v time | \
+  grep -E 'BBMessagesPage|BBMessagesAdapter.*(ROW_KIND|ROW_KINDS)|FATAL EXCEPTION'
+```
+
 ## Shared full-page inbox experiment — build/device test pending
 
 **Implementation now exists behind an independent flag:**
