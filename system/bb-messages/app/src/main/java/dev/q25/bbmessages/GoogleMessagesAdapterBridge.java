@@ -255,6 +255,9 @@ final class GoogleMessagesAdapterBridge {
                             GoogleMessagesConversationBinding.logHolderPathStage(
                                 holder, "detached_before_click"
                             );
+                            MessagesNativeRowModelInspection.describeHolder(
+                                holder, "detached_bound"
+                            );
                         }
                         GoogleMessagesConversationBinding.BindingCheck check =
                             GoogleMessagesConversationBinding.inspectBoundConversation(
