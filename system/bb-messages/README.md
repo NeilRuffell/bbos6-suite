@@ -33,7 +33,31 @@ No message database or Google-internal adapter is accessed.
 
 The native RecyclerView and original row retain the scrolling, click,
 long-press, focus and app data lifecycle; the overlay is not an input target.
-The row height is set to 52dp. Sender and preview are displayed with the
+The row height is set to 52dp.
+
+### Q25 inspection follow-up: missing Compose lifecycle (2026-11-14)
+
+With `debug.bbmessages.inbox.enabled=true`, device logcat confirmed:
+
+- `Inspection enabled for main Google Messages process`
+- `BBOS6 inbox row rendering enabled for verified native list`
+- Repeated `No compatible lifecycle owner; native row retained`
+
+The installed Google Messages view tree does not expose lifecycle owners
+compatible with the injected Compose library. A BB Messages-only
+`InboxRowCompositionOwner` now supplies a short-lived AndroidX lifecycle,
+saved-state registry and ViewModelStore **to the Compose overlay only**.
+It is created when a visible inbox row is mounted and destroyed when that
+RecyclerView row detaches, so recycling cannot retain a destroyed owner.
+Native owners are reused when available; Google's own view tree is never
+modified. The row bridge also avoids duplicate attachments from constructor
+hooks and removes text observers and the old overlay on detach.
+
+**This fallback is not yet build-verified or tested on Q25.** If it cannot
+create the Compose host, the hook logs the exception and does not shrink
+the original row. Captured logs must include `BBMessagesInbox` lines; a
+successful "Mounted BBOS6 inbox row face" indicates the host was installed,
+not necessarily that it rendered correctly. Sender and preview are displayed with the
 canonical blue BBOS6 selected-row face when Google actually focuses the row.
 
 This is an **experimental visual replacement**, not yet an accepted production
@@ -89,7 +113,8 @@ Alternatively disable BB Messages scope in Vector and restart the app.
 - The hook is limited to the main Google Messages process. If the verified
   inbox view class is unavailable, it leaves the native inbox intact.
 - Overlay/Compose lifecycle interoperability in the third-party process
-  requires hardware testing; no build or Q25 rendering success is claimed.
+  requires hardware testing; the row-local lifecycle fallback is not yet
+  verified by a successful build or Q25 rendering test.
 - Shared UI components must change under `shared/` first. Google-specific
   view discovery, display binding and opt-in configuration remain here.
 - Do not merge until Q25 inspection, device acceptance and explicit approval.
