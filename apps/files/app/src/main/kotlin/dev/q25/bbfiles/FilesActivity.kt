@@ -845,37 +845,34 @@ private fun FilesPage(
             FavoritePolicy.create(it.id, it.directory, selected.file)
         }
         val alreadyPinned = bookmark != null && FavoritePolicy.contains(favorites, bookmark)
-        // Fixed 3×3 primary grid. A disabled Share tile retains the same
-        // position for folders; optional commands follow in a separate group.
-        val primaryActions = listOf(
-            Bbos6ContextAction.text("cut", "Cut"),
-            Bbos6ContextAction.text("copy", "Copy"),
-            Bbos6ContextAction.text("rename", "Rename"),
-            Bbos6ContextAction.text("properties", "Properties"),
-            Bbos6ContextAction.text("open", "Open"),
-            Bbos6ContextAction.text("delete", "Delete"),
-            Bbos6ContextAction.text("select", "Select"),
-            Bbos6ContextAction("share", "Share", enabled = !selected.isDirectory),
-            Bbos6ContextAction.text("new", "New Folder")
-        )
-        val extraActions = buildList {
-            if (bookmark != null) {
-                add(Bbos6ContextAction.text(
+        // Clipboard mode deliberately replaces all item actions. It never
+        // pastes into a touched file/folder; paste targets currentFolder.
+        val menuGroups = if (clipboard != null) {
+            listOf(FilesClipboardMenu.actions(clipboard?.cut == true))
+        } else {
+            // Stable 3×3 primary grid when no transfer is pending.
+            val primaryActions = listOf(
+                Bbos6ContextAction.text("cut", "Cut"),
+                Bbos6ContextAction.text("copy", "Copy"),
+                Bbos6ContextAction.text("rename", "Rename"),
+                Bbos6ContextAction.text("properties", "Properties"),
+                Bbos6ContextAction.text("open", "Open"),
+                Bbos6ContextAction.text("delete", "Delete"),
+                Bbos6ContextAction.text("select", "Select"),
+                Bbos6ContextAction("share", "Share", enabled = !selected.isDirectory),
+                Bbos6ContextAction.text("new", "New Folder")
+            )
+            val favoriteActions = if (bookmark != null) listOf(
+                Bbos6ContextAction.text(
                     if (alreadyPinned) "unfavorite" else "favorite",
                     if (alreadyPinned) "Remove from Favorites" else "Add to Favorites"
-                ))
-            }
-            if (clipboard != null) {
-                add(Bbos6ContextAction.text("paste", "Paste"))
-                add(Bbos6ContextAction.text(
-                    "cancel_clipboard",
-                    if (clipboard?.cut == true) "Cancel Cut" else "Cancel Copy"
-                ))
-            }
+                )
+            ) else emptyList()
+            if (favoriteActions.isEmpty()) listOf(primaryActions)
+            else listOf(primaryActions, favoriteActions)
         }
         Bbos6ContextMenuDialog(
-            groups = if (extraActions.isEmpty()) listOf(primaryActions)
-                else listOf(primaryActions, extraActions),
+            groups = menuGroups,
             onDismissRequest = { menuEntry = null },
             onAction = { action ->
                 menuEntry = null
@@ -1012,17 +1009,12 @@ private fun FilesPage(
     }
 
     if (folderMenu && root != null && folder != null) {
-        val actions = buildList {
-            add(Bbos6ContextAction.text("new", "New Folder"))
-            if (clipboard != null) {
-                add(Bbos6ContextAction.text("paste", "Paste"))
-                add(Bbos6ContextAction.text(
-                    "cancel_clipboard",
-                    if (clipboard?.cut == true) "Cancel Cut" else "Cancel Copy"
-                ))
-            }
-            add(Bbos6ContextAction.text("refresh", "Refresh"))
-        }
+        val actions = if (clipboard != null) {
+            FilesClipboardMenu.actions(clipboard?.cut == true)
+        } else listOf(
+            Bbos6ContextAction.text("new", "New Folder"),
+            Bbos6ContextAction.text("refresh", "Refresh")
+        )
         Bbos6ContextMenuDialog(
             groups = listOf(actions),
             onDismissRequest = { folderMenu = false },
