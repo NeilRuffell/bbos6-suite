@@ -131,7 +131,9 @@ fun Bbos6MediaListRow(
     artworkSlotSizeDp: Int = 68,
     textHorizontalPaddingDp: Int = 16,
     artworkPaddingDp: Int = 8,
-    colorScheme: Bbos6MediaListRowColorScheme = Bbos6MediaListRowColorScheme.DARK
+    colorScheme: Bbos6MediaListRowColorScheme = Bbos6MediaListRowColorScheme.DARK,
+    multiSelected: Boolean = false,
+    showSelectionCheckbox: Boolean = false
 ) {
     require(rowHeightDp > 0) { "rowHeightDp must be positive" }
     require(artworkSlotSizeDp > 0) { "artworkSlotSizeDp must be positive" }
@@ -143,7 +145,11 @@ fun Bbos6MediaListRow(
     Row(
         modifier = modifier.fillMaxWidth().height(rowHeightDp.dp)
             .bbos6MediaListSelectionFace(
-                highlighted, Bbos6MediaListRowPalette.background(resolvedColorScheme)
+                highlighted,
+                if (multiSelected) {
+                    if (resolvedColorScheme == Bbos6MediaListRowColorScheme.LIGHT)
+                        Color(0xFFD1E6F8) else Color(0xFF274860)
+                } else Bbos6MediaListRowPalette.background(resolvedColorScheme)
             ),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -245,6 +251,15 @@ fun Bbos6MediaListRow(
                         textAlign = TextAlign.Center)
                 )
             }
+        }
+        if (showSelectionCheckbox) {
+            // Passive: the host row handles touch and trackpad activation.
+            // The checked and unchecked states occupy the same right-edge slot.
+            Bbos6Checkbox(
+                checked = multiSelected,
+                highlighted = highlighted,
+                modifier = Modifier.padding(end = 8.dp)
+            )
         }
     }
 }

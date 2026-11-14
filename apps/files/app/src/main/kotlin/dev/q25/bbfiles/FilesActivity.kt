@@ -37,6 +37,7 @@ import dev.q25.bbos6.ui.compose.Bbos6ContextMenuDialog
 import dev.q25.bbos6.ui.compose.Bbos6EmptyState
 import dev.q25.bbos6.ui.compose.Bbos6ListSelectionItem
 import dev.q25.bbos6.ui.compose.Bbos6PageList
+import dev.q25.bbos6.ui.compose.rememberBbos6PageListMultiSelectionState
 import dev.q25.bbos6.ui.compose.Bbos6PopupAction
 import dev.q25.bbos6.ui.compose.Bbos6PopupButtonDialog
 import dev.q25.bbos6.ui.compose.Bbos6SectionHeader
@@ -52,7 +53,7 @@ import kotlinx.coroutines.withContext
 
 private data class StorageRoot(val id: String, val label: String, val directory: File)
 private data class InfoPopup(val title: String, val message: String)
-private data class ClipboardItem(val root: File, val source: File, val cut: Boolean)
+private data class ClipboardItem(val root: File, val sources: List<File>, val cut: Boolean)
 
 /** File-manager UI: no privileged operations beyond explicitly granted Android access. */
 class FilesActivity : ComponentActivity() {
@@ -239,6 +240,9 @@ private fun FilesPage(
     var folderMenu by remember { mutableStateOf(false) }
     var deleteTarget by remember { mutableStateOf<FileBrowser.Entry?>(null) }
     var clipboard by remember { mutableStateOf<ClipboardItem?>(null) }
+    val multiSelection = rememberBbos6PageListMultiSelectionState()
+    var multiSelectionMenu by remember { mutableStateOf(false) }
+    var multiDeleteTargets by remember { mutableStateOf<List<FileBrowser.Entry>?>(null) }
     var refreshCounter by remember { mutableIntStateOf(0) }
     var operationBusy by remember { mutableStateOf(false) }
 
@@ -397,8 +401,18 @@ private fun FilesPage(
         val folder = currentFolder ?: return
         mutate(
             {
-                FileOperations.paste(
-                    staged.root, staged.source, root.directory, folder, staged.cut
+                val failures = staged.sources.mapNotNull { source ->
+                    when (val result = FileOperations.paste(
+                        staged.root, source, root.directory, folder, staged.cut
+                    )) {
+                        is FileOperations.Result.Success -> null
+                        is FileOperations.Result.Failure -> "${source.name}: ${result.message}"
+                    }
+                }
+                if (failures.isEmpty()) FileOperations.Result.Success()
+                else FileOperations.Result.Failure(
+                    "Transfer incomplete (${failures.size}/${staged.sources.size} failed): " +
+                        failures.joinToString("; ")
                 )
             },
             onSuccess = { if (staged.cut) clipboard = null }
@@ -406,12 +420,16 @@ private fun FilesPage(
     }
 
     BackHandler(
-        enabled = (currentFolder != null || favoritesPage || settingsPage || indexedCategory != null) &&
+        enabled = (currentFolder != null || favoritesPage || settingsPage ||
+            indexedCategory != null || multiSelection.isActive) &&
             accessTarget == null && popup == null && menuEntry == null &&
             favoriteMenu == null && mediaMenuEntry == null &&
-            !folderMenu && deleteTarget == null && !operationBusy
+            !folderMenu && !multiSelectionMenu && deleteTarget == null &&
+            multiDeleteTargets == null && !operationBusy
     ) {
-        when {
+        if (multiSelection.isActive) {
+            multiSelection.exit()
+        } else when {
             currentFolder != null -> navigateUp()
             indexedCategory != null -> indexedCategory = null
             favoritesPage -> favoritesPage = false
@@ -421,6 +439,19 @@ private fun FilesPage(
 
     val root = currentRoot
     val folder = currentFolder
+    // Multi-selection must not leak into another directory or app page.
+    val selectionPageKey = when {
+        settingsPage -> "settings"
+        favoritesPage -> "favorites"
+        indexedCategory != null -> "indexed:${indexedCategory?.id}"
+        root != null && folder != null -> "folder:${root.id}:${folder.path}"
+        else -> "home"
+    }
+    LaunchedEffect(selectionPageKey) {
+        multiSelection.exit()
+        multiSelectionMenu = false
+        multiDeleteTargets = null
+    }
     val favouritedFolderPaths = remember(favorites, root?.id, root?.directory?.path) {
         val rootPath = try {
             root?.directory?.canonicalPath
@@ -471,7 +502,10 @@ private fun FilesPage(
                 visibleCategory != null -> visibleCategory.title
                 root != null && folder != null -> FileBrowser.relativeTitle(
                     shortcutRoot ?: root.directory, folder, shortcutLabel ?: root.label
-                )
+                ).let {
+                    if (multiSelection.isActive) "$it (${multiSelection.selectedCount} selected)"
+                    else it
+                }
                 else -> "Files"
             },
             style = Bbos6SectionHeaderStyle.FLAT_BLACK_COMPACT
@@ -599,6 +633,8 @@ private fun FilesPage(
                             Box(Modifier.fillMaxSize()) {
                                 Bbos6PageList(
                                     items = rows,
+                                    multiSelectEnabled = true,
+                                    multiSelectionState = multiSelection,
                                     rowHeightDp = 52,
                                     artworkSlotSizeDp = 36,
                                     textHorizontalPaddingDp = 4,
@@ -624,16 +660,22 @@ private fun FilesPage(
                                     },
                                     onLongPress = { id ->
                                         if (!operationBusy) {
-                                            val entry = byPath[id]
-                                            if (entry == null) folderMenu = true
-                                            else menuEntry = entry
+                                            if (multiSelection.isActive) multiSelectionMenu = true
+                                            else {
+                                                val entry = byPath[id]
+                                                if (entry == null) folderMenu = true
+                                                else menuEntry = entry
+                                            }
                                         }
                                     },
                                     onMenu = { id ->
                                         if (!operationBusy) {
-                                            val entry = byPath[id]
-                                            if (entry == null) folderMenu = true
-                                            else menuEntry = entry
+                                            if (multiSelection.isActive) multiSelectionMenu = true
+                                            else {
+                                                val entry = byPath[id]
+                                                if (entry == null) folderMenu = true
+                                                else menuEntry = entry
+                                            }
                                         }
                                     }
                                 )
@@ -695,6 +737,7 @@ private fun FilesPage(
         }
         val alreadyPinned = bookmark != null && FavoritePolicy.contains(favorites, bookmark)
         val actions = buildList {
+            add(Bbos6ContextAction.text("select", "Select"))
             add(Bbos6ContextAction.text("open", "Open"))
             if (!selected.isDirectory) add(Bbos6ContextAction.text("share", "Share"))
             add(Bbos6ContextAction.text("copy", "Copy"))
@@ -719,6 +762,7 @@ private fun FilesPage(
                 val selectedRoot = root ?: return@Bbos6ContextMenuDialog
                 if (!accessGranted || operationBusy) return@Bbos6ContextMenuDialog
                 when (action.id) {
+                    "select" -> multiSelection.enter(selected.file.path)
                     "open" -> {
                         if (selected.isDirectory) currentFolder = selected.file
                         else openOrShare(selectedRoot.directory, selected.file, false)?.let {
@@ -730,7 +774,7 @@ private fun FilesPage(
                     }
                     "copy", "cut" -> {
                         clipboard = ClipboardItem(
-                            selectedRoot.directory, selected.file, action.id == "cut"
+                            selectedRoot.directory, listOf(selected.file), action.id == "cut"
                         )
                     }
                     "rename" -> promptName("Rename", selected.name) { newName ->
@@ -745,6 +789,50 @@ private fun FilesPage(
                     }
                     "new" -> createFolder()
                     "paste" -> pasteItem()
+                }
+            }
+        )
+    }
+
+    // Bulk actions are owned by Files; the shared helper only tracks IDs.
+    val currentEntries = (listing as? FileBrowser.Listing.Available)?.entries.orEmpty()
+    val multiTargets = if (root != null && folder != null) {
+        currentEntries.filter { it.file.path in multiSelection.selectedIds }
+    } else emptyList()
+
+    if (multiSelectionMenu && multiSelection.isActive && root != null && folder != null) {
+        Bbos6ContextMenuDialog(
+            groups = listOf(buildList {
+                add(Bbos6ContextAction.text("select_all", "Select All"))
+                add(Bbos6ContextAction.text("deselect_all", "Deselect All"))
+                if (multiTargets.isNotEmpty()) {
+                    add(Bbos6ContextAction.text("copy", "Copy Selected"))
+                    add(Bbos6ContextAction.text("cut", "Cut Selected"))
+                    add(Bbos6ContextAction.text("delete", "Delete Selected"))
+                }
+                add(Bbos6ContextAction.text("cancel", "Cancel Selection"))
+            }),
+            onDismissRequest = { multiSelectionMenu = false },
+            onAction = { action ->
+                multiSelectionMenu = false
+                if (!accessGranted || operationBusy) return@Bbos6ContextMenuDialog
+                when (action.id) {
+                    "select_all" ->
+                        multiSelection.selectAll(currentEntries.map { it.file.path })
+                    "deselect_all" -> multiSelection.deselectAll()
+                    "copy", "cut" -> {
+                        if (multiTargets.isNotEmpty()) {
+                            clipboard = ClipboardItem(
+                                root.directory, multiTargets.map { it.file },
+                                action.id == "cut"
+                            )
+                            multiSelection.exit()
+                        }
+                    }
+                    "delete" -> if (multiTargets.isNotEmpty()) {
+                        multiDeleteTargets = multiTargets.toList()
+                    }
+                    "cancel" -> multiSelection.exit()
                 }
             }
         )
@@ -801,6 +889,42 @@ private fun FilesPage(
                     "new" -> createFolder()
                     "paste" -> pasteItem()
                     "refresh" -> refreshCounter++
+                }
+            }
+        )
+    }
+
+    val deletingMany = multiDeleteTargets
+    if (deletingMany != null && root != null) {
+        Bbos6PopupButtonDialog(
+            title = "Delete ${deletingMany.size} selected items?",
+            message = "Delete all selected files and folders permanently, including folder " +
+                "contents? This cannot be undone.",
+            actions = listOf(
+                Bbos6PopupAction("cancel", "Cancel"),
+                Bbos6PopupAction("delete", "Delete")
+            ),
+            initialSelectionId = "cancel",
+            onDismissRequest = { multiDeleteTargets = null },
+            onAction = { id, _ ->
+                multiDeleteTargets = null
+                if (id == "delete" && deletingMany.isNotEmpty()) {
+                    mutate(
+                        operation = {
+                            val failures = deletingMany.mapNotNull { entry ->
+                                when (val result = FileOperations.delete(root.directory, entry.file)) {
+                                    is FileOperations.Result.Success -> null
+                                    is FileOperations.Result.Failure -> "${entry.name}: ${result.message}"
+                                }
+                            }
+                            if (failures.isEmpty()) FileOperations.Result.Success()
+                            else FileOperations.Result.Failure(
+                                "Deletion incomplete (${failures.size}/${deletingMany.size} failed): " +
+                                    failures.joinToString("; ")
+                            )
+                        },
+                        onSuccess = { multiSelection.exit() }
+                    )
                 }
             }
         )

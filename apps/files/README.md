@@ -77,6 +77,21 @@ This application lives in `apps/files/` of the `bbos6-suite` monorepo.
 - Folder rows and storage-root entries display the original BBOS6 **112.png**
   Folders icon, mapped as `bbos6_menu_folders` in the shared index.
   Ordinary files remain text-only until their icon mapping is defined.
+- **Opt-in directory multi-selection:** In a folder, long-press a file or
+  folder and choose **Select**. With selection mode active, trackpad
+  click/Enter and touch taps toggle selected items, leaving the original
+  open-file/open-folder behavior unchanged outside that mode. The path bar
+  shows the selection count. Every row shows the shared `Bbos6Checkbox` at
+  the far right, checked only for selected items; the row remains the sole
+  touch/trackpad focus target. The checkbox disappears outside multi-select
+  mode. Press BB Menu or long-press to open **Select All**, **Deselect All**,
+  **Copy Selected**, **Cut Selected**, **Delete Selected**, or **Cancel
+  Selection**. Back exits selection mode before navigating up. Bulk deletion
+  requires explicit confirmation with Cancel preselected. Bulk paste uses the
+  existing validated, no-overwrite `FileOperations.paste` for each item,
+  reports partial failures, and runs on `Dispatchers.IO`. Home, Favourites,
+  indexed MediaStore categories, Settings and Music do not enable this mode.
+  Multi-selection state resets when leaving the current directory.
 - Shared `Bbos6PageList` DPAD, trackpad click/hold, touch tap/hold and BB Menu key navigation.
 - Back navigates to parent; headers display the relative folder path.
 - Regular file tap: native Android `ACTION_VIEW` with a temporary, read-only

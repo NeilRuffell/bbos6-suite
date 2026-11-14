@@ -357,6 +357,31 @@ The shared helper remains independent of the host Activity and preserves
 focus/trackpad neutrality. Height and text metrics are Q25-targeted
 approximations of the supplied reference, pending on-device verification.
 
+## Optional multi-selection for full-page lists
+
+`Bbos6PageList` keeps its original single-item activation unless the caller
+explicitly passes `multiSelectEnabled = true`. The default is **false**; Music
+does not opt in. The caller may supply
+`multiSelectionState = rememberBbos6PageListMultiSelectionState()` to enter
+selection mode from an app-owned context action and inspect selected stable IDs.
+`Bbos6PageListMultiSelectionState` supports `enter(initialId)`, `toggle(id)`,
+`selectAll(ids)`, `deselectAll()` and `exit()`. It discards IDs removed from
+the supplied list, and uses ordinary activation outside selection mode.
+
+In selection mode, touch tap and DPAD/trackpad Enter toggle membership without
+opening the item. Focus remains independent of membership; the canonical
+`Bbos6MediaListRow` renders a persistent muted selected face and places the
+shared passive `Bbos6Checkbox` at the far right of **every** row, checked only
+for selected IDs. The checkbox has an 8dp right inset and never takes
+focus or consumes row clicks; the focused row retains the existing blue
+gradient. Outside selection mode no checkbox is rendered or reserved. Long-press and Menu
+callbacks remain app-owned, allowing a consumer to open its batch action menu.
+The helper handles Escape while focused; the host owns system Back-to-exit, page changes, labels and all batch operations.
+No file operations, music commands, or permission logic live in shared UI.
+The selected-face colors are implementation choices, not verified
+historic BlackBerry selection imagery. The checkbox face matches Vector's
+existing QS indicator, not an independently verified BBOS6 hardware reference.
+
 ## Full-page trackpad list
 
 `Bbos6PageList(items, onActivate, modifier, rowHeightDp, onLongPress, onMenu, artworkForId)` provides a full-width
