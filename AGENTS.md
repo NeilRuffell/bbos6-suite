@@ -6,6 +6,8 @@ This is the canonical monorepo for BBOS6 applications and shared UI.
 - apps/music/: independent Music APK and application logic
 - apps/files/: independent Files APK and application logic
 - system/bb-ui/: independent System UI project
+- system/bb-messages/: independent Google Messages Vector module (scoped to
+  com.google.android.apps.messaging; never add its hooks to BB UI)
 
 Each consumer's assets/bbos6 path links to the same shared/
 directory. Do not create Git submodules or duplicate UI helpers.
