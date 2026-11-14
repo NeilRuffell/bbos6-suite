@@ -60,9 +60,10 @@ class FilesDocumentsProvider : DocumentsProvider() {
             ) continue
             val directory = volume.directory ?: continue
             if (!directory.isDirectory || !directory.canRead()) continue
-            // A volume UUID is stable across remounts. Directory-name fallback
-            // is used only for removable volumes without a reported UUID.
-            val key = volume.uuid ?: directory.name
+            // No path-based fallback: a reused mount path could otherwise
+            // redirect a persisted document grant to a different SD card.
+            val key = volume.uuid?.takeIf { it.isNotBlank() && ':' !in it }
+                ?: continue
             found += Root(
                 "sd-$key", "SD Card", directory,
                 volume.state == Environment.MEDIA_MOUNTED && directory.canWrite()
@@ -135,8 +136,11 @@ class FilesDocumentsProvider : DocumentsProvider() {
                 throw FileNotFoundException(listing.reason)
             is FileBrowser.Listing.Available -> {
                 for (child in listing.entries) {
-                    // Follow the existing Files browser's canonical-root boundary.
-                    if (child.file.canRead()) {
+                    // Exclude symlink aliases: a picker child ID must resolve
+                    // to a direct child, not a duplicated target elsewhere.
+                    if (!Files.isSymbolicLink(File(parent.file, child.name).toPath()) &&
+                        child.file.canRead()
+                    ) {
                         addDocument(result, columns, parent.root, child.file)
                     }
                 }
