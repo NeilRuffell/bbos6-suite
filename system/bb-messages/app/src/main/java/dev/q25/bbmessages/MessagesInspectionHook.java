@@ -135,6 +135,9 @@ public final class MessagesInspectionHook implements IXposedHookLoadPackage {
             inspectTree(root, 0, "root", total);
             Log.i(TAG, "END views=" + total[0]
                 + (total[0] >= MAX_VIEWS ? " (truncated)" : ""));
+            // Structural native-adapter evidence is required before mounting
+            // Bbos6PageList. It never reads message text or invokes bindings.
+            MessagesNativeAdapterInspection.inspect(activity);
         } catch (Throwable failure) {
             Log.e(TAG, "Read-only view inspection failed", failure);
         }
