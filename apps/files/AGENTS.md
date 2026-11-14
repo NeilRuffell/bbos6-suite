@@ -79,7 +79,9 @@ monorepo. Consult `../../AGENTS.md`, `../../shared/AGENTS.md`,
   `FileOperations` for directory creation, rename and recursive delete.
   Files, not shared UI, owns these SAF storage behaviors. Provider methods
   must report read-only/unmounted volumes safely; document IDs are scoped to
-  stable volume identifiers and do not expose absolute paths. Omit\n  removable volumes without UUIDs and symlink aliases from picker listings. Notify DocumentsUI
+  stable volume identifiers and do not expose absolute paths. Omit
+  removable volumes without UUIDs and symlink aliases from picker listings.
+  Notify DocumentsUI
   roots on Files resume when storage access/SD mount changes. Manual Q25
   testing must cover native open/save/tree pickers, read/write streams,
   collisions, permission revocation and removable-volume changes.
