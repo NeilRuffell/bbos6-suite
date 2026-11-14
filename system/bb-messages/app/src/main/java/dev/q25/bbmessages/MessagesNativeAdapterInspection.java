@@ -55,7 +55,7 @@ final class MessagesNativeAdapterInspection {
             }
 
             printRecyclerAdapterAccessors(recycler.getClass());
-            printRecyclerAdapterFields(recycler.getClass());
+            printRecyclerAdapterFields(recycler);
             if (adapter == null) {
                 Log.w(TAG, "Adapter not identified; retain Google inbox");
                 return;
@@ -139,19 +139,44 @@ final class MessagesNativeAdapterInspection {
         }
     }
 
-    private static void printRecyclerAdapterFields(Class<?> recyclerType) {
+    private static void printRecyclerAdapterFields(ViewGroup recycler) {
+        Class<?> recyclerType = recycler.getClass();
         Class<?> type = recyclerType;
         int depth = 0;
-        while (type != null && type != Object.class && depth++ < 3) {
-            int emitted = 0;
-            for (Field field : type.getDeclaredFields()) {
-                if (!field.getType().getName().contains("RecyclerView$")) continue;
-                if (emitted++ >= 18) break;
-                // Field types only. Never read or log private conversation models.
-                Log.i(TAG, "RECYCLER_FIELD class=" + type.getName()
-                    + " type=" + field.getType().getName()
-                    + " name=" + field.getName());
+        // ProGuard/R8 may rename both adapter accessors AND adapter field
+        // types. Inspect each instance field's declared/runtime *class*;
+        // never print field values or invoke message/data access methods.
+        while (type != null && type != Object.class && depth++ < 2) {
+            if (!type.getName().startsWith("android.support.v7.widget.RecyclerView")) {
+                break; // avoid traversal of Android framework View fields
             }
+
+            int emitted = 0;
+            Field[] fields = type.getDeclaredFields();
+            for (Field field : fields) {
+                if (Modifier.isStatic(field.getModifiers())
+                    || field.getType().isPrimitive()) continue;
+                if (emitted++ >= 130) {
+                    Log.i(TAG, "FIELDS truncated class=" + type.getName());
+                    break;
+                }
+                // Reading an object reference only for class identification
+                // does not read message data or adapter elements.
+                String runtimeType = "unavailable";
+                try {
+                    field.setAccessible(true);
+                    Object value = field.get(recycler);
+                    runtimeType = value == null ? "null" : value.getClass().getName();
+                } catch (Throwable failure) {
+                    runtimeType = "inaccessible:" + failure.getClass().getSimpleName();
+                }
+                Log.i(TAG, "FIELD class=" + type.getName()
+                    + " name=" + field.getName()
+                    + " declared=" + field.getType().getName()
+                    + " runtime=" + runtimeType);
+            }
+            Log.i(TAG, "FIELDS inspectedClass=" + type.getName()
+                + " declaredCount=" + fields.length);
             type = type.getSuperclass();
         }
     }
