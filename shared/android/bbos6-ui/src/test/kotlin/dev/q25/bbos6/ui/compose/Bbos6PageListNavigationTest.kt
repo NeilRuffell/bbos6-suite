@@ -17,6 +17,26 @@ class Bbos6PageListNavigationTest {
         assertEquals(0, Bbos6PageListNavigation.move(-8, -1, 2))
     }
 
+    @Test fun initialSelectionRestoresStableIdAfterReorder() {
+        val rows = listOf(
+            Bbos6ListSelectionItem("folder-a", "Folder A"),
+            Bbos6ListSelectionItem("folder-c", "Folder C"),
+            Bbos6ListSelectionItem("folder-b", "Folder B")
+        )
+        assertEquals(2, Bbos6PageListNavigation.initialIndex(rows, "folder-b"))
+        assertEquals(1, Bbos6PageListNavigation.initialIndex(rows, "folder-c"))
+    }
+
+    @Test fun initialSelectionFallsBackWhenEntryIsGoneOrUnspecified() {
+        val rows = listOf(
+            Bbos6ListSelectionItem("first", "First"),
+            Bbos6ListSelectionItem("second", "Second")
+        )
+        assertEquals(0, Bbos6PageListNavigation.initialIndex(rows, null))
+        assertEquals(0, Bbos6PageListNavigation.initialIndex(rows, "deleted"))
+        assertEquals(0, Bbos6PageListNavigation.initialIndex(emptyList(), "deleted"))
+    }
+
     @Test fun hardwareLongPressOnEmptyListOpensDirectoryMenu() {
         var rowInvocations = 0
         var menuInvocations = 0
