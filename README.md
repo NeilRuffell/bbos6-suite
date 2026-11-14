@@ -8,6 +8,7 @@ Build projects independently:
 - apps/music
 - apps/files
 - system/bb-ui
+- system/bb-messages (separate Vector APK; initially read-only inbox inspection)
 
 Shared assets and Compose helpers live exclusively in shared/.
 
