@@ -258,7 +258,7 @@ object MessagesInboxRowBridge {
                 val ownerLifecycle = lifecycle ?: checkNotNull(fallback)
                 val ownerSavedState = savedState ?: checkNotNull(fallback)
                 val ownerViewModels = viewModels ?: checkNotNull(fallback)
-                anchor = object : View(row.context) {
+                val newAnchor = object : View(row.context) {
                     override fun onAttachedToWindow() {
                         super.onAttachedToWindow()
                         val overlayGroup = parent as? View
@@ -272,7 +272,8 @@ object MessagesInboxRowBridge {
                     isFocusable = false
                     importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
                 }
-                row.overlay.add(anchor)
+                anchor = newAnchor
+                row.overlay.add(newAnchor)
                 val newPaint = ComposeView(row.context).apply {
                     isClickable = false
                     isFocusable = false
