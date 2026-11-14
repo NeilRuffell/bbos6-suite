@@ -52,6 +52,53 @@ final class GoogleMessagesConversationBinding {
         }
     }
 
+    /**
+     * Read-only lifecycle probe for the exact Q25 field path. Reports the
+     * type of each hop (or the missing/inaccessible stage), never object
+     * values, identity hashes, conversation IDs or message contents.
+     *
+     * A real Google click proved that asvj.r.f.H.H can be the Q argument,
+     * but both attached and detached pre-click holders lacked an ID.
+     * This trace determines when Google populates that field path.
+     */
+    static void logHolderPathStage(Object holder, String phase) {
+        if (holder == null || !HOLDER.equals(holder.getClass().getName())) {
+            Log.i(TAG, "ID_STAGE phase=" + phase + " root=invalid");
+            return;
+        }
+        StringBuilder types = new StringBuilder("ID_STAGE phase=")
+            .append(phase).append(" root=").append(HOLDER);
+        Object value = holder;
+        for (int i = 0; i < PATH.length; i++) {
+            try {
+                value = readInstanceField(value, PATH[i]);
+                types.append(" hop").append(i + 1).append("=")
+                    .append(value == null ? "null" : value.getClass().getName());
+                if (value == null) break;
+            } catch (Throwable failure) {
+                types.append(" hop").append(i + 1)
+                    .append("=unavailable_")
+                    .append(failure.getClass().getSimpleName());
+                break;
+            }
+        }
+        Log.i(TAG, types.toString());
+    }
+
+    static void logDelegatePathStage(Object delegate, String phase) {
+        if (delegate == null || !"asvb".equals(delegate.getClass().getName())) {
+            Log.i(TAG, "ID_STAGE phase=" + phase + " delegate=invalid");
+            return;
+        }
+        try {
+            logHolderPathStage(readInstanceField(delegate, "b"), phase);
+        } catch (Throwable failure) {
+            Log.i(TAG, "ID_STAGE phase=" + phase
+                + " delegateHolder=unavailable_"
+                + failure.getClass().getSimpleName());
+        }
+    }
+
     /** A validated native action/data binding, never a fabricated row ID. */
     static final class VerifiedHandle {
         final Object controller;
