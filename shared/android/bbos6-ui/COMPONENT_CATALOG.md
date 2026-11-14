@@ -408,10 +408,15 @@ before this helper is merged to `master`.
 The optional `onLongPress(itemId)` callback handles touch long press,
 accessibility long click, and native key-long-press for center/Enter; `onMenu(itemId?)`
 handles the hardware Menu key, including an empty list. When the list is empty,
-long-pressing the blank surface (or an accessibility long-click) also invokes
-`onMenu(null)`, allowing the host to offer directory-level actions without
-injecting fake selectable rows. Both callbacks remain app-owned actions (e.g.,
-file manager context menus), not shared filesystem code.
+**touch long-press, accessibility long-click, and trackpad/DPAD-center or Enter
+key long-press** all invoke `onMenu(null)` rather than silently doing nothing,
+allowing the host to offer directory-level actions without injecting fake
+selectable rows. On a valid selected row, the key long-press invokes
+`onLongPress(id)` first, falling back to `onMenu(id)` only if no row
+long-press handler exists. A dispatched key long-press suppresses normal
+activation on key release; it cannot fire twice for one held key.
+Both callbacks remain app-owned actions (e.g., file manager context menus),
+not shared filesystem code.
 These routes require device verification before merging.
 
 ### Independent page-list dimensions
