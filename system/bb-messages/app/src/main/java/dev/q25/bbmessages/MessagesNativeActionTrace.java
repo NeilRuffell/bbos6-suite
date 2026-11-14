@@ -4,6 +4,9 @@ import android.util.Log;
 import android.view.View;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.Arrays;
+import java.util.Comparator;
 
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedBridge;
@@ -18,6 +21,17 @@ import de.robv.android.xposed.XposedHelpers;
  */
 final class MessagesNativeActionTrace {
     private static final String TAG = "BBMessagesActions";
+    private static final int MAX_HOOKED_METHODS_PER_CLASS = 80;
+    private static final int MAX_EVENTS_PER_ACTION = 24;
+    private static final ThreadLocal<ActionScope> ACTIVE_ACTION = new ThreadLocal<>();
+
+    private static final class ActionScope {
+        final String kind;
+        int events;
+        int depth = 1;
+
+        ActionScope(String kind) { this.kind = kind; }
+    }
 
     private MessagesNativeActionTrace() { }
 
@@ -28,6 +42,80 @@ final class MessagesNativeActionTrace {
         hook(loader, "asvb", "onClick", false);
         hook(loader, "fzig", "onLongClick", true);
         hook(loader, "asvc", "onLongClick", true);
+        // asvb/asvc were observed holding asvk (controller candidate) and
+        // asvj (native holder). Capture the method call path reached during
+        // a genuine user click, never invoke methods speculatively.
+        traceControllerClass(loader, "asvk");
+        traceControllerClass(loader, "asvj");
+    }
+
+    private static void startAction(String name) {
+        ActionScope state = ACTIVE_ACTION.get();
+        if (state == null) ACTIVE_ACTION.set(new ActionScope(name));
+        else state.depth++;
+    }
+
+    private static void finishAction() {
+        ActionScope state = ACTIVE_ACTION.get();
+        if (state == null) return;
+        if (--state.depth == 0) {
+            Log.i(TAG, "TRACE_PATH end=" + state.kind
+                + " controllerCalls=" + state.events);
+            ACTIVE_ACTION.remove();
+        }
+    }
+
+    /**
+     * Hooks are pure observers. Only calls made synchronously within an
+     * actual native asvb/asvc listener are logged; no arguments, object
+     * values, messages or conversation IDs are inspected.
+     */
+    private static void traceControllerClass(ClassLoader loader, String name) {
+        try {
+            Class<?> target = XposedHelpers.findClassIfExists(name, loader);
+            if (target == null) {
+                Log.w(TAG, "TRACE_PATH unavailable=" + name);
+                return;
+            }
+            Method[] declared = target.getDeclaredMethods();
+            Arrays.sort(declared, Comparator.comparing(Method::toGenericString));
+            if (declared.length > MAX_HOOKED_METHODS_PER_CLASS) {
+                Log.w(TAG, "TRACE_PATH class=" + name
+                    + " exceeds hook cap=" + MAX_HOOKED_METHODS_PER_CLASS
+                    + "; no controller hooks installed");
+                return;
+            }
+            int hooks = 0;
+            for (Method method : declared) {
+                if (Modifier.isAbstract(method.getModifiers())
+                    || Modifier.isNative(method.getModifiers())
+                    || method.isSynthetic()) continue;
+                try {
+                    XposedBridge.hookMethod(method, new XC_MethodHook() {
+                        @Override
+                        protected void beforeHookedMethod(MethodHookParam hook) {
+                            ActionScope state = ACTIVE_ACTION.get();
+                            if (state == null || state.events >= MAX_EVENTS_PER_ACTION) return;
+                            state.events++;
+                            Log.i(TAG, "TRACE_PATH action=" + state.kind
+                                + " call=" + name + "." + method.getName()
+                                + " params=" + method.getParameterCount()
+                                + " return=" + method.getReturnType().getName());
+                        }
+                    });
+                    hooks++;
+                } catch (Throwable failure) {
+                    Log.w(TAG, "TRACE_PATH hook unavailable class=" + name
+                        + " method=" + method.getName()
+                        + " error=" + failure.getClass().getSimpleName());
+                }
+            }
+            Log.i(TAG, "TRACE_PATH installedClass=" + name
+                + " hooks=" + hooks + " declared=" + declared.length);
+        } catch (Throwable failure) {
+            Log.w(TAG, "TRACE_PATH class unavailable=" + name
+                + " error=" + failure.getClass().getSimpleName());
+        }
     }
 
     private static void hook(
@@ -55,6 +143,9 @@ final class MessagesNativeActionTrace {
             XposedBridge.hookMethod(method, new XC_MethodHook() {
                 @Override
                 protected void beforeHookedMethod(MethodHookParam hook) {
+                    if ("asvb".equals(className) || "asvc".equals(className)) {
+                        startAction(className + "." + methodName);
+                    }
                     boolean attached = hook.args.length == 1
                         && hook.args[0] instanceof View
                         && ((View) hook.args[0]).isAttachedToWindow();
@@ -72,6 +163,9 @@ final class MessagesNativeActionTrace {
                             + " handled=" + Boolean.TRUE.equals(hook.getResult()));
                     } else {
                         Log.i(TAG, "TRACE exit=" + className + "." + methodName);
+                    }
+                    if ("asvb".equals(className) || "asvc".equals(className)) {
+                        finishAction();
                     }
                 }
             });
