@@ -31,6 +31,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.core.content.FileProvider
 import dev.q25.bbos6.ui.Bbos6PopupButtonList
 import dev.q25.bbos6.ui.R as Bbos6UiR
@@ -595,6 +596,10 @@ private fun FilesPage(
                 else -> "Files"
             },
             style = Bbos6SectionHeaderStyle.FLAT_BLACK_COMPACT,
+            // Keep the current directory visible when the path exceeds the
+            // width left beside the pending clipboard indicator.
+            titleOverflow = if (root != null && folder != null)
+                TextOverflow.StartEllipsis else TextOverflow.Ellipsis,
             trailingContent = if (pendingClipboard != null && accessGranted) {
                 {
                     ClipboardStatusIndicator(
