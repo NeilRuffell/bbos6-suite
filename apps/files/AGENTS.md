@@ -48,6 +48,10 @@ monorepo. Consult `../../AGENTS.md`, `../../shared/AGENTS.md`,
   Do not add status-bar-specific padding inside `Bbos6SectionHeader`
   or individual pages. Its optional passive `trailingContent` slot reserves
   width at the right, ellipsizing long paths without changing header height.
+  Files selects shared `titleOverflow = TextOverflow.StartEllipsis` only
+  for directory paths, preserving the current folder at the right and moving
+  truncation dots to the **left**. Default end-ellipsis remains for every
+  other header/client, including Files home and Settings.
   Files owns its Copy/Cut indicator, clipboard state and cancel/paste actions;
   no other app gets an indicator by default.
 - Android storage access is explicitly user granted; protected/private
