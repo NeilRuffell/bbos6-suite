@@ -720,6 +720,11 @@ private fun FilesPage(
                                             else folderIcon
                                         } else null
                                     },
+                                    trailingTextForId = { id ->
+                                        byPath[id]?.sizeBytes?.let { sizeBytes ->
+                                            Formatter.formatShortFileSize(context, sizeBytes)
+                                        }
+                                    },
                                     onActivate = { id ->
                                         if (operationBusy) return@Bbos6PageList
                                         byPath[id]?.let { entry ->
