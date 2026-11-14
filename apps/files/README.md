@@ -114,6 +114,12 @@ This application lives in `apps/files/` of the `bbos6-suite` monorepo.
   Multi-selection state resets when leaving the current directory.
 - Shared `Bbos6PageList` DPAD, trackpad click/hold, touch tap/hold and BB Menu key navigation.
 - Back navigates to parent; headers display the relative folder path.
+  Returning from a nested directory selects its entry in the parent,
+  keeping the previously entered folder highlighted and visible instead
+  of resetting to the first row. Files passes a stable child path to the
+  existing shared `Bbos6PageList(initialSelectedId)`; the list owns the
+  viewport scrolling. Missing entries fall back to the first row.
+  Nested Back navigation updates the target at every level.
 - Regular file tap: native Android `ACTION_VIEW` with a temporary, read-only
   `FileProvider` URI grant. Files opens in a compatible installed Android app.
 - Long-press a file/folder or press BB Menu: shared `Bbos6ContextMenuDialog`.
@@ -236,6 +242,18 @@ Existing file operations must remain unchanged.
 6. Revoke storage permission and verify favorites request native Android
    access rather than bypassing storage restrictions. If present, test SD card
    removal and remount behavior.
+
+### Directory Back-selection checks
+
+1. Enter a folder that is far down a long parent directory list, then press
+   Back. The highlighted row in the parent must be the folder just exited
+   and should be scrolled into view, not the top row.
+2. Repeat with trackpad click, touchscreen row tap, and context-menu Open.
+   At each nested level, Back should highlight the directory you just left.
+3. Rename/delete a directory before a listing refresh, or otherwise have
+   a missing saved row: the list must fall back safely without crashing.
+4. Verify Home, Favourites, indexed media and Music navigation still work.
+   Check that multi-select, scroll-edge alignment and long-press are intact.
 
 ### File size row checks
 
