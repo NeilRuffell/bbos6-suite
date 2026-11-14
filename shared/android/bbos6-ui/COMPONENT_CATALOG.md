@@ -409,6 +409,15 @@ retention and the managed-focus policy. Consumers decide labels, available
 entries, navigation destinations, and actions. Compose-only: no copy of
 Music's native `MusicListView` or its data/business logic.
 
+To restore the highlighted row when recreating a page (such as Back from
+a nested directory), callers can provide `initialSelectedId`. This optional,
+one-time initial selection anchor uses **stable row ID**, not row index or
+display text. The existing page-list scrolling logic brings that row into
+the viewport and maintains the ordinary single-focus-zone interaction.
+If the ID is missing or null, selection starts at the first row as before.
+The caller owns navigation history and deciding which ID to restore.
+Existing Music, Settings, and other page lists are unchanged by default.
+
 Place `Bbos6SectionHeader` above the list if the page needs a heading.
 Trackpad, keyboard, touch and viewport-edge behavior require Q25 verification
 before this helper is merged to `master`.
