@@ -28,7 +28,8 @@ import java.util.WeakHashMap
  *
  * Google owns the RecyclerView, data binding, scrolling, accessibility and
  * row click/long-click actions. This paints the *canonical shared* BBOS6
- * row face into a non-interactive ViewGroupOverlay. No second list controller
+ * row face into a non-interactive ViewGroupOverlay. The overlay container
+ * receives lifecycle owners before Compose attaches. No second list controller
  * or message repository is created.
  *
  * This bridge must be explicitly enabled by the Vector module's system
@@ -78,7 +79,9 @@ object MessagesInboxRowBridge {
         private var text by mutableStateOf(FaceText("", null, null))
         private var focused by mutableStateOf(false)
         private var composeView: ComposeView? = null
+        private var overlayAnchor: View? = null
         private var localOwner: InboxRowCompositionOwner? = null
+        private var mountFailed = false
         private var senderField: TextView? = null
         private var previewField: TextView? = null
         private var timestampField: TextView? = null
@@ -122,12 +125,16 @@ object MessagesInboxRowBridge {
             timestampField = null
             val oldPaint = composeView
             composeView = null
+            val oldAnchor = overlayAnchor
+            overlayAnchor = null
             try {
                 oldPaint?.disposeComposition()
             } finally {
                 if (oldPaint != null) row.overlay.remove(oldPaint)
+                if (oldAnchor != null) row.overlay.remove(oldAnchor)
                 localOwner?.destroy()
                 localOwner = null
+                mountFailed = false
             }
         }
 
@@ -152,7 +159,16 @@ object MessagesInboxRowBridge {
                 }
 
                 updateText()
-                if (composeView == null) installPaintOverlay()
+                if (composeView == null && !mountFailed) {
+                    try {
+                        installPaintOverlay()
+                    } catch (failure: Throwable) {
+                        // An unsupported target app should report one failure
+                        // per attachment, not an error on every layout pass.
+                        mountFailed = true
+                        throw failure
+                    }
+                }
                 // Do not shrink or alter Google's native list until the
                 // canonical BBOS6 paint host is mounted successfully.
                 if (composeView != null) {
@@ -230,20 +246,47 @@ object MessagesInboxRowBridge {
                 viewModels == null) InboxRowCompositionOwner() else null
 
             var paint: ComposeView? = null
+            var anchor: View? = null
             try {
+                // A ViewGroupOverlay reparents added views beneath its own
+                // OverlayViewGroup. Compose asks that parent for the window
+                // recomposer's lifecycle; tags only on ComposeView do not work.
+                //
+                // Attach an invisible zero-size owner anchor first so its
+                // onAttachedToWindow can tag the *actual* overlay parent.
+                // This is internal to our row overlay, not Google's list.
+                val ownerLifecycle = lifecycle ?: checkNotNull(fallback)
+                val ownerSavedState = savedState ?: checkNotNull(fallback)
+                val ownerViewModels = viewModels ?: checkNotNull(fallback)
+                anchor = object : View(row.context) {
+                    override fun onAttachedToWindow() {
+                        super.onAttachedToWindow()
+                        val overlayGroup = parent as? View
+                            ?: error("No native overlay parent for BBOS6 row")
+                        overlayGroup.setViewTreeLifecycleOwner(ownerLifecycle)
+                        overlayGroup.setViewTreeSavedStateRegistryOwner(ownerSavedState)
+                        overlayGroup.setViewTreeViewModelStoreOwner(ownerViewModels)
+                    }
+                }.apply {
+                    isClickable = false
+                    isFocusable = false
+                    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                }
+                row.overlay.add(anchor)
                 val newPaint = ComposeView(row.context).apply {
                     isClickable = false
                     isFocusable = false
                     importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-                    setViewTreeLifecycleOwner(lifecycle ?: checkNotNull(fallback))
-                    setViewTreeSavedStateRegistryOwner(savedState ?: checkNotNull(fallback))
-                    setViewTreeViewModelStoreOwner(viewModels ?: checkNotNull(fallback))
+                    setViewTreeLifecycleOwner(ownerLifecycle)
+                    setViewTreeSavedStateRegistryOwner(ownerSavedState)
+                    setViewTreeViewModelStoreOwner(ownerViewModels)
                     setContent { PaintFace() }
                 }
                 // ViewGroupOverlay is non-interactive: Google still handles
                 // every row click, long press, trackpad event and scroll.
                 paint = newPaint
                 row.overlay.add(newPaint)
+                overlayAnchor = anchor
                 composeView = newPaint
                 localOwner = fallback
                 Log.i(TAG, "Mounted BBOS6 inbox row face" +
@@ -252,6 +295,7 @@ object MessagesInboxRowBridge {
                 try {
                     paint?.disposeComposition()
                     if (paint != null) row.overlay.remove(paint)
+                    if (anchor != null) row.overlay.remove(anchor)
                 } finally {
                     fallback?.destroy()
                 }
