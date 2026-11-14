@@ -20,6 +20,50 @@ The inbox currently uses:
 
 These are version-specific observed classes and IDs, not a public stable API.
 
+## Target architecture: one shared list controller
+
+**The existing per-row native overlay is a visual experiment, not the final
+integration.** It uses `Bbos6MediaListRow` only and inherits Google's
+RecyclerView scrolling, selection and focus rules. It therefore cannot meet
+Files parity and should not be promoted to a finished BBOS6 inbox.
+
+The correct screen must mount the existing `MessagesInboxList` consumer,
+which directly delegates to canonical shared `Bbos6PageList`. That helper,
+not an app-specific list implementation, owns visible scrolling, selected
+row, trackpad/DPAD, touch, activation and long-press policy. Match Files'
+52dp row height and shared list configuration; avoid custom row sizes or
+per-screen scroll math.
+
+Google Messages must still own message transport, data, background updates,
+RCS, and the original conversation-opening/long-press actions. The view tree
+inspection proves the native RecyclerView and visible row text identifiers,
+but does **not** identify the adapter's full item-count/data binding, stable
+conversation IDs, offscreen rows, or action dispatch. A visible-row snapshot
+is insufficient for a full inbox: only the native adapter can expose
+offscreen conversations.
+
+### Read-only native adapter capability inspection
+
+The module now emits `BBMessagesAdapter` diagnostic lines after the existing
+view-tree inspection. These contain class and method signatures, adapter
+count and native capability flags **only**, never sender/message text, IDs or
+contact values. The inspection does not bind, mutate or select conversations.
+
+To inspect the stock adapter, **disable the old visual experiment first**:
+
+```sh
+adb -s 202512003630 shell setprop debug.bbmessages.inbox.enabled false
+adb -s 202512003630 logcat -c
+adb -s 202512003630 shell am force-stop com.google.android.apps.messaging
+adb -s 202512003630 shell monkey -p com.google.android.apps.messaging 1
+sleep 3
+adb -s 202512003630 logcat -d -v time | grep 'BBMessagesAdapter'
+```
+
+This is the required adapter evidence before implementing the one-list
+replacement and native action bridge. **No full-page replacement is enabled
+in this diagnostic commit.** Existing Google inbox content is retained.
+
 ## Implementation: experimental opt-in
 
 The default module mode is inspection only; **Google Messages remains intact**.
