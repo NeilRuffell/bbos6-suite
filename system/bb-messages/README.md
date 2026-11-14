@@ -58,6 +58,49 @@ continuing to masquerade as a working BBOS6 integration. The experimental
 sources remain only for reference while direct Google controller bindings
 are investigated. No production UI replacement is active. Do not merge.
 
+### Q25 active-selection field is NOT a per-row ID (2026-11-14 16:46)
+
+The user’s physical click yielded the following verified field sequence:
+
+- Before `asvb.onClick`: `asvj.r` is `asvk`, `.f` is
+  `MainActivity`, `.H` is `aucu`, and the final `.H` is **null**
+- After `asvk.I`: that final field is still **null**
+- Immediately before `asvk.Q(ConversationId)`: the final field
+  contains a `BugleConversationId` matching Google’s actual Q argument
+- After `asvk.L` returns: `asvj.r` is already **null**
+
+**Correction:** `asvj.r.f.H.H` traverses a shared activity/controller
+path and is a **transient active selection**, not a stable
+per-conversation model ID. Prior `ID_DIRECT` matches proved that
+Google’s click and Q argument agree at that instant, but **did not
+prove** a selectable BBOS6 row can obtain its own ID. Do not wire
+this field into BBOS6 conversation selection or issue `asvk.Q` using
+it: the selected row might open an unrelated conversation.
+
+Added `MessagesNativeRowModelInspection` to compare the **actual**
+`asvk.Q` argument against references reachable from a bound
+`asvj` holder while explicitly excluding `asvk`, `Activity`,
+`View`, and platform objects. It also compares the object actually
+returned from `asvk.I(int)` and describes the reference **types** of
+the holder and that result. Maximum graph depth 5, 128 objects and
+20 fields per class. The diagnostic prints only class names, field
+names, candidate counts, match booleans, truncation state and
+field paths—not conversation ID values, contacts, messages, hashes
+or object identities. It leaves the stock Google UI and all
+navigation behavior unchanged; rejected overlays remain disabled.
+
+Build and install the branch, keep action probe enabled, restart Google
+Messages and open a conversation normally. Capture both the initial
+holder shape and the real-click comparisons:
+
+```sh
+adb -s 202512003630 logcat -d -v time | grep 'BBMessagesModel'
+```
+
+If a stable model association cannot be established, BBOS6 navigation
+remains blocked. The canonical `Bbos6PageList` is still the intended
+UI helper once data/action bindings are verified; **no new UI helper**.
+
 ### Q25 pre-click identity unavailable in both row types (2026-11-14 16:43)
 
 A successful user build/installation on Q25 confirmed
