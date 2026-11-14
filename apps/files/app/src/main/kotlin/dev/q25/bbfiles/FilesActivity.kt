@@ -258,6 +258,7 @@ private fun FilesPage(
 
     var currentRoot by remember { mutableStateOf<StorageRoot?>(null) }
     var currentFolder by remember { mutableStateOf<File?>(null) }
+    var returnSelection by remember { mutableStateOf<DirectoryReturnSelection?>(null) }
     var shortcutRoot by remember { mutableStateOf<File?>(null) }
     var shortcutLabel by remember { mutableStateOf<String?>(null) }
     var returnToFavorites by remember { mutableStateOf(false) }
@@ -302,6 +303,7 @@ private fun FilesPage(
             return
         }
         if (favorite.isDirectory) {
+            returnSelection = null
             currentRoot = volume
             currentFolder = file
             shortcutRoot = file
@@ -316,6 +318,7 @@ private fun FilesPage(
     }
 
     fun openHomeItem(id: String) {
+        returnSelection = null
         if (id == "settings") {
             // Settings is an app page, not a storage destination.
             settingsPage = true
@@ -425,13 +428,19 @@ private fun FilesPage(
         val boundary = shortcutRoot ?: root.directory
         val parent = FileBrowser.parentWithin(boundary, folder)
         if (parent == null) {
+            returnSelection = null
             currentRoot = null
             currentFolder = null
             shortcutRoot = null
             shortcutLabel = null
             favoritesPage = returnToFavorites
             returnToFavorites = false
-        } else currentFolder = parent
+        } else {
+            // Back from a child directory should highlight that child in the
+            // parent, not the first row of a freshly created page list.
+            returnSelection = DirectoryReturnSelection(parent.path, folder.path)
+            currentFolder = parent
+        }
     }
 
     fun mutate(
@@ -744,6 +753,7 @@ private fun FilesPage(
                                     items = rows,
                                     multiSelectEnabled = true,
                                     multiSelectionState = multiSelection,
+                                    initialSelectedId = returnSelection?.selectedIdFor(folder),
                                     rowHeightDp = 52,
                                     artworkSlotSizeDp = 36,
                                     textHorizontalPaddingDp = 4,
@@ -761,8 +771,10 @@ private fun FilesPage(
                                     onActivate = { id ->
                                         if (operationBusy) return@Bbos6PageList
                                         byPath[id]?.let { entry ->
-                                            if (entry.isDirectory) currentFolder = entry.file
-                                            else {
+                                            if (entry.isDirectory) {
+                                                returnSelection = null
+                                                currentFolder = entry.file
+                                            } else {
                                                 val failure = openOrShare(
                                                     root.directory, entry.file, false
                                                 )
@@ -890,8 +902,10 @@ private fun FilesPage(
                         propertiesRequest = PropertiesRequest(selectedRoot.directory, selected)
                     }
                     "open" -> {
-                        if (selected.isDirectory) currentFolder = selected.file
-                        else openOrShare(selectedRoot.directory, selected.file, false)?.let {
+                        if (selected.isDirectory) {
+                            returnSelection = null
+                            currentFolder = selected.file
+                        } else openOrShare(selectedRoot.directory, selected.file, false)?.let {
                             popup = InfoPopup(selected.name, it)
                         }
                     }
