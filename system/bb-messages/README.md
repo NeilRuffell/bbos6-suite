@@ -149,6 +149,44 @@ adb -s 202512003630 logcat -d -v time | \
   grep -E 'BBMessagesPage|BBMessagesAdapter.*(ROW_KIND|ROW_KINDS)|FATAL EXCEPTION'
 ```
 
+### Q25 verified non-conversation animation rows (2026-11-14 16:10)
+
+A successful Q25 build and install identified an adapter total of 124
+native rows, with two inspected conversation positions (0, 27) and three
+inspected animation positions (28, 29, 123). The latter are exactly
+`com.airbnb.lottie.LottieAnimationView`, with native holder `asxi`,
+no sender/snippet TextViews, and neither click nor long-click capability.
+The sample does **not** establish what every position 30–122 contains,
+nor whether the animations indicate pagination/loading.
+
+The Google-specific adapter snapshot now checks **every** native
+position. It includes only verified `ConversationListItemView` rows in
+the `Bbos6PageList` conversation model. It recognizes the **exact**
+noninteractive `LottieAnimationView` shape above as a non-conversation
+animation and excludes it from *conversation selection and activation*.
+Any other unexpected/interactive native row still aborts the full-page
+mount and preserves stock Google Messages. A nonempty adapter containing
+zero verified conversations also preserves Google's UI. The
+`BBMessagesAdapter SNAPSHOT` log reports the complete native item
+count, verified conversation count, and recognized animation count
+(without logging personal message content).
+
+The full-page session tracks the **native adapter total independently**
+from the number of BBOS6 conversation rows; otherwise the pre-draw
+count check would loop continuously when animation rows are present.
+Before invoking a native click/long-click, it rebinds the corresponding
+adapter position and verifies the sender/preview still match the
+snapshot, failing closed on a detected reorder.
+
+**Remaining validation:** Live paging can depend on Google's own
+RecyclerView scrolling, which is not the visible scrolling controller
+in this experiment. Recognized animations might represent loading.
+Test that all expected conversations become accessible and updates
+arrive, rather than assuming 124 native rows equal 124 conversations.
+If the BBOS6 list omits conversations or native navigation fails,
+disable page mode and retain Google's inbox. No additional scrolling
+or selection helpers are introduced.
+
 ### Q25 larger-inbox diagnosis (2026-11-14 16:06)
 
 With the full-page mode enabled, the device reported
@@ -217,9 +255,11 @@ using Google's own `yv.n(...)` / `yv.o(...)` ViewHolder wrappers.
 Each native conversation is read from already-bound `conversation_name`,
 `conversation_snippet` and any available timestamp text. No message
 database, external SMS API or separate data store is introduced.
-The snapshot fails closed if any position cannot bind to a conversation
-row with native click and long-click actions, or if the native item count
-changes while reading.
+The snapshot accepts verified conversation rows and the separately
+verified noninteractive Lottie animation rows (excluded from selectable
+conversations). Unknown native row types or incomplete conversation
+actions still fail closed, as does a native item-count change while
+reading.
 
 Google's native RecyclerView is preserved **attached and measured but
 invisible** behind the Compose page in a reversible wrapper. The
