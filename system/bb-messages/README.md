@@ -4,6 +4,60 @@ Independent experimental Vector/LSPosed module for Google Messages on the
 Zinwa Q25. The renderer reuses the canonical Kotlin/Compose BBOS6 library in
 `../../shared/android/bbos6-ui/`.
 
+## Active direction: controller-level Google Messages integration (2026-11-14)
+
+**The old visible overlay and late full-page swap are rejected and disabled.**
+Q25 testing showed a visible native-Google flash (the module installed the
+replacement after a 750 ms delayed lifecycle callback). The shared
+`Bbos6PageList` did mount and display conversations, but activation through
+`performClick()` on freshly bound, detached Google ViewHolders did not
+open conversations. At one point the native adapter reported 124 items,
+28 real conversation rows, and 96 noninteractive Lottie animation rows.
+This establishes a usable native view/data adapter, **not** a complete
+controller/data contract or production-ready inbox.
+
+The active instrumentation now leaves Google's UI unmodified and inspects
+native conversation click/long-click callback **class structure only**.
+It never invokes detached click handlers. This information is required
+before replacing the Google UI at its original creation point, rather
+than hiding or overlaying it after rendering. A later replacement must
+use canonical shared BBOS6 helpers for every UI surface while preserving
+Google's navigation, compose, attachments, SMS/MMS/RCS, typing and status
+behavior; those integrations remain unverified. A version-specific
+Vector hook alone is **not** evidence that full preservation is feasible.
+
+### Read-only Q25 action-contract inspection
+
+`debug.bbmessages.actionprobe.enabled=true` takes precedence over the
+old experimental flags. No BBOS6 list is rendered in this mode.
+`BBMessagesActions` logs whether visible native conversation rows have
+click/long-click handlers and describes callback classes and reference
+field *types* for up to five attached rows and one detached native row.
+It never prints contacts, snippets, message data or object values.
+
+```sh
+cd ~/Projects/bbos6-suite
+git fetch origin
+git switch feature/messages-inbox-shared-subtitles
+git pull --ff-only origin feature/messages-inbox-shared-subtitles
+gradle -p system/bb-messages :bbos6-ui:verifyKotlinOnly :bbos6-ui:testDebugUnitTest :app:assembleDebug && \
+adb -s 202512003630 install -r system/bb-messages/app/build/outputs/apk/debug/app-debug.apk
+adb -s 202512003630 shell setprop debug.bbmessages.page.enabled false
+adb -s 202512003630 shell setprop debug.bbmessages.inbox.enabled false
+adb -s 202512003630 shell setprop debug.bbmessages.actionprobe.enabled true
+adb -s 202512003630 logcat -c
+adb -s 202512003630 shell am force-stop com.google.android.apps.messaging
+adb -s 202512003630 shell monkey -p com.google.android.apps.messaging 1
+sleep 3
+adb -s 202512003630 logcat -d -v time | grep 'BBMessagesActions'
+```
+
+**All legacy overlay opt-ins are disabled in this revision**, even if
+properties remain true. This prevents the rejected presentation from
+continuing to masquerade as a working BBOS6 integration. The experimental
+sources remain only for reference while direct Google controller bindings
+are investigated. No production UI replacement is active. Do not merge.
+
 ## Q25 inspection findings (2026-11-14)
 
 The target process and hook were verified on-device. Read-only inspection
