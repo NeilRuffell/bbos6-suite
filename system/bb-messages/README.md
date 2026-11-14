@@ -58,6 +58,46 @@ continuing to masquerade as a working BBOS6 integration. The experimental
 sources remain only for reference while direct Google controller bindings
 are investigated. No production UI replacement is active. Do not merge.
 
+### Q25 attached versus detached navigation trace (2026-11-14 16:23)
+
+Q25 build and install passed. All five attached native conversation
+rows and one detached, freshly bound conversation row exposed matching
+listener classes and captured reference **types**:
+`fzih` click wrapper (`fzii`, `fzid`, delegate `asvb`);
+`fzig` long-click wrapper (`fzii`, delegate `asvc`).
+This proves the structural listener classes match. It does **not**
+prove the detached view retains the state necessary for navigation;
+the previous user test demonstrated detached `performClick()` did not
+open conversations.
+
+With `debug.bbmessages.actionprobe.enabled=true`, the module now
+also installs read-only hooks on the exact candidate
+`fzih.onClick(View)`, `asvb.onClick(View)`, `fzig.onLongClick(View)`
+and `asvc.onLongClick(View)` methods, where those signatures exist.
+When the user physically activates a stock Google inbox row, the
+`BBMessagesActions TRACE` lines show which native callbacks ran and
+whether the input view was attached. The inspector also reports up
+to 12 captured **reference class types** from the `asvb`/`asvc`
+delegates (first attached row and one detached row), without
+reading message data. Hooks never replace results, invoke actions,
+cancel or change navigation.
+
+Build and install the active branch, ensure actionprobe=true and
+both old overlay flags=false, restart Google Messages, and **tap one
+stock conversation row**. Return to the inbox, then long-press a
+stock row. Capture:
+
+```sh
+adb -s 202512003630 logcat -d -v time | \
+  grep -E 'BBMessagesActions.*(TRACE|DELEGATE_)'
+```
+
+Only after validating the original attached action dispatch should
+a source-time BBOS6 presentation replacement be attempted. The
+BBOS6 helpers remain the required presentation layer, not a second
+list controller; SMS/MMS/RCS engine and all messaging functionality
+must remain Google-owned and require device verification.
+
 ## Q25 inspection findings (2026-11-14)
 
 The target process and hook were verified on-device. Read-only inspection
