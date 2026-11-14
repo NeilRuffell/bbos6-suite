@@ -149,6 +149,35 @@ adb -s 202512003630 logcat -d -v time | \
   grep -E 'BBMessagesPage|BBMessagesAdapter.*(ROW_KIND|ROW_KINDS)|FATAL EXCEPTION'
 ```
 
+### Q25 larger-inbox diagnosis (2026-11-14 16:06)
+
+With the full-page mode enabled, the device reported
+`Unexpected native row class at adapter index 28`. The fallback
+`ROW_KINDS` diagnostic observed **124 native adapter items**, then
+stopped because of an earlier 64-item diagnostic cap. The original Google
+inbox remained active; its scrolling was therefore unchanged. The earlier
+8-item native adapter count was only the count at the earlier inspection,
+**not** a fixed inbox size.
+
+The diagnostic now samples the **failed position** and adjacent adapter
+positions, plus the first and last positions, regardless of the full
+adapter size. It never loops over all 124 rows to diagnose one mismatch
+and does not log message text or sender information. The strict
+full-page snapshot continues to fail closed: non-conversation rows must
+be identified and represented using the appropriate existing shared
+helpers before replacing Google's native list.
+
+After rebuilding, inspect:
+
+```sh
+adb -s 202512003630 shell setprop debug.bbmessages.page.enabled true
+adb -s 202512003630 logcat -c
+adb -s 202512003630 shell am force-stop com.google.android.apps.messaging
+adb -s 202512003630 shell monkey -p com.google.android.apps.messaging 1
+sleep 3
+adb -s 202512003630 logcat -d -v time | grep -E 'ROW_KIND|BBMessagesPage'
+```
+
 ### Q25 full-page Compose host lifecycle correction (2026-11-14 16:03)
 
 After the row-kind diagnostic change, the complete native adapter snapshot
