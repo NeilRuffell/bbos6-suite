@@ -23,8 +23,11 @@ final class MessagesNativeConversationIdentity {
     private static final String HOLDER = "asvj";
     private static final String CONVERSATION_ID =
         "com.google.android.apps.messaging.shared.api.messaging.conversation.ConversationId";
-    private static final int MAX_DEPTH = 3;
-    private static final int MAX_OBJECTS = 48;
+    // The first Q25 probe exhausted 48 object slots before locating a
+    // matching ConversationId. Widen this diagnostic *only*; production
+    // navigation must never use an unverified graph lookup.
+    private static final int MAX_DEPTH = 4;
+    private static final int MAX_OBJECTS = 160;
     private static final int MAX_FIELDS_PER_OBJECT = 24;
 
     private MessagesNativeConversationIdentity() { }
@@ -54,7 +57,11 @@ final class MessagesNativeConversationIdentity {
                 + " referenceMatch=" + search.referenceMatch
                 + " equalityMatch=" + search.equalityMatch
                 + " firstCandidatePath=" + (search.firstPath == null ? "none" : search.firstPath)
-                + " objectsExamined=" + search.visited.size());
+                + " matchingPath=" + (search.matchPath == null ? "none" : search.matchPath)
+                + " objectsExamined=" + search.visited.size()
+                + " objectCapReached=" + search.objectCapReached
+                + " depthCapReached=" + search.depthCapReached
+                + " fieldCapReached=" + search.fieldCapReached);
         } catch (Throwable failure) {
             Log.w(TAG, "ID_LINK read-only comparison failed: "
                 + failure.getClass().getSimpleName());
@@ -82,7 +89,11 @@ final class MessagesNativeConversationIdentity {
         int candidates;
         boolean referenceMatch;
         boolean equalityMatch;
+        boolean objectCapReached;
+        boolean depthCapReached;
+        boolean fieldCapReached;
         String firstPath;
+        String matchPath;
 
         Search(Class<?> conversationClass, Object expected) {
             this.conversationClass = conversationClass;
@@ -90,8 +101,15 @@ final class MessagesNativeConversationIdentity {
         }
 
         void scan(Object instance, String path, int depth) {
-            if (instance == null || depth > MAX_DEPTH || visited.size() >= MAX_OBJECTS)
+            if (instance == null) return;
+            if (depth > MAX_DEPTH) {
+                depthCapReached = true;
                 return;
+            }
+            if (visited.size() >= MAX_OBJECTS) {
+                objectCapReached = true;
+                return;
+            }
             if (conversationClass.isInstance(instance)) {
                 candidates++;
                 if (firstPath == null) firstPath = path;
@@ -99,6 +117,9 @@ final class MessagesNativeConversationIdentity {
                 // Equality is checked only between two verified ConversationId
                 // objects and never printed as an identifier.
                 if (instance.equals(expected)) equalityMatch = true;
+                if ((referenceMatch || equalityMatch) && matchPath == null) {
+                    matchPath = path;
+                }
                 return;
             }
             Class<?> runtime = instance.getClass();
@@ -116,8 +137,14 @@ final class MessagesNativeConversationIdentity {
                  type = type.getSuperclass()) {
                 int inspected = 0;
                 for (Field field : type.getDeclaredFields()) {
-                    if (inspected++ >= MAX_FIELDS_PER_OBJECT || visited.size() >= MAX_OBJECTS)
+                    if (inspected++ >= MAX_FIELDS_PER_OBJECT) {
+                        fieldCapReached = true;
+                        break;
+                    }
+                    if (visited.size() >= MAX_OBJECTS) {
+                        objectCapReached = true;
                         return;
+                    }
                     if (Modifier.isStatic(field.getModifiers())
                         || field.getType().isPrimitive()) continue;
                     try {
