@@ -56,6 +56,7 @@ final class MessagesNativeAdapterInspection {
 
             printRecyclerAdapterAccessors(recycler.getClass());
             printRecyclerAdapterFields(recycler);
+            profileObfuscatedAdapterCandidates(recycler);
             if (adapter == null) {
                 Log.w(TAG, "Adapter not identified; retain Google inbox");
                 return;
@@ -179,6 +180,89 @@ final class MessagesNativeAdapterInspection {
                 + " declaredCount=" + fields.length);
             type = type.getSuperclass();
         }
+    }
+
+    /**
+     * Since this Google Messages build obfuscates RecyclerView's adapter API,
+     * identify likely adapter types by their superclass and method signatures.
+     * Never invoke any candidate methods: some obfuscated no-arg functions can
+     * mutate adapter state. This instrumentation is strictly structural.
+     */
+    private static void profileObfuscatedAdapterCandidates(ViewGroup recycler) {
+        Class<?> recyclerClass = recycler.getClass();
+        int profiles = 0;
+        for (Field field : recyclerClass.getDeclaredFields()) {
+            Class<?> declared = field.getType();
+            if (Modifier.isStatic(field.getModifiers()) || declared.isPrimitive()
+                || declared.isArray() || declared.getName().startsWith("java.")
+                || declared.getName().startsWith("android.")) {
+                continue;
+            }
+
+            Object instance;
+            try {
+                field.setAccessible(true);
+                instance = field.get(recycler);
+            } catch (Throwable failure) {
+                continue;
+            }
+            if (instance == null) continue;
+            if (profiles++ >= 24) {
+                Log.i(TAG, "CANDIDATES truncated after 24 active native fields");
+                break;
+            }
+
+            Class<?> runtimeType = instance.getClass();
+            StringBuilder hierarchy = new StringBuilder();
+            Class<?> parent = runtimeType;
+            for (int depth = 0; parent != null && depth < 6; depth++) {
+                if (depth != 0) hierarchy.append(" > ");
+                hierarchy.append(parent.getName());
+                parent = parent.getSuperclass();
+            }
+
+            Log.i(TAG, "CANDIDATE field=" + field.getName()
+                + " declared=" + declared.getName()
+                + " runtime=" + runtimeType.getName()
+                + " hierarchy=" + hierarchy);
+
+            // List only signatures suggestive of adapter count/IDs or
+            // ViewHolder creation/binding; no method or field values.
+            int signatures = 0;
+            Class<?> type = runtimeType;
+            for (int depth = 0; type != null && type != Object.class && depth < 4;
+                 depth++, type = type.getSuperclass()) {
+                for (Method method : type.getDeclaredMethods()) {
+                    if (!isAdapterShape(method)) continue;
+                    if (signatures++ >= 14) break;
+                    Log.i(TAG, "CANDIDATE_METHOD field=" + field.getName()
+                        + " class=" + type.getName()
+                        + " " + methodSignature(method));
+                }
+                if (signatures >= 14) {
+                    Log.i(TAG, "CANDIDATE_METHODS field=" + field.getName()
+                        + " truncated=14");
+                    break;
+                }
+            }
+        }
+    }
+
+    private static boolean isAdapterShape(Method method) {
+        Class<?>[] params = method.getParameterTypes();
+        Class<?> result = method.getReturnType();
+        // Adapter implementations generally expose a zero-arg integer item
+        // count, an int -> long stable ID, and methods involving a holder
+        // plus an integer position, often with all names minified.
+        if (params.length == 0
+            && (result == int.class || result == long.class)) return true;
+        if (params.length == 1 && params[0] == int.class
+            && (result == int.class || result == long.class)) return true;
+        if (params.length == 2 && params[1] == int.class
+            && !params[0].isPrimitive()) return true;
+        if (params.length == 2 && params[0] == ViewGroup.class
+            && params[1] == int.class) return true;
+        return isAdapterMethodCandidate(method);
     }
 
     private static void printRecyclerAdapterAccessors(Class<?> recyclerType) {
