@@ -26,6 +26,10 @@ final class GoogleMessagesAdapterBridge {
         "android.support.v7.widget.RecyclerView";
     private static final String TARGET_PACKAGE =
         "com.google.android.apps.messaging";
+    private static final String CONVERSATION_ROW =
+        "com.google.android.apps.messaging.home.list.ConversationListItemView";
+    private static final String LOTTIE_ROW =
+        "com.airbnb.lottie.LottieAnimationView";
 
     // The adapter bind hook must ignore binds initiated by our own
     // full-page snapshot to avoid recursive UI refreshes.
@@ -243,6 +247,7 @@ final class GoogleMessagesAdapterBridge {
         }
         java.util.ArrayList<NativeConversationRow> rows =
             new java.util.ArrayList<>(count);
+        int nonInteractiveAnimations = 0;
         for (int index = 0; index < count; index++) {
             Object type = itemTypeMethod.invoke(adapter, index);
             if (!(type instanceof Integer)) {
@@ -252,8 +257,15 @@ final class GoogleMessagesAdapterBridge {
             if (holder == null) throw new IllegalStateException("No native ViewHolder");
             bindHolderMethod.invoke(adapter, holder, index);
             View view = holderItemView(holder, nameId);
-            if (view == null || !view.getClass().getName().equals(
-                    "com.google.android.apps.messaging.home.list.ConversationListItemView")) {
+            // Q25 verified these are noninteractive animation ViewHolders,
+            // not conversation rows. Do not pass them to the page-list as
+            // fake conversations, and do not omit any other unknown row type.
+            if (isNonInteractiveLottie(view, nameId, snippetId)) {
+                nonInteractiveAnimations++;
+                continue;
+            }
+            if (view == null || !CONVERSATION_ROW.equals(
+                    view.getClass().getName())) {
                 throw new UnexpectedNativeRowException(index);
             }
             View senderView = view.findViewById(nameId);
@@ -280,9 +292,26 @@ final class GoogleMessagesAdapterBridge {
         if (!isCurrent() || count != itemCount()) {
             throw new IllegalStateException("Adapter updated during snapshot");
         }
+        if (count > 0 && rows.isEmpty()) {
+            // A full page of Lottie placeholders is not an empty inbox.
+            // Retain Google's loading/inbox UI instead of displaying blank.
+            throw new IllegalStateException("No bound conversations in nonempty native inbox");
+        }
+        Log.i(TAG, "SNAPSHOT nativeItems=" + count
+            + " conversationRows=" + rows.size()
+            + " nonInteractiveLottieRows=" + nonInteractiveAnimations);
         return rows;
     }
 
+
+    private static boolean isNonInteractiveLottie(
+        View view, int senderId, int snippetId
+    ) {
+        return view != null && LOTTIE_ROW.equals(view.getClass().getName())
+            && !view.hasOnClickListeners() && !view.isLongClickable()
+            && (senderId == 0 || view.findViewById(senderId) == null)
+            && (snippetId == 0 || view.findViewById(snippetId) == null);
+    }
 
     /**
      * A checked discriminator so diagnostics can inspect the offending
