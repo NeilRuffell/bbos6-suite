@@ -29,7 +29,7 @@ not Java. Their public methods remain callable from Java for existing callers.
 | Indeterminate background work | `Bbos6BackgroundLoadingIndicator(modifier, accessibilityLabel)` | Work start/end, screen-bottom placement and whether to reserve layout height |
 | Empty content inside a native layout | `Bbos6EmptyStateComposeView` (*View host*) | Placement outside the selectable list and visibility |
 | Compact modal list selection | `Bbos6ListSelectionPanel` / `Bbos6ListSelectionComposeBridge` | Stable choice IDs/labels, selection action and dialog lifecycle |
-| Full-page navigable list | `Bbos6PageList(items, onActivate)` | Stable IDs, data, row selection actions and page navigation |
+| Full-page navigable list | `Bbos6PageList(items, onActivate)` | Stable IDs, title, optional `secondaryTextForId` preview and `trailingTextForId` metadata, row actions and navigation |
 | BBOS6 checkbox face | `Bbos6Checkbox(checked, onCheckedChange?, highlighted?, enabled?)` | Checked state, row focus (indicator mode), callbacks and business logic |
 | App-level appearance preference | `Bbos6ThemeManager.forApplication(context)`, `rememberBbos6ThemeManager()` | Choosing when opt-in components use it |
 | Three-choice appearance selector | `Bbos6ThemeSelector(manager?, showHeader?)` | Inserting the control into Settings; Settings page navigation |\n| Media/list row face | `Bbos6MediaListRow(..., rowHeightDp = 68)` | List data, selection, scrolling, event routing and artwork loading |
@@ -53,6 +53,15 @@ not Java. Their public methods remain callable from Java for existing callers.
 | Cover art | `Bbos6NowPlayingArtwork(...)` | Painter, URI authorization, cache and placeholder |
 | Blue selection and popup faces | `bbos6MediaListSelectionFace`, `bbos6ContextSelectionFace`, `bbos6PopupButtonFace` | Real focus owner and selected state |
 | Managed native/Compose focus | `Bbos6FocusPolicy`, `Bbos6ManagedFocusEffect` | Which container owns DPAD and what is selected |
+
+The `Bbos6PageList` optional `secondaryTextForId` callback now forwards a one-line
+subtitle to its existing `Bbos6MediaListRow`. Callers may use it for a message
+preview without adding a second row renderer. Existing lists remain one-line by
+default. This is presentation only: data retrieval, stable conversation IDs,
+opening conversations and long-press actions belong in the consuming app. A
+third-party Vector hook must verify its target app's actual UI and data/action
+bindings before replacing anything; this callback does not make the helper a
+Google Messages adapter.
 
 **Important:** A shared **row face is not a complete list widget**. `Bbos6PageList` now supplies one Compose-only list controller for new applications, pending Q25 verification; it does not replace Music's native list adapter.
 `bb-music` currently owns its own `MusicListView` data source,
