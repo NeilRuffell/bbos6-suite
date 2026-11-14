@@ -7,8 +7,6 @@ import android.widget.TextView;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.HashSet;
-import java.util.Set;
 
 /**
  * Google Messages-specific adapter access; NOT a list or scrolling helper.
@@ -118,10 +116,8 @@ final class GoogleMessagesAdapterBridge {
             Log.i(TAG, "RESOLVED adapter=" + adapter.getClass().getName()
                 + " count=" + count);
             if (count == 0) return;
-            Set<Long> seen = new HashSet<>();
             long firstId = ((Number) itemIdMethod.invoke(adapter, 0)).longValue();
             boolean firstValid = firstId != -1L;
-            seen.add(firstId);
             boolean lastDistinct = true;
             if (count > 1) {
                 long lastId = ((Number) itemIdMethod.invoke(adapter, count - 1)).longValue();
@@ -174,17 +170,17 @@ final class GoogleMessagesAdapterBridge {
             // Calls Google's normal final ViewHolder bind wrapper. No direct
             // access to its internal message records or conversation models.
             bindHolderMethod.invoke(adapter, holder, index);
-            View nativeRow = holderItemView(holder);
-            if (nativeRow == null) {
-                Log.w(TAG, "BIND_PROBE " + label + " holder has no row View");
-                return;
-            }
             int senderId = recycler.getResources().getIdentifier(
                 "conversation_name", "id", TARGET_PACKAGE
             );
             int snippetId = recycler.getResources().getIdentifier(
                 "conversation_snippet", "id", TARGET_PACKAGE
             );
+            View nativeRow = holderItemView(holder, senderId);
+            if (nativeRow == null) {
+                Log.w(TAG, "BIND_PROBE " + label + " holder has no row View");
+                return;
+            }
             boolean sender = senderId != 0
                 && nativeRow.findViewById(senderId) instanceof TextView;
             boolean snippet = snippetId != 0
@@ -203,8 +199,9 @@ final class GoogleMessagesAdapterBridge {
         }
     }
 
-    private static View holderItemView(Object holder) {
+    private static View holderItemView(Object holder, int senderId) {
         Class<?> type = holder.getClass();
+        View fallback = null;
         for (int depth = 0; type != null && type != Object.class
              && depth < 6; depth++, type = type.getSuperclass()) {
             for (Field field : type.getDeclaredFields()) {
@@ -215,11 +212,18 @@ final class GoogleMessagesAdapterBridge {
                 try {
                     field.setAccessible(true);
                     Object value = field.get(holder);
-                    if (value instanceof View) return (View) value;
+                    if (value instanceof View) {
+                        View candidate = (View) value;
+                        if (senderId != 0 &&
+                            candidate.findViewById(senderId) instanceof TextView) {
+                            return candidate;
+                        }
+                        if (fallback == null) fallback = candidate;
+                    }
                 } catch (Throwable ignored) { }
             }
         }
-        return null;
+        return fallback;
     }
 
     private static Method findMethod(Class<?> type, String name, int params) {
