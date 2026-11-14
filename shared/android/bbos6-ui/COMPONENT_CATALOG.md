@@ -357,6 +357,13 @@ The shared helper remains independent of the host Activity and preserves
 focus/trackpad neutrality. Height and text metrics are Q25-targeted
 approximations of the supplied reference, pending on-device verification.
 
+An optional `trailingContent: (@Composable () -> Unit)?` slot accepts passive,
+caller-owned status visuals. It defaults to null, preserving existing Music,
+Settings and Files header layout. When provided, the title takes the
+remaining width and ellipsizes before the trailing content. No application
+state, focus routing, padding for system bars or clipboard actions are owned
+by the helper. Files opts into the slot for its pending Copy/Cut badge.
+
 ## Optional multi-selection for full-page lists
 
 `Bbos6PageList` keeps its original single-item activation unless the caller

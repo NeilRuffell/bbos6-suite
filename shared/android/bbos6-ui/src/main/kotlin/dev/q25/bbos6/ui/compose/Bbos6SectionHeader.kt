@@ -3,9 +3,12 @@ package dev.q25.bbos6.ui.compose
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -33,12 +36,15 @@ enum class Bbos6SectionHeaderStyle {
  * text inset and no border, matching the user-supplied BBOS Files reference.
  * The caller owns window insets; this helper never adds status-bar padding.
  * The header does not request focus or intercept keyboard/trackpad input.
+ * [trailingContent] is an optional, caller-owned passive status area. Without
+ * it, layout and typography remain identical to the original section header.
  */
 @Composable
 fun Bbos6SectionHeader(
     title: String,
     modifier: Modifier = Modifier,
-    style: Bbos6SectionHeaderStyle = Bbos6SectionHeaderStyle.BEVELED
+    style: Bbos6SectionHeaderStyle = Bbos6SectionHeaderStyle.BEVELED,
+    trailingContent: (@Composable () -> Unit)? = null
 ) {
     val compact = style == Bbos6SectionHeaderStyle.FLAT_BLACK_COMPACT
     Box(
@@ -61,15 +67,33 @@ fun Bbos6SectionHeader(
             .padding(horizontal = if (compact) 2.dp else 16.dp),
         contentAlignment = Alignment.CenterStart
     ) {
-        BasicText(
-            text = title,
-            style = TextStyle(
-                color = if (compact) Color.White else Color(0xFFE8EBEF),
-                fontSize = if (compact) 15.sp else 14.sp,
-                fontWeight = if (compact) FontWeight.Normal else FontWeight.Bold
-            ),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+        val titleStyle = TextStyle(
+            color = if (compact) Color.White else Color(0xFFE8EBEF),
+            fontSize = if (compact) 15.sp else 14.sp,
+            fontWeight = if (compact) FontWeight.Normal else FontWeight.Bold
         )
+        if (trailingContent == null) {
+            BasicText(
+                text = title,
+                style = titleStyle,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                BasicText(
+                    text = title,
+                    modifier = Modifier.weight(1f),
+                    style = titleStyle,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.width(6.dp))
+                trailingContent()
+            }
+        }
     }
 }
