@@ -99,6 +99,20 @@ final class GoogleMessagesConversationBinding {
         }
     }
 
+    static void logAttachedPathForProbe(View row) {
+        if (row == null || !row.isAttachedToWindow()) return;
+        try {
+            Object info = XposedHelpers.getObjectField(row, "mListenerInfo");
+            if (info == null) return;
+            Object wrapper = XposedHelpers.getObjectField(info, "mOnClickListener");
+            if (wrapper == null || !"fzih".equals(wrapper.getClass().getName())) return;
+            logDelegatePathStage(readInstanceField(wrapper, "c"), "attached_before_click");
+        } catch (Throwable failure) {
+            Log.i(TAG, "ID_STAGE phase=attached_before_click unavailable="
+                + failure.getClass().getSimpleName());
+        }
+    }
+
     /** A validated native action/data binding, never a fabricated row ID. */
     static final class VerifiedHandle {
         final Object controller;
