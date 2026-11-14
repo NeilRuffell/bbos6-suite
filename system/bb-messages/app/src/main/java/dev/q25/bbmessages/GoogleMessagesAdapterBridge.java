@@ -254,7 +254,9 @@ final class GoogleMessagesAdapterBridge {
             View view = holderItemView(holder, nameId);
             if (view == null || !view.getClass().getName().equals(
                     "com.google.android.apps.messaging.home.list.ConversationListItemView")) {
-                throw new IllegalStateException("Unexpected native row class");
+                throw new IllegalStateException(
+                    "Unexpected native row class at adapter index " + index
+                );
             }
             View senderView = view.findViewById(nameId);
             View snippetView = view.findViewById(snippetId);
@@ -281,6 +283,90 @@ final class GoogleMessagesAdapterBridge {
             throw new IllegalStateException("Adapter updated during snapshot");
         }
         return rows;
+    }
+
+
+    /**
+     * Diagnoses all native row kinds when the strict all-conversation
+     * snapshot is rejected. An adapter entry may be a date separator, banner,
+     * announcement or other non-conversation UI. Never silently omit it.
+     *
+     * Logs only adapter index, row class, ViewHolder class and presence of
+     * verified text/action controls. It does not log raw view type IDs,
+     * conversation data, text contents or handler targets.
+     */
+    void inspectRowKinds() {
+        if (!isCurrent()) return;
+        BRIDGE_BIND.set(true);
+        try {
+            int count = itemCount();
+            Log.i(TAG, "ROW_KINDS totalNativeItems=" + count);
+            if (count > 64) {
+                Log.w(TAG, "ROW_KINDS item count too large; no page replacement");
+                return;
+            }
+            int nameId = recycler.getResources().getIdentifier(
+                "conversation_name", "id", TARGET_PACKAGE
+            );
+            int snippetId = recycler.getResources().getIdentifier(
+                "conversation_snippet", "id", TARGET_PACKAGE
+            );
+            int conversationRows = 0;
+            for (int position = 0; position < count; position++) {
+                try {
+                    Object kind = itemTypeMethod.invoke(adapter, position);
+                    if (!(kind instanceof Integer)) {
+                        Log.w(TAG, "ROW_KIND index=" + position
+                            + " invalid native type; preserving stock inbox");
+                        continue;
+                    }
+                    Object holder = createHolderMethod.invoke(
+                        adapter, recycler, (Integer) kind
+                    );
+                    if (holder == null) {
+                        Log.w(TAG, "ROW_KIND index=" + position
+                            + " holder=null; preserving stock inbox");
+                        continue;
+                    }
+                    bindHolderMethod.invoke(adapter, holder, position);
+                    View row = holderItemView(holder, nameId);
+                    if (row == null) {
+                        Log.w(TAG, "ROW_KIND index=" + position
+                            + " row=null holderClass=" + holder.getClass().getName());
+                        continue;
+                    }
+                    boolean sender = nameId != 0
+                        && row.findViewById(nameId) instanceof TextView;
+                    boolean snippet = snippetId != 0
+                        && row.findViewById(snippetId) instanceof TextView;
+                    boolean conversation = row.getClass().getName().equals(
+                        "com.google.android.apps.messaging.home.list.ConversationListItemView"
+                    );
+                    if (conversation) conversationRows++;
+                    Log.i(TAG, "ROW_KIND index=" + position
+                        + " rowClass=" + row.getClass().getName()
+                        + " holderClass=" + holder.getClass().getName()
+                        + " conversation=" + conversation
+                        + " senderField=" + sender
+                        + " snippetField=" + snippet
+                        + " clickable=" + row.hasOnClickListeners()
+                        + " longClickable=" + row.isLongClickable());
+                } catch (Throwable failure) {
+                    Throwable cause = failure.getCause() == null
+                        ? failure : failure.getCause();
+                    Log.w(TAG, "ROW_KIND index=" + position + " failed="
+                        + cause.getClass().getSimpleName());
+                }
+            }
+            Log.i(TAG, "ROW_KINDS conversationRows=" + conversationRows
+                + " otherRows=" + (count - conversationRows)
+                + " (not hidden, stock inbox retained)");
+        } catch (Throwable failure) {
+            Log.w(TAG, "ROW_KINDS inspection failed: "
+                + failure.getClass().getSimpleName());
+        } finally {
+            BRIDGE_BIND.remove();
+        }
     }
 
     private boolean isCurrent() {
