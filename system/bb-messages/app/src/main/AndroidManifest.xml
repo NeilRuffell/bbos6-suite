@@ -1,0 +1,13 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <queries>
+        <package android:name="com.google.android.apps.messaging" />
+    </queries>
+    <application
+        android:label="BB Messages"
+        android:hasCode="true">
+        <meta-data android:name="xposedmodule" android:value="true" />
+        <meta-data android:name="xposeddescription"
+            android:value="BB Messages: isolated Google Messages UI inspection and BBOS6 integration" />
+        <meta-data android:name="xposedminversion" android:value="82" />
+    </application>
+</manifest>
