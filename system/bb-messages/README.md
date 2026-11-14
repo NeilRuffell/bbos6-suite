@@ -58,6 +58,39 @@ continuing to masquerade as a working BBOS6 integration. The experimental
 sources remain only for reference while direct Google controller bindings
 are investigated. No production UI replacement is active. Do not merge.
 
+### Q25 observed controller call sequence (2026-11-14 16:29)
+
+Q25 build/device test confirmed `MessagesNativeActionTrace` successfully
+hooked 20 methods declared on the captured `asvk` class. A physical,
+attached native conversation tap called `asvk.L(2)`,
+`asvk.I(1) → aszr`, `asvk.Q(1)`, and `asvk.G(1) → int`.
+A native long press called `asvk.L(2)`, `asvk.I(1) → aszr`,
+and `asvk.P(1)`. The `asvj` holder declared no methods.
+This establishes a **real execution path** but not the semantics,
+parameter types or standalone invocation requirements of those
+obfuscated controller methods.
+
+The active action probe now logs declared parameter type names and
+static/instance status for only `asvk.L/I/Q/G/P` as
+`TRACE_SIGNATURE`. For actual Google-initiated `asvk.Q/P`
+invocations, it logs only runtime **argument class names** as
+`TRACE_ARGTYPE`, not values, IDs, message bodies or contacts.
+Nothing is invoked or redirected by these probes, and the rejected
+overlays remain disabled.
+
+After rebuilding and installing, open one conversation and long-press
+another native conversation, then capture:
+
+```sh
+adb -s 202512003630 logcat -d -v time | \
+  grep -E 'BBMessagesActions.*(TRACE_SIGNATURE|TRACE_ARGTYPE|TRACE_PATH action)'
+```
+
+The next integration must establish a stable per-conversation controller
+reference before attempting any source-time BBOS6 presentation
+replacement. Merely calling `asvk.Q/P` by name is **not yet verified
+safe or sufficient**.
+
 ### Q25 verified real activation and controller tracing (2026-11-14 16:27)
 
 On the stock Google Messages inbox, Q25 device logs confirmed the
