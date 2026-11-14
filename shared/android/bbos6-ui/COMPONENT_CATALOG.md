@@ -30,6 +30,7 @@ not Java. Their public methods remain callable from Java for existing callers.
 | Empty content inside a native layout | `Bbos6EmptyStateComposeView` (*View host*) | Placement outside the selectable list and visibility |
 | Compact modal list selection | `Bbos6ListSelectionPanel` / `Bbos6ListSelectionComposeBridge` | Stable choice IDs/labels, selection action and dialog lifecycle |
 | Full-page navigable list | `Bbos6PageList(items, onActivate)` | Stable IDs, data, row selection actions and page navigation |
+| BBOS6 checkbox face | `Bbos6Checkbox(checked, onCheckedChange?, highlighted?, enabled?)` | Checked state, row focus (indicator mode), callbacks and business logic |
 | App-level appearance preference | `Bbos6ThemeManager.forApplication(context)`, `rememberBbos6ThemeManager()` | Choosing when opt-in components use it |
 | Three-choice appearance selector | `Bbos6ThemeSelector(manager?, showHeader?)` | Inserting the control into Settings; Settings page navigation |\n| Media/list row face | `Bbos6MediaListRow(..., rowHeightDp = 68)` | List data, selection, scrolling, event routing and artwork loading |
 | Native ListView + Compose row touch routing | `Bbos6MediaListRowTouchHost` (*View host*) | Adapter position, click/long click and scroll owner |
@@ -68,6 +69,55 @@ trackpad/DPAD Enter, Back/ESC, touch and bounded window geometry. Use
 the selected ID and its resulting operation. The full media row remains 68dp
 by default. This is a selection list, not the app-neutral full-page list
 controller still identified as missing below.
+
+## Shared BBOS6 checkbox (Vector QS visual source)
+
+`Bbos6Checkbox` is the canonical **Kotlin/Compose** checkbox face in
+`dev.q25.bbos6.ui.compose`. Its source reference is Vector's existing
+Java `system/bb-ui/bb7pulldown/src/main/java/dev/q25/bb7pulldown/BB6NativeQsPanel.java`
+inner `StatusCheckbox`. The original Java View is not changed in this helper
+PR: moving the Vector consumer to Compose requires separate integration and
+Q25 testing.
+
+The default 24×26dp cell contains a centered 19dp rounded square (2dp
+corners), an off-white fill (`#F3F5F7`), normal border (`#84909E`),
+highlighted border (`#E1EFFF`), and a blue (`#176BD1`) rounded 2.3dp
+checkmark. Checkmark path ratios, pixel-density scaling and border thickness
+match the existing QS implementation. These are **verified implementation
+metrics from Vector**, not claimed historical BBOS6 SDK dimensions. No
+original numbered image/icon is involved.
+
+Two supported usage modes share the **same renderer**:
+
+```kotlin
+// Passive state display inside a row: the parent owns focus and activation.
+Bbos6Checkbox(checked = tileEnabled, highlighted = rowHasFocus)
+
+// Standalone interactive checkbox: Compose toggleable handles accessibility,
+// disabled input, touch and keyboard/DPAD; the caller stores the value.
+Bbos6Checkbox(
+    checked = checked,
+    enabled = canEdit,
+    onCheckedChange = { checked = it }
+)
+```
+
+- With `onCheckedChange = null` (default), the checkbox receives no
+  click handler, input focus, or standalone accessibility semantics; it is
+  decoration within the parent's accessible row. `highlighted` is the
+  caller's **real active focus** indication, not a stored selected index.
+- With a callback, the checkbox owns its focus via native Compose
+  `toggleable(role = Role.Checkbox)`; its border follows actual checkbox
+  focus rather than a caller-supplied highlight. The value remains controlled
+  by the caller. `enabled = false` disables input and is exposed through
+  native toggleable semantics. The original QS checkbox has no disabled
+  colour variant, so this helper does not invent one.
+- Never intercept parent list-row clicks in passive mode, and do not put
+  independent interactive checkboxes in a parent that already consumes
+  Enter/DPAD without explicitly planning focus ownership.
+- Verify parity on Q25 (checked/unchecked, focused/unfocused, touch,
+  keyboard, DPAD and accessibility) before migrating Vector or integrating
+  the helper into other shared components.
 
 ## App-scoped appearance management
 
