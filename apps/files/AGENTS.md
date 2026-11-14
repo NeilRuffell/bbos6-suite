@@ -85,11 +85,19 @@ monorepo. Consult `../../AGENTS.md`, `../../shared/AGENTS.md`,
   existing flat-black path header and dark popups. Do not duplicate theme
   UI or add per-screen foreground overrides; future opt-in belongs in shared.
   Keep future Files settings business logic in this app, not shared UI.
-- Files owns the directory item's fixed 3x3 context menu order:
-  Cut/Copy/Rename, Properties/Open/Delete, Select/Share/New Folder.
-  Keep Share present but disabled on folders so the grid remains stable.
-  Favourites and clipboard commands belong in a second menu group; keep the
-  indexed media, Favourites and multi-select menus independent.
+- With no clipboard staged, Files owns the directory item's fixed 3x3
+  context menu order: Cut/Copy/Rename, Properties/Open/Delete,
+  Select/Share/New Folder. Keep Share present but disabled on folders so
+  the grid remains stable. Bookmark commands follow in a second group.
+  When Copy/Cut is pending, both item and blank-folder directory menus
+  instead show only Paste, New Folder and Cancel Copy/Cut, supplied by the
+  single Files-owned `FilesClipboardMenu` action policy. Paste and New
+  Folder always target the **current** folder, never the long-pressed row.
+  Normal row activation (including entering directories) remains enabled.
+  New Folder must not clear the clipboard; cancelling or successful Paste
+  restores the regular menu, while partial paste failures retain the
+  reduced menu for retry. Do not replace Favourites, indexed media or
+  active multi-selection menus: those are not directory paste destinations.
   Properties uses shared `Bbos6PropertiesDialog` and `Bbos6PropertyRow`;
   Files alone reads actual, authorized filesystem metadata off the UI
   thread using `FilePropertiesReader`. Do not derive folder size from
