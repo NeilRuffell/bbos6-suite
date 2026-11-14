@@ -81,6 +81,7 @@ public final class MessagesInspectionHook implements IXposedHookLoadPackage {
             Log.i(TAG, "Inspection enabled for main Google Messages process");
             if (isActionProbeEnabled()) {
                 Log.i(TAG, "Native action diagnostics enabled; stock Google UI retained");
+                MessagesNativeActionTrace.install(param.classLoader);
             } else if (isPageEnabled() || isInboxPaintEnabled()) {
                 // The 750ms delayed full-page view swap and row overlay
                 // were rejected by Q25 acceptance: the native Google inbox
