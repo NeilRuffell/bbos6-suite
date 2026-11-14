@@ -107,6 +107,20 @@ final class MessagesNativeActionTrace {
                 try {
                     XposedBridge.hookMethod(method, new XC_MethodHook() {
                         @Override
+                        protected void afterHookedMethod(MethodHookParam hook) {
+                            ActionScope state = ACTIVE_ACTION.get();
+                            if (state == null
+                                || !"asvb.onClick".equals(state.kind)
+                                || !"asvk".equals(name)) return;
+                            if ("L".equals(method.getName())
+                                || "I".equals(method.getName())) {
+                                GoogleMessagesConversationBinding.logDelegatePathStage(
+                                    state.nativeDelegate, "after_" + method.getName()
+                                );
+                            }
+                        }
+
+                        @Override
                         protected void beforeHookedMethod(MethodHookParam hook) {
                             ActionScope state = ACTIVE_ACTION.get();
                             if (state == null || state.events >= MAX_EVENTS_PER_ACTION) return;
@@ -128,6 +142,9 @@ final class MessagesNativeActionTrace {
                                 if ("Q".equals(method.getName())
                                     && "asvb.onClick".equals(state.kind)
                                     && hook.args != null && hook.args.length == 1) {
+                                    GoogleMessagesConversationBinding.logDelegatePathStage(
+                                        state.nativeDelegate, "before_Q"
+                                    );
                                     GoogleMessagesConversationBinding.matchesGoogleOpen(
                                         state.nativeDelegate, hook.args[0]
                                     );
@@ -211,6 +228,11 @@ final class MessagesNativeActionTrace {
                 protected void beforeHookedMethod(MethodHookParam hook) {
                     if ("asvb".equals(className) || "asvc".equals(className)) {
                         startAction(className + "." + methodName, hook.thisObject);
+                        if ("asvb".equals(className)) {
+                            GoogleMessagesConversationBinding.logDelegatePathStage(
+                                hook.thisObject, "before_onClick"
+                            );
+                        }
                     }
                     boolean attached = hook.args.length == 1
                         && hook.args[0] instanceof View
