@@ -18,9 +18,12 @@ This application lives in `apps/files/` of the `bbos6-suite` monorepo.
   white text, based on the supplied original BlackBerry File Folders image.
   Other consumers retain the original beveled section-header appearance.
   The shared header's optional trailing slot displays a passive Files-owned
-  pending Copy/Cut badge with item count on the far right. Long paths
-  ellipsize before the badge; the 28dp flat-black header and trackpad
-  focus remain unchanged. The badge stays visible while navigating
+  pending Copy/Cut badge with item count on the far right. Long directory
+  paths **start-ellipsize** (dots on the left, current/rightmost folder
+  remains visible) before the badge, whether or not a transfer is staged.
+  The header uses the shared `titleOverflow` option, not a Files-specific
+  text renderer. The 28dp flat-black header, trackpad focus and badge
+  geometry remain unchanged. The badge stays visible while navigating
   Files pages and disappears when nothing is staged.
 - Home navigation: Internal Storage, SD Card (when mounted), Recent Files,
   **Favourites**, Images, Downloads, Audio, Documents, Videos and **Settings**
@@ -274,6 +277,18 @@ Existing file operations must remain unchanged.
 4. In a populated folder, long-press the trackpad on a selected row and
    confirm the row-specific menu still opens once, rather than the blank
    folder menu. Verify ordinary short-click activation remains unchanged.
+
+### Directory path truncation checks
+
+1. Navigate into nested folders until the complete breadcrumb exceeds the
+   Q25 width. Confirm the path begins with an ellipsis and preserves the
+   rightmost/current folder name; a short path displays normally.
+2. Stage Copy or Cut: the badge remains at the far right, and the reduced
+   available width truncates **older path segments on the left**, never the
+   current folder suffix when it fits.
+3. Repeat with multi-selection active, confirm the selected-count suffix
+   remains on the right, and verify Files home/Settings and Music keep their
+   existing end-ellipsis behaviour.
 
 ### Clipboard indicator checks
 
