@@ -58,6 +58,45 @@ continuing to masquerade as a working BBOS6 integration. The experimental
 sources remain only for reference while direct Google controller bindings
 are investigated. No production UI replacement is active. Do not merge.
 
+### Q25 verified navigation method argument types (2026-11-14 16:31)
+
+Q25 device output verifies these *instance methods* on the installed
+Google Messages build:
+
+- `asvk.Q(ConversationId): void` receives a
+  `bugle.BugleConversationId` during a real conversation tap.
+- `asvk.P(eggp): void` receives `eggp` during a real long-press.
+- `asvk.L(boolean, asvj): void`, `asvk.I(int): aszr`, and
+  `asvk.G(String): int` also occur within the tap/long-press traces.
+
+**Important:** The identity argument belongs to the *particular
+conversation*. Passing an invented ID, unrelated ID, or using a row
+position as an ID could open the wrong thread. The direct `Q/P`
+contract is **not** accepted for BBOS6 activation until that identity
+is associated with the selected native conversation.
+
+The active read-only action probe now captures the actual Google
+`asvb` callback object during a user tap. While Google calls
+`asvk.Q`, it examines only bounded reference fields of the
+captured `asvj` holder to find a
+`ConversationId`-typed object matching Google's real argument.
+It logs `BBMessagesActions ID_LINK` with match booleans, a field
+path and object counts—**never the identifier, its hash, contact,
+message text or object contents**. It neither invokes any Google
+controller method nor changes navigation.
+
+To test after building/reinstalling the branch with actionprobe=true,
+open a real conversation in the stock Google inbox, then run:
+
+```sh
+adb -s 202512003630 logcat -d -v time | grep 'BBMessagesActions.*ID_LINK'
+```
+
+A match would justify extracting that typed identity from each native
+holder as a further guarded implementation step; it would still not
+prove source-time replacement, complete paging or full RCS behavior.
+The earlier overlays remain disabled.
+
 ### Q25 observed controller call sequence (2026-11-14 16:29)
 
 Q25 build/device test confirmed `MessagesNativeActionTrace` successfully
