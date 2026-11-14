@@ -254,9 +254,7 @@ final class GoogleMessagesAdapterBridge {
             View view = holderItemView(holder, nameId);
             if (view == null || !view.getClass().getName().equals(
                     "com.google.android.apps.messaging.home.list.ConversationListItemView")) {
-                throw new IllegalStateException(
-                    "Unexpected native row class at adapter index " + index
-                );
+                throw new UnexpectedNativeRowException(index);
             }
             View senderView = view.findViewById(nameId);
             View snippetView = view.findViewById(snippetId);
@@ -287,24 +285,45 @@ final class GoogleMessagesAdapterBridge {
 
 
     /**
-     * Diagnoses all native row kinds when the strict all-conversation
-     * snapshot is rejected. An adapter entry may be a date separator, banner,
-     * announcement or other non-conversation UI. Never silently omit it.
-     *
-     * Logs only adapter index, row class, ViewHolder class and presence of
-     * verified text/action controls. It does not log raw view type IDs,
-     * conversation data, text contents or handler targets.
+     * A checked discriminator so diagnostics can inspect the offending
+     * position directly, without parsing exception messages.
      */
-    void inspectRowKinds() {
+    static final class UnexpectedNativeRowException extends IllegalStateException {
+        final int index;
+
+        UnexpectedNativeRowException(int index) {
+            super("Unexpected native row class at adapter index " + index);
+            this.index = index;
+        }
+    }
+
+    /**
+     * Inspect only the rejected native position and a few neighboring
+     * positions. Large inboxes can have hundreds of entries; do not bind
+     * every holder merely to explain one unsupported row.
+     *
+     * Logs positions, row/holder class names and presence of controls only.
+     * Never logs sender, message text, conversation IDs or view-type values.
+     */
+    void inspectRowKinds(int rejectedPosition) {
         if (!isCurrent()) return;
         BRIDGE_BIND.set(true);
         try {
             int count = itemCount();
             Log.i(TAG, "ROW_KINDS totalNativeItems=" + count);
-            if (count > 64) {
-                Log.w(TAG, "ROW_KINDS item count too large; no page replacement");
-                return;
+            if (count <= 0) return;
+            java.util.LinkedHashSet<Integer> sample =
+                new java.util.LinkedHashSet<>();
+            sample.add(0);
+            if (rejectedPosition >= 0 && rejectedPosition < count) {
+                if (rejectedPosition > 0) sample.add(rejectedPosition - 1);
+                sample.add(rejectedPosition);
+                if (rejectedPosition + 1 < count) sample.add(rejectedPosition + 1);
             }
+            sample.add(count - 1);
+            Log.i(TAG, "ROW_KINDS sampled=" + sample.size()
+                + " rejectedPosition=" + rejectedPosition
+                + " nativeTotal=" + count);
             int nameId = recycler.getResources().getIdentifier(
                 "conversation_name", "id", TARGET_PACKAGE
             );
@@ -312,7 +331,9 @@ final class GoogleMessagesAdapterBridge {
                 "conversation_snippet", "id", TARGET_PACKAGE
             );
             int conversationRows = 0;
-            for (int position = 0; position < count; position++) {
+            int examinedRows = 0;
+            for (int position : sample) {
+                examinedRows++;
                 try {
                     Object kind = itemTypeMethod.invoke(adapter, position);
                     if (!(kind instanceof Integer)) {
@@ -358,9 +379,10 @@ final class GoogleMessagesAdapterBridge {
                         + cause.getClass().getSimpleName());
                 }
             }
-            Log.i(TAG, "ROW_KINDS conversationRows=" + conversationRows
-                + " otherRows=" + (count - conversationRows)
-                + " (not hidden, stock inbox retained)");
+            Log.i(TAG, "ROW_KINDS sampleConversations=" + conversationRows
+                + " sampleOther=" + (examinedRows - conversationRows)
+                + " examined=" + examinedRows
+                + " (stock inbox retained; not a total breakdown)");
         } catch (Throwable failure) {
             Log.w(TAG, "ROW_KINDS inspection failed: "
                 + failure.getClass().getSimpleName());
