@@ -128,7 +128,7 @@ final class MessagesNativeActionTrace {
                                 if ("Q".equals(method.getName())
                                     && "asvb.onClick".equals(state.kind)
                                     && hook.args != null && hook.args.length == 1) {
-                                    MessagesNativeConversationIdentity.compareRealOpen(
+                                    GoogleMessagesConversationBinding.matchesGoogleOpen(
                                         state.nativeDelegate, hook.args[0]
                                     );
                                 }
