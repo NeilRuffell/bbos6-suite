@@ -347,7 +347,13 @@ private fun FilesPage(
             clipboard = null
             returnToFavorites = false
         }
-        if (!accessGranted) indexedCategory = null
+        if (!accessGranted) {
+            indexedCategory = null
+            clipboard = null
+        } else if (clipboard != null && roots.none { it.directory == clipboard?.root }) {
+            // A staged transfer must not outlive its unmounted source volume.
+            clipboard = null
+        }
         if (currentRoot?.id == "removable" && removableDirectory == null) {
             currentRoot = null
             currentFolder = null
@@ -372,7 +378,11 @@ private fun FilesPage(
         } else currentFolder = parent
     }
 
-    fun mutate(operation: () -> FileOperations.Result, onSuccess: () -> Unit = {}) {
+    fun mutate(
+        operation: () -> FileOperations.Result,
+        onSuccess: () -> Unit = {},
+        onFailure: () -> Unit = {}
+    ) {
         if (operationBusy || !accessGranted) return
         operationBusy = true
         scope.launch {
@@ -381,8 +391,10 @@ private fun FilesPage(
             refreshCounter++
             when (result) {
                 is FileOperations.Result.Success -> onSuccess()
-                is FileOperations.Result.Failure ->
+                is FileOperations.Result.Failure -> {
+                    onFailure()
                     popup = InfoPopup("File Operation", result.message)
+                }
             }
         }
     }
@@ -399,23 +411,24 @@ private fun FilesPage(
         val staged = clipboard ?: return
         val root = currentRoot ?: return
         val folder = currentFolder ?: return
+        var remainingSources = staged.sources
         mutate(
-            {
-                val failures = staged.sources.mapNotNull { source ->
-                    when (val result = FileOperations.paste(
-                        staged.root, source, root.directory, folder, staged.cut
-                    )) {
-                        is FileOperations.Result.Success -> null
-                        is FileOperations.Result.Failure -> "${source.name}: ${result.message}"
-                    }
-                }
-                if (failures.isEmpty()) FileOperations.Result.Success()
-                else FileOperations.Result.Failure(
-                    "Transfer incomplete (${failures.size}/${staged.sources.size} failed): " +
-                        failures.joinToString("; ")
+            operation = {
+                val outcome = ClipboardTransfer.paste(
+                    staged.root, staged.sources, root.directory, folder, staged.cut
                 )
+                remainingSources = outcome.remainingSources
+                outcome.operation
             },
-            onSuccess = { if (staged.cut) clipboard = null }
+            onSuccess = {
+                // Both Copy and Cut conclude after one successful paste.
+                if (clipboard === staged) clipboard = null
+            },
+            onFailure = {
+                // Retain only failed entries; successfully pasted items must
+                // not be pasted again (or represented in the status count).
+                if (clipboard === staged) clipboard = staged.copy(sources = remainingSources)
+            }
         )
     }
 
@@ -493,6 +506,7 @@ private fun FilesPage(
     // The activity's root consumes the system status-bar inset so the
     // shared header and every Files screen start below clock/notification icons.
     // Keep system-bar policy at the window boundary, not in Bbos6SectionHeader.
+    val pendingClipboard = clipboard
     Bbos6ThemeSurface(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
         Column(Modifier.fillMaxSize()) {
         Bbos6SectionHeader(
@@ -508,7 +522,15 @@ private fun FilesPage(
                 }
                 else -> "Files"
             },
-            style = Bbos6SectionHeaderStyle.FLAT_BLACK_COMPACT
+            style = Bbos6SectionHeaderStyle.FLAT_BLACK_COMPACT,
+            trailingContent = if (pendingClipboard != null && accessGranted) {
+                {
+                    ClipboardStatusIndicator(
+                        cut = pendingClipboard.cut,
+                        count = pendingClipboard.sources.size
+                    )
+                }
+            } else null
         )
         Box(Modifier.weight(1f)) {
             if (settingsPage) {
@@ -752,7 +774,13 @@ private fun FilesPage(
             }
             // Directory-level actions remain available when an item is selected.
             add(Bbos6ContextAction.text("new", "New Folder"))
-            if (clipboard != null) add(Bbos6ContextAction.text("paste", "Paste"))
+            if (clipboard != null) {
+                add(Bbos6ContextAction.text("paste", "Paste"))
+                add(Bbos6ContextAction.text(
+                    "cancel_clipboard",
+                    if (clipboard?.cut == true) "Cancel Cut" else "Cancel Copy"
+                ))
+            }
         }
         Bbos6ContextMenuDialog(
             groups = listOf(actions),
@@ -789,6 +817,7 @@ private fun FilesPage(
                     }
                     "new" -> createFolder()
                     "paste" -> pasteItem()
+                    "cancel_clipboard" -> clipboard = null
                 }
             }
         )
@@ -877,7 +906,13 @@ private fun FilesPage(
     if (folderMenu && root != null && folder != null) {
         val actions = buildList {
             add(Bbos6ContextAction.text("new", "New Folder"))
-            if (clipboard != null) add(Bbos6ContextAction.text("paste", "Paste"))
+            if (clipboard != null) {
+                add(Bbos6ContextAction.text("paste", "Paste"))
+                add(Bbos6ContextAction.text(
+                    "cancel_clipboard",
+                    if (clipboard?.cut == true) "Cancel Cut" else "Cancel Copy"
+                ))
+            }
             add(Bbos6ContextAction.text("refresh", "Refresh"))
         }
         Bbos6ContextMenuDialog(
@@ -888,6 +923,7 @@ private fun FilesPage(
                 when (action.id) {
                     "new" -> createFolder()
                     "paste" -> pasteItem()
+                    "cancel_clipboard" -> clipboard = null
                     "refresh" -> refreshCounter++
                 }
             }
