@@ -71,15 +71,50 @@ active non-platform reference fields. It does not invoke any unidentified
 methods, read conversation objects, or modify UI. Identify the adapter
 contract and stable item/action mappings before enabling a full-page swap.
 
+### Verified obfuscated adapter binding (2026-11-14)
+
+The latest Q25 log identifies `RecyclerView.n` as the native adapter:
+
+- Field declared `yv`, with runtime `vv`, a subclass of `yv`
+- `yv.a(): int` native item count
+- `yv.dR(int): int` item view type
+- `yv.hG(int): long` native item ID
+- `yv.n(ViewGroup, int): aac` native ViewHolder creation wrapper
+- `yv.o(aac, int): void` native ViewHolder binding wrapper
+- `vv.e(ViewGroup, int)` and `vv.g(aac, int)` create/bind implementations
+
+`GoogleMessagesAdapterBridge` performs a strict version check for exactly
+this observed class/method contract. Unsupported Google builds are left
+untouched; there is **no fallback based on guessed field names**.
+
+The new normal inspection calls the verified item-count and identity
+accessors, logging **only** count and boolean availability/distinctness
+of first/last IDs. It never logs raw IDs or message contents.
+
+To verify whether the adapter can supply the full BBOS6 page, a separate
+**opt-in** `debug.bbmessages.bindprobe.enabled=true` probe invokes Google's
+normal create/bind wrappers for at most the first and last native positions.
+It checks for sender/preview TextView presence and native click/long-click
+capability without logging their values or invoking clicks. This is
+application-specific *data/action integration*, **not** a new list helper.
+
+The probe is required to validate off-screen item handling before the
+full-page `MessagesInboxList → Bbos6PageList` is mounted. The old row
+overlay must be disabled. After collecting the probe, set the probe
+property false and restart Google Messages. No full-page UI replacement
+is activated by the diagnostic.
+
 To inspect the stock adapter, **disable the old visual experiment first**:
 
 ```sh
 adb -s 202512003630 shell setprop debug.bbmessages.inbox.enabled false
+adb -s 202512003630 shell setprop debug.bbmessages.bindprobe.enabled true
 adb -s 202512003630 logcat -c
 adb -s 202512003630 shell am force-stop com.google.android.apps.messaging
 adb -s 202512003630 shell monkey -p com.google.android.apps.messaging 1
 sleep 3
-adb -s 202512003630 logcat -d -v time | grep 'BBMessagesAdapter'
+adb -s 202512003630 logcat -d -v time | grep -E 'BBMessagesAdapter.*(RESOLVED|IDENTITY|BIND_PROBE|unavailable|failed)'
+adb -s 202512003630 shell setprop debug.bbmessages.bindprobe.enabled false
 ```
 
 This is the required adapter evidence before implementing the one-list
