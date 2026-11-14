@@ -204,6 +204,91 @@ final class GoogleMessagesAdapterBridge {
         }
     }
 
+    /**
+     * Controller-level diagnostic for freshly bound native conversation rows.
+     * Samples at most 40 adapter positions; no message contents or IDs are
+     * logged, no UI is added, and Google navigation is never invoked.
+     */
+    void verifyBoundConversationHandles() {
+        if (!isCurrent()) return;
+        BRIDGE_BIND.set(true);
+        try {
+            int nativeCount = itemCount();
+            int limit = Math.min(nativeCount, 40);
+            int conversations = 0;
+            int valid = 0;
+            int unbound = 0;
+            int animations = 0;
+            int unexpected = 0;
+            int repeatedRefs = 0;
+            java.util.Set<Object> identities =
+                java.util.Collections.newSetFromMap(
+                    new java.util.IdentityHashMap<Object, Boolean>()
+                );
+            int nameId = recycler.getResources().getIdentifier(
+                "conversation_name", "id", TARGET_PACKAGE
+            );
+            for (int position = 0; position < limit; position++) {
+                try {
+                    Object type = itemTypeMethod.invoke(adapter, position);
+                    if (!(type instanceof Integer)) {
+                        unexpected++;
+                        continue;
+                    }
+                    Object holder = createHolderMethod.invoke(
+                        adapter, recycler, (Integer) type
+                    );
+                    if (holder == null) {
+                        unbound++;
+                        continue;
+                    }
+                    bindHolderMethod.invoke(adapter, holder, position);
+                    View row = holderItemView(holder, nameId);
+                    if (row == null) {
+                        unbound++;
+                    } else if (CONVERSATION_ROW.equals(row.getClass().getName())) {
+                        conversations++;
+                        GoogleMessagesConversationBinding.VerifiedHandle binding =
+                            GoogleMessagesConversationBinding.fromBoundConversation(
+                                row, holder
+                            );
+                        if (binding != null) {
+                            valid++;
+                            if (!identities.add(binding.conversationId)) repeatedRefs++;
+                        } else {
+                            unbound++;
+                        }
+                    } else if (LOTTIE_ROW.equals(row.getClass().getName())
+                               && !row.hasOnClickListeners()
+                               && !row.isLongClickable()) {
+                        animations++;
+                    } else {
+                        unexpected++;
+                    }
+                } catch (Throwable ignored) {
+                    unbound++;
+                }
+            }
+            if (!isCurrent() || nativeCount != itemCount()) {
+                Log.w(TAG, "HANDLE_PROBE native adapter changed; result invalid");
+                return;
+            }
+            Log.i(TAG, "HANDLE_PROBE nativeItems=" + nativeCount
+                + " sampled=" + limit
+                + " conversations=" + conversations
+                + " verified=" + valid
+                + " unbound=" + unbound
+                + " animation=" + animations
+                + " unexpected=" + unexpected
+                + " repeatedIdReferences=" + repeatedRefs);
+        } catch (Throwable failure) {
+            Log.w(TAG, "HANDLE_PROBE could not inspect bound holders: "
+                + failure.getClass().getSimpleName());
+        } finally {
+            BRIDGE_BIND.remove();
+        }
+    }
+
     private void probePosition(int index, String label) {
         try {
             Object type = itemTypeMethod.invoke(adapter, index);
