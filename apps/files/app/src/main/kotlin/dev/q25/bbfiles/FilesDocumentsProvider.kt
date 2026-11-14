@@ -17,8 +17,8 @@ import java.util.Locale
 
 /**
  * System Storage Access Framework adapter for Files' existing authorized
- * shared-storage volumes. Android's DocumentsUI owns the picker presentation,
- * URI grants and confirmation of user-selected operations.
+ * shared-storage volumes. Android's DocumentsUI owns the picker presentation
+ * and user-mediated URI grants; external clients own their operation prompts.
  *
  * Never expose app-private paths, raw filesystem paths as document IDs, or
  * storage volumes while the user has revoked All Files Access.
