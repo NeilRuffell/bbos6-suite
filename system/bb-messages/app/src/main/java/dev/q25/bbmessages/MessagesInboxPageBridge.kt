@@ -13,6 +13,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.createLifecycleAwareWindowRecomposer
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
@@ -131,6 +132,20 @@ object MessagesInboxPageBridge {
                 compose.setViewTreeLifecycleOwner(owner)
                 compose.setViewTreeSavedStateRegistryOwner(owner)
                 compose.setViewTreeViewModelStoreOwner(owner)
+                // ComposeView normally creates a recomposer from the topmost
+                // Google-owned window content view. Google Messages does not
+                // expose a compatible AndroidX ViewTreeLifecycleOwner there,
+                // even though our FrameLayout and ComposeView have one.
+                //
+                // Supply the documented lifecycle-aware recomposer explicitly
+                // as this view's parent composition context. This keeps the
+                // lifecycle entirely within our injected host, without
+                // tagging or mutating Google's outer view hierarchy.
+                compose.setParentCompositionContext(
+                    host.createLifecycleAwareWindowRecomposer(
+                        lifecycle = owner.lifecycle
+                    )
+                )
                 compose.isFocusable = true
                 compose.isFocusableInTouchMode = true
                 compose.layoutParams = FrameLayout.LayoutParams(
