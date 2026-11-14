@@ -30,7 +30,10 @@ monorepo. Consult `../../AGENTS.md`, `../../shared/AGENTS.md`,
   `Bbos6SectionHeaderStyle.FLAT_BLACK_COMPACT` for its path bar (28dp flat
   black, no border, 2dp text inset). Other clients retain `BEVELED`.
   Do not add status-bar-specific padding inside `Bbos6SectionHeader`
-  or individual pages.
+  or individual pages. Its optional passive `trailingContent` slot reserves
+  width at the right, ellipsizing long paths without changing header height.
+  Files owns its Copy/Cut indicator, clipboard state and cancel/paste actions;
+  no other app gets an indicator by default.
 - Android storage access is explicitly user granted; protected/private
   app storage remains restricted. All file operations validate canonical
   volume boundaries, refuse overwrite, and run off the UI thread.
