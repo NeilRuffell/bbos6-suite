@@ -22,7 +22,7 @@ import java.util.Locale;
  *
  * Only the native notification_icon_area is hidden; signal, battery, clock,
  * privacy, and the native notification views stay attached and operational.
- * The native TextClock handles date, clock, locale and timezone changes.
+ * The native TextClock handles date, time and timezone changes.
  */
 final class NativeStatusBarMenuDate {
     private static final String TAG = "BB7-MenuDate";
@@ -79,7 +79,6 @@ final class NativeStatusBarMenuDate {
             date.setClickable(false);
             date.setTextSize(14); // Native Q25 status clock fallback, sp.
             date.setTextColor(Color.WHITE);
-            date.setContentDescription(null); // TextClock supplies the live value.
 
             statusBar = bar;
             notificationIconArea = area;
@@ -155,7 +154,10 @@ final class NativeStatusBarMenuDate {
             if (date.getTextSize() != nativeClock.getTextSize()) {
                 date.setTextSize(TypedValue.COMPLEX_UNIT_PX, nativeClock.getTextSize());
             }
-            date.setTypeface(nativeClock.getTypeface());
+            // A setter on every pre-draw can trigger repeated layout passes.
+            if (date.getTypeface() != nativeClock.getTypeface()) {
+                date.setTypeface(nativeClock.getTypeface());
+            }
         }
     }
 }
