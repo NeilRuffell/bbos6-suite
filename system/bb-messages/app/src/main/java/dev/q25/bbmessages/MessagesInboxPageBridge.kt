@@ -70,7 +70,10 @@ object MessagesInboxPageBridge {
                     "Full inbox snapshot rejected; inspecting native row types. Google inbox retained",
                     failure
                 )
-                adapter.inspectRowKinds()
+                val rejectedIndex =
+                    (failure as? GoogleMessagesAdapterBridge.UnexpectedNativeRowException)?.index
+                        ?: -1
+                adapter.inspectRowKinds(rejectedIndex)
                 return
             }
             if (recycler.parent !== parent || !recycler.isAttachedToWindow) return
