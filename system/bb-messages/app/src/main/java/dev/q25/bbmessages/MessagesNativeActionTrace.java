@@ -27,10 +27,14 @@ final class MessagesNativeActionTrace {
 
     private static final class ActionScope {
         final String kind;
+        final Object nativeDelegate;
         int events;
         int depth = 1;
 
-        ActionScope(String kind) { this.kind = kind; }
+        ActionScope(String kind, Object nativeDelegate) {
+            this.kind = kind;
+            this.nativeDelegate = nativeDelegate;
+        }
     }
 
     private MessagesNativeActionTrace() { }
@@ -49,9 +53,9 @@ final class MessagesNativeActionTrace {
         traceControllerClass(loader, "asvj");
     }
 
-    private static void startAction(String name) {
+    private static void startAction(String name, Object nativeDelegate) {
         ActionScope state = ACTIVE_ACTION.get();
-        if (state == null) ACTIVE_ACTION.set(new ActionScope(name));
+        if (state == null) ACTIVE_ACTION.set(new ActionScope(name, nativeDelegate));
         else state.depth++;
     }
 
@@ -121,6 +125,13 @@ final class MessagesNativeActionTrace {
                                 Log.i(TAG, "TRACE_ARGTYPE action=" + state.kind
                                     + " method=" + name + "." + method.getName()
                                     + " argClasses=" + argumentTypeNames(hook.args));
+                                if ("Q".equals(method.getName())
+                                    && "asvb.onClick".equals(state.kind)
+                                    && hook.args != null && hook.args.length == 1) {
+                                    MessagesNativeConversationIdentity.compareRealOpen(
+                                        state.nativeDelegate, hook.args[0]
+                                    );
+                                }
                             }
                         }
                     });
@@ -199,7 +210,7 @@ final class MessagesNativeActionTrace {
                 @Override
                 protected void beforeHookedMethod(MethodHookParam hook) {
                     if ("asvb".equals(className) || "asvc".equals(className)) {
-                        startAction(className + "." + methodName);
+                        startAction(className + "." + methodName, hook.thisObject);
                     }
                     boolean attached = hook.args.length == 1
                         && hook.args[0] instanceof View
