@@ -61,7 +61,17 @@ object MessagesInboxPageBridge {
 
             // No partial inbox. All adapter positions must bind to verified
             // native conversation rows and activation handlers.
-            val snapshot = adapter.snapshot()
+            val snapshot = try {
+                adapter.snapshot()
+            } catch (failure: Throwable) {
+                Log.w(
+                    TAG,
+                    "Full inbox snapshot rejected; inspecting native row types. Google inbox retained",
+                    failure
+                )
+                adapter.inspectRowKinds()
+                return
+            }
             if (recycler.parent !== parent || !recycler.isAttachedToWindow) return
 
             val session = Session(parent, recycler, adapter, snapshot)
