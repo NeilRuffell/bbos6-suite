@@ -85,6 +85,7 @@ object MessagesInboxPageBridge {
         private var lastSnapshotAt = 0L
         private var fallbackLogged = false
         private var insideMount = false
+        private var lastCandidate: WeakReference<ViewGroup>? = null
 
         fun observeCurrentTree() {
             val current = activityRef.get()?.window?.decorView
@@ -124,7 +125,19 @@ object MessagesInboxPageBridge {
                 attempts = 0
                 lastSnapshotAt = 0L
                 fallbackLogged = false
+                lastCandidate = null
                 return true
+            }
+            if (lastCandidate?.get() !== recycler) {
+                // A different inbox recycler may appear immediately on
+                // Back, without any draw frame where the old inbox is absent.
+                // Each NEW inbox deserves a fresh bounded remount window.
+                lastCandidate = WeakReference(recycler)
+                attempts = 0
+                lastSnapshotAt = 0L
+                fallbackLogged = false
+                Log.i(TAG, "SOURCE_PAGE visible native inbox detected"
+                    + " stage=return_or_initial")
             }
 
             val now = android.os.SystemClock.uptimeMillis()
