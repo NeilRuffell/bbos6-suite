@@ -21,6 +21,7 @@ import java.util.Collections
 import java.util.IdentityHashMap
 import java.util.WeakHashMap
 import java.lang.ref.WeakReference
+import de.robv.android.xposed.XposedHelpers
 
 /**
  * Opt-in BBOS6 rendering *inside* Google's existing conversation row.
@@ -49,9 +50,12 @@ object MessagesInboxNativeRowBridge {
     fun onNativeBound(holder: Any) {
         if (holder.javaClass.name != "asvj") return
         try {
-            val field = holder.javaClass.getDeclaredField("a")
-            field.isAccessible = true
-            val row = field.get(holder) as? ViewGroup ?: return
+            // The verified View field 'a' is declared in a superclass of
+            // asvj. getDeclaredField() on asvj itself always fails here.
+            // XposedHelpers walks inherited fields, matching the successful
+            // controller/adapter diagnostics on the Q25.
+            val row = XposedHelpers.getObjectField(holder, "a") as? ViewGroup
+                ?: return
             if (row.javaClass.name != ROW_CLASS) return
             val painter = synchronized(painters) {
                 painters[row]?.get() ?: NativePainter(row).also {
