@@ -230,7 +230,16 @@ public final class MessagesInspectionHook implements IXposedHookLoadPackage {
                 new XC_MethodHook() {
                     @Override
                     protected void afterHookedMethod(MethodHookParam hook) {
-                        if (!GoogleMessagesAdapterBridge.isSnapshotBinding()) {
+                        if (!hook.hasThrowable()
+                            && !GoogleMessagesAdapterBridge.isSnapshotBinding()
+                            && hook.args.length == 2
+                            && hook.args[1] instanceof Integer) {
+                            // Only Google's REAL adapter binds, never our
+                            // detached presentation snapshots. Store weak
+                            // row→position association for live native actions.
+                            MessagesNativeAttachedActionBridge.observeNativeBind(
+                                hook.args[0], ((Integer) hook.args[1]).intValue()
+                            );
                             MessagesInboxPageBridge.onNativeAdapterBound();
                         }
                     }
