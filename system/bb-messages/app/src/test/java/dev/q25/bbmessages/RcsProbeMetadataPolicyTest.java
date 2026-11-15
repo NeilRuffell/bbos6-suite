@@ -17,6 +17,28 @@ public final class RcsProbeMetadataPolicyTest {
     }
 
     @Test
+    public void onlyFollowsObservedUccFieldTypes() {
+        assertTrue(RcsProbeMetadataPolicy.isObservedDeclaredTypeSource("ucc"));
+        assertFalse(RcsProbeMetadataPolicy.isObservedDeclaredTypeSource("awei"));
+        assertFalse(RcsProbeMetadataPolicy.isObservedDeclaredTypeSource(null));
+        for (String name : new String[] {
+            "qe", "pk", "ujo", "ujl", "hbno", "uji"
+        }) {
+            assertTrue(RcsProbeMetadataPolicy.isObservedUccDeclaredType(name));
+        }
+        assertFalse(RcsProbeMetadataPolicy.isObservedUccDeclaredType(
+            "java.util.List"
+        ));
+        assertFalse(RcsProbeMetadataPolicy.isObservedUccDeclaredType(
+            "java.util.concurrent.Executor"
+        ));
+        assertFalse(RcsProbeMetadataPolicy.isObservedUccDeclaredType(
+            "com.google.android.apps.messaging.shared.api.messaging.conversation.bugle.BugleConversationId"
+        ));
+        assertFalse(RcsProbeMetadataPolicy.isObservedUccDeclaredType(null));
+    }
+
+    @Test
     public void excludesAndroidActivityConversationIdAndUnobservedClasses() {
         assertFalse(RcsProbeMetadataPolicy.isKnownDirectReference(
             "com.google.android.apps.messaging.main.MainActivity"

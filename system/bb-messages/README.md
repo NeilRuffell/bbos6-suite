@@ -50,7 +50,7 @@ These observations verify the controller hook and allowlisted class
 identities; they **do not prove** RCS historical storage access, RCS
 conversation transport, sending, receipts, media or typing.
 
-## Second milestone — bounded class schema probe (awaiting Q25 test)
+## Second milestone — bounded class schema probe (Q25 tested)
 
 A second separately opted-in diagnostic reads **class metadata only**
 for the nine runtime types above: superclass, interfaces (up to 6),
@@ -91,6 +91,60 @@ adb -s 202512003630 shell setprop debug.bbmessages.rcsprobe.schema.enabled false
 This diagnostic is not a complete RCS integration. The immediate goal
 is to obtain enough verified method/field **types** to identify a
 read-only conversation-history subscription or data-store contract.
+
+## Q25 00:39 second probe — class-schema collection PASSED
+
+The Q25 reported `RCS_PROBE originalConversationOpenObserved=true completed=true`
+and successfully printed bounded `RCS_SCHEMA` metadata. Evidence:
+
+- `fzii` has a `View.OnClickListener` method and a `fzbv` field,
+  so at least part of this controller is UI-facing.
+- `awei`, `aweq` and `gvvj` implement `gvvp`, exposing
+  `Object`-returning methods, without any observed message-history
+  interface.
+- `ucc` declares an `Executor`, `CopyOnWriteArrayList`,
+  and fields typed `qe`, `pk`, `ujo`, `ujl`, `hbno` and `uji`.
+  This is an **unclassified** component, not a verified RCS service.
+- `yw` extends Android `Observable`; that alone is not evidence
+  of an RCS event feed.
+
+**All full-RCS acceptance requirements remain unverified.**
+
+## Third milestone — declared type schema, optional, not yet Q25-tested
+
+To limit further reflection to the actual Q25 evidence, the new
+`RcsDeclaredTypeProbe` describes only the six class types above,
+and **only when their types are declared directly by `ucc`**.
+It collects each class's superclass, interfaces, up to 16 declared
+instance field names/types, and up to 32 method signatures. Neither
+`ucc`'s field values nor those of any downstream types are read.
+No Google method is invoked. This intentionally stops after one
+metadata-only type hop.
+
+After a new debug APK is installed, enable all three properties
+before restarting stock Google Messages:
+
+```bash
+adb -s 202512003630 shell setprop debug.bbmessages.rcsprobe.enabled true
+adb -s 202512003630 shell setprop debug.bbmessages.rcsprobe.schema.enabled true
+adb -s 202512003630 shell setprop debug.bbmessages.rcsprobe.types.enabled true
+adb -s 202512003630 logcat -c
+adb -s 202512003630 shell am force-stop com.google.android.apps.messaging
+adb -s 202512003630 shell monkey -p com.google.android.apps.messaging 1
+```
+
+Open one existing conversation in **stock** Google Messages and collect:
+
+```bash
+adb -s 202512003630 logcat -d -v time | \
+  grep -E 'RCS_TYPES|RCS_PROBE|RCS_SCHEMA'
+```
+
+The next decision depends on whether these signatures expose a
+specific messaging-data interface. If not, stop expanding the UI
+controller graph and investigate the installed APK's messaging
+data/transport implementation directly. Neither result should be
+represented as verified RCS history or send support.
 
 ## First milestone: read-only structural probe
 

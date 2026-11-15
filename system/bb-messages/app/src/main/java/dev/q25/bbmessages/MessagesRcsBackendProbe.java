@@ -29,6 +29,8 @@ public final class MessagesRcsBackendProbe implements IXposedHookLoadPackage {
     private static final String PROPERTY = "debug.bbmessages.rcsprobe.enabled";
     private static final String SCHEMA_PROPERTY =
         "debug.bbmessages.rcsprobe.schema.enabled";
+    private static final String TYPES_PROPERTY =
+        "debug.bbmessages.rcsprobe.types.enabled";
     private static final String CONTROLLER = "asvk";
     private static final String CONVERSATION_ID =
         "com.google.android.apps.messaging.shared.api.messaging.conversation.ConversationId";
@@ -73,8 +75,10 @@ public final class MessagesRcsBackendProbe implements IXposedHookLoadPackage {
                     try {
                         Log.i(TAG, "RCS_PROBE originalConversationOpenObserved=true"
                             + " completed=" + !hook.hasThrowable());
+                        boolean includeSchema = propertyEnabled(SCHEMA_PROPERTY);
                         describeReferenceTypes(
-                            hook.thisObject, controller, propertyEnabled(SCHEMA_PROPERTY)
+                            hook.thisObject, controller, includeSchema,
+                            includeSchema && propertyEnabled(TYPES_PROPERTY)
                         );
                         describeConversationType(conversationId);
                     } catch (Throwable failure) {
@@ -115,7 +119,8 @@ public final class MessagesRcsBackendProbe implements IXposedHookLoadPackage {
      * conversation content. Never call methods on those objects or log them.
      */
     private static void describeReferenceTypes(
-        Object instance, Class<?> expected, boolean includeSchema
+        Object instance, Class<?> expected,
+        boolean includeSchema, boolean includeDeclaredTypes
     ) {
         if (instance == null || !expected.isInstance(instance)) {
             Log.w(TAG, "RCS_PROBE controller instance unavailable");
@@ -147,6 +152,12 @@ public final class MessagesRcsBackendProbe implements IXposedHookLoadPackage {
                 // traverse its object graph or call a Google method.
                 if (includeSchema && reference != null) {
                     RcsServiceMetadataProbe.describe(reference.getClass());
+                    // A separate opt-in reads only Class metadata on
+                    // allowlisted types declared by the observed ucc class.
+                    // No nested instance-field values are ever accessed.
+                    if (includeDeclaredTypes) {
+                        RcsDeclaredTypeProbe.describeFrom(reference.getClass());
+                    }
                 }
                 emitted++;
             }

@@ -14,6 +14,25 @@ final class RcsProbeMetadataPolicy {
         ))
     );
 
+    // Q25 00:39: ucc declares these six types directly, with no
+    // evidence yet about whether they belong to RCS.
+    private static final Set<String> UCC_DECLARED_TYPES =
+        Collections.unmodifiableSet(new HashSet<String>(Arrays.asList(
+            "qe", "pk", "ujo", "ujl", "hbno", "uji"
+        )));
+
+    static final int MAX_DECLARED_TYPE_CLASSES = 6;
+    static final int MAX_DECLARED_TYPE_FIELDS = 16;
+    static final int MAX_DECLARED_TYPE_METHODS = 32;
+
+    static boolean isObservedDeclaredTypeSource(String source) {
+        return "ucc".equals(source);
+    }
+
+    static boolean isObservedUccDeclaredType(String typeName) {
+        return UCC_DECLARED_TYPES.contains(typeName);
+    }
+
     static final int MAX_CLASSES = 9;
     static final int MAX_FIELDS_PER_CLASS = 16;
     static final int MAX_METHODS_PER_CLASS = 24;
