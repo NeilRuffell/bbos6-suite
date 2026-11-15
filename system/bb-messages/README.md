@@ -58,6 +58,26 @@ continuing to masquerade as a working BBOS6 integration. The experimental
 sources remain only for reference while direct Google controller bindings
 are investigated. No production UI replacement is active. Do not merge.
 
+### Native row inheritance fix (Q25 2026-11-14 17:26)
+
+Q25 logs confirmed `NATIVE_ROW binding enabled`, followed by repeated
+`Native row bridge unavailable: NoSuchFieldException` on all bound rows.
+The implementation incorrectly queried `asvj.getDeclaredField("a")`.
+The established Google holder inspection already proved that the
+`a: android.view.View` field is inherited rather than necessarily
+declared directly on `asvj`. The code now uses
+`XposedHelpers.getObjectField(holder, "a")`, which traverses
+inherited fields, before checking the expected
+`ConversationListItemView` runtime class. Structural warnings
+are emitted only once per exception class per process.
+
+**Status:** source correction committed, build and Q25 visual
+verification pending. No navigational changes, no data reset, no merge.
+The default renderer remains opt-in via
+`debug.bbmessages.native.rows.enabled=true`. After installing the
+updated module, restart Google Messages and check
+`NATIVE_ROW` / `BBMessagesNativeRows` logs.
+
 ### Opt-in source-time BBOS6 row presentation (unverified build/device; 2026-11-14)
 
 A new, separate experimental flag enables a first **visible** BBOS6
