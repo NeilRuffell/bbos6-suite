@@ -121,6 +121,31 @@ class InspectorTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             tool.focused_targets("not-supported")
 
+    def test_history_focus_is_evidence_scoped(self):
+        history = tool.focused_targets("history")
+        self.assertIn(
+            "com.google.android.apps.messaging.shared.datamodel.data.MessageData",
+            history,
+        )
+        self.assertIn(
+            "com.google.android.apps.messaging.home.dataservice.HomeDataService",
+            history,
+        )
+        self.assertIn(
+            "com.google.android.apps.messaging.shared.datamodel.databasegen.tabledefinitions.MessagesTable$InsertableBindData",
+            history,
+        )
+        self.assertEqual(len(history), 6)
+        self.assertEqual(len(history), len(set(history)))
+        self.assertTrue(set(history).isdisjoint(tool.focused_targets("models")))
+        self.assertTrue(set(history).isdisjoint(tool.focused_targets("actions")))
+        self.assertEqual(
+            len(tool.focused_targets("all")),
+            len(tool.focused_targets("actions")) +
+            len(tool.focused_targets("models")) +
+            len(tool.focused_targets("history")),
+        )
+
     def test_invalid_header_is_rejected(self):
         b = bytearray(synthetic_dex())
         b[7] = 1

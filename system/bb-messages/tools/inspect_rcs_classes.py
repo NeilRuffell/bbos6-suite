@@ -48,7 +48,20 @@ MODEL_TARGETS = (
     "com.google.android.apps.messaging.backup.unified.MessagesBackupAndRestoreService",
 )
 
-TARGETS = ACTION_TARGETS + MODEL_TARGETS
+# Q25-observed named method owners or verified model/part descriptors.
+# The parent MessagesTable name is inferred from the verified nested
+# InsertableBindData descriptor; a missing class is valid and expected to
+# be reported explicitly.
+HISTORY_TARGETS = (
+    "com.google.android.apps.messaging.shared.datamodel.data.MessageData",
+    "com.google.android.apps.messaging.shared.datamodel.data.MessagePartData",
+    "com.google.android.apps.messaging.shared.datamodel.data.message.part.MessagePartCoreData",
+    "com.google.android.apps.messaging.home.dataservice.HomeDataService",
+    "com.google.android.apps.messaging.shared.datamodel.databasegen.tabledefinitions.MessagesTable$InsertableBindData",
+    "com.google.android.apps.messaging.shared.datamodel.databasegen.tabledefinitions.MessagesTable",
+)
+
+TARGETS = ACTION_TARGETS + MODEL_TARGETS + HISTORY_TARGETS
 TARGET_DESCRIPTORS = {"L" + s.replace(".", "/") + ";": s for s in TARGETS}
 
 def focused_targets(focus: str) -> tuple[str, ...]:
@@ -56,6 +69,8 @@ def focused_targets(focus: str) -> tuple[str, ...]:
         return MODEL_TARGETS
     if focus == "actions":
         return ACTION_TARGETS
+    if focus == "history":
+        return HISTORY_TARGETS
     if focus == "all":
         return TARGETS
     raise ValueError("Unknown focus")
@@ -232,9 +247,9 @@ def main(argv: list[str] | None = None) -> int:
     choice = parser.add_mutually_exclusive_group(required=True)
     choice.add_argument("--serial", help="ADB serial for installed Google Messages APK")
     choice.add_argument("--apk", type=Path, help="Offline local APK")
-    parser.add_argument("--focus", choices=("actions", "models", "all"),
+    parser.add_argument("--focus", choices=("actions", "models", "history", "all"),
                         default="actions",
-                        help="Choose action classes, history/model classes, or both")
+                        help="Choose actions, models, history-related named owners, or all")
     args = parser.parse_args(argv)
     try:
         if args.apk is not None:

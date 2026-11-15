@@ -32,6 +32,54 @@ so `adb install -r` updates the existing module without uninstalling it.
 contracts have real Q25 evidence.** The current probe proves none of
 the mandatory RCS capabilities.
 
+## Q25 defined-method owner scan — 16 tests PASSED
+
+On 15 November 2026, the Q25 passed all 16 Python tests and scanned
+four installed Google Messages APKs / 12 DEX files. The method-owner
+scanner confirmed:
+
+- 135 defined methods returning `MessageCoreData`, including the
+  named `MessageData.E()` implementation; this is a model method, not
+  proof of historical message retrieval
+- 12 defined methods returning `MessagePartCoreData`, including
+  `MessageData.O()` and `MessageData.P(List)`
+- 1,077 defined methods taking `ConversationIdType`, including
+  `HomeDataService.b(ConversationIdType):fzew`
+- 448 defined methods taking `MessageIdType`, including
+  `ProcessMessageUpdateAsyncAction` and `SendMessageAction`
+
+The totals include obfuscated owners and do **not** indicate 1,077
+distinct history-query APIs. No history loading or RCS live-stream
+operation has been established.
+
+### Next step — focus on named data/query types
+
+The existing offline `inspect_rcs_classes.py` now supports
+`--focus history`, which examines six focused class names:
+`MessageData`, `MessagePartData`, `MessagePartCoreData`,
+`HomeDataService`, and the observed
+`MessagesTable$InsertableBindData` type. The parent `MessagesTable`
+is a **candidate inferred from the nested class name** and will
+be reported missing if its class definition does not exist.
+
+This is code metadata only, not a database query. It does not
+read message records, invoke methods, modify Google Messages,
+or access any private account or attachment data.
+
+```bash
+cd ~/Projects/bbos6-suite
+git fetch origin
+git switch feature/messages-rcs-backend-research
+git pull --ff-only origin feature/messages-rcs-backend-research
+python3 -m unittest discover -s system/bb-messages/tools/tests -v
+python3 system/bb-messages/tools/inspect_rcs_classes.py \
+  --serial 202512003630 --focus history
+```
+
+Decision gate: locate an identifiable read-only message-history
+query or subscription contract. If these names expose only model
+and write bindings, move to verified history-query class discovery
+rather than claiming that RCS history can already be read.
 ## Q25 model signatures — 11 tests and 8/8 classes PASSED
 
 The Q25 installed-Google-Messages metadata scan reported 4 APKs, 12 DEX,
