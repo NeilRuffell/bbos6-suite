@@ -15,9 +15,11 @@ Zinwa Q25. The renderer reuses the canonical Kotlin/Compose BBOS6 library in
   `RecyclerView` as they were in native-row skin mode.
 - A source-time `MainActivity` pre-draw listener attempts to mount the
   shared inbox **before the first native inbox paint**. This replaces
-  the rejected 750ms delayed mount. If the current Google adapter
-  cannot provide a complete verified snapshot within 12 attempts,
-  it restores/allows Google's stock UI.
+  the rejected 750ms delayed mount. It suppresses a bounded number of
+  initial draw passes (maximum 90) while throttling expensive adapter
+  snapshots to at least 150ms apart. If the current Google adapter
+  cannot provide a complete verified snapshot, it allows Google's
+  stock UI instead.
 - Added `GoogleMessagesControllerNavigation` as an **app-specific**
   guarded action bridge (not a shared UI helper). At snapshot,
   it resolves the actual Google model through `asvk.I(position)`
