@@ -76,6 +76,7 @@ object MessagesInboxNativeRowBridge {
         private var snippet: TextView? = null
         private var clock: TextView? = null
         private val originalAlpha = IdentityHashMap<View, Float>()
+        private var originalHeight: Int? = null
         private var failed = false
         private var focusedObserver: ViewTreeObserver? = null
 
@@ -90,11 +91,13 @@ object MessagesInboxNativeRowBridge {
             focused = row.hasFocus()
         }
         private val layoutListener = View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            setNativeRowHeight()
             positionFace()
         }
         private val attachmentListener = object : View.OnAttachStateChangeListener {
             override fun onViewAttachedToWindow(view: View) {
                 observeFocus()
+                setNativeRowHeight()
                 positionFace()
             }
             override fun onViewDetachedFromWindow(view: View) {
@@ -211,6 +214,7 @@ object MessagesInboxNativeRowBridge {
         private fun setNativeRowHeight() {
             val heightPx = (ROW_DP * row.resources.displayMetrics.density).toInt()
             val params = row.layoutParams ?: return
+            if (originalHeight == null) originalHeight = params.height
             if (params.height != heightPx) {
                 params.height = heightPx
                 row.layoutParams = params
@@ -301,6 +305,15 @@ object MessagesInboxNativeRowBridge {
             } finally {
                 for ((view, alpha) in originalAlpha) view.alpha = alpha
                 originalAlpha.clear()
+                originalHeight?.let { height ->
+                    row.layoutParams?.let { params ->
+                        if (params.height != height) {
+                            params.height = height
+                            row.layoutParams = params
+                        }
+                    }
+                }
+                originalHeight = null
                 owner?.destroy()
                 owner = null
             }
