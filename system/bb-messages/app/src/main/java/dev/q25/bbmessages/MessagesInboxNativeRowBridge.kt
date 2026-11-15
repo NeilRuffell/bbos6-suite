@@ -44,6 +44,8 @@ object MessagesInboxNativeRowBridge {
     private val painters = Collections.synchronizedMap(
         WeakHashMap<ViewGroup, WeakReference<NativePainter>>()
     )
+    // Report each structural failure class once per process, not every bind.
+    private val reportedFailures = Collections.synchronizedSet(mutableSetOf<String>())
 
     /** Called strictly after Google's verified vv.g(aac,int) row bind. */
     @JvmStatic
@@ -64,7 +66,9 @@ object MessagesInboxNativeRowBridge {
             }
             painter.bind()
         } catch (failure: Throwable) {
-            Log.w(TAG, "Native row bridge unavailable: ${failure.javaClass.simpleName}")
+            if (reportedFailures.add(failure.javaClass.name)) {
+                Log.w(TAG, "Native row bridge unavailable: ${failure.javaClass.simpleName}")
+            }
         }
     }
 
