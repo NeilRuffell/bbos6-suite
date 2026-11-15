@@ -4,6 +4,78 @@ Independent experimental Vector/LSPosed module for Google Messages on the
 Zinwa Q25. The renderer reuses the canonical Kotlin/Compose BBOS6 library in
 `../../shared/android/bbos6-ui/`.
 
+## Q25 18:05 startup regression: empty mount and model lookup failure
+
+The Q25 log proves **the new integration was already enabled**:
+`SOURCE_PAGE shared BBOS6 controller opted in` and
+`SOURCE_PAGE watching first draw`. It mounted a premature snapshot
+(`nativeItems=0 conversationRows=0`) and then, while the actual
+inbox populated, the first refresh failed with
+`IllegalStateException: Google model unavailable for native row`.
+The full-page session rolled back to the stock Google inbox. Repeated
+`SOURCE_PAGE unavailable` warnings followed.
+
+Changes on the same unmerged feature branch:
+
+1. A native count of zero at startup now returns *not ready*, rather
+   than mounting an empty shared list. The first-draw watcher retries
+   only within its bounded time/pass window.
+2. **Presentation is separated from navigation identity:** native
+   conversation rows can produce a complete `Bbos6PageList` snapshot
+   even when the standalone `asvk.I(position)` model lookup cannot be
+   verified. The snapshot logs counts of `modelsResolved` and
+   `modelsUnavailable` without printing IDs, contacts or text.
+3. **Fail-closed activation remains mandatory.** A row without its
+   validated model cannot call `asvk.Q`; selecting it restores stock
+   Google Messages. This is a shared-list visual/scroll test, *not* a
+   claim of working conversation activation.
+4. `MODEL_RESOLVE_STAGE unavailable=...` now records the **first
+   occurrence of each structural failure stage only**, distinguishing
+   a native binding failure, null result, unexpected returned type,
+   nested model-field failures and reflection errors. No object
+   identities or data values are logged.
+5. The first-draw observer now marks itself finished and detaches
+   from its current live tree observer. This prevents repeated
+   failure warnings from an obsolete observer. An unresolved model
+   on both old/new snapshots no longer forces an unnecessary Compose
+   selection reset every refresh.
+
+**Verification pending:** This is source-level progress, not a
+verified APK build or successful Q25 screen. The branch remains
+draft/unmerged. The existing property is still correct:
+`debug.bbmessages.shared.page.enabled=true`. There is **no new
+enable switch**.
+
+Recommended Q25 commands, after rebuilding/installing the branch:
+
+```sh
+cd ~/Projects/bbos6-suite
+git fetch origin
+git switch feature/messages-inbox-shared-subtitles
+git pull --ff-only origin feature/messages-inbox-shared-subtitles
+gradle -p system/bb-messages \
+  :bbos6-ui:verifyKotlinOnly \
+  :bbos6-ui:testDebugUnitTest \
+  :app:testDebugUnitTest \
+  :app:assembleDebug && \
+adb -s 202512003630 install -r \
+  system/bb-messages/app/build/outputs/apk/debug/app-debug.apk
+
+adb -s 202512003630 shell setprop debug.bbmessages.actionprobe.enabled false
+adb -s 202512003630 shell setprop debug.bbmessages.native.rows.enabled false
+adb -s 202512003630 shell setprop debug.bbmessages.shared.page.enabled true
+adb -s 202512003630 logcat -c
+adb -s 202512003630 shell am force-stop com.google.android.apps.messaging
+adb -s 202512003630 shell monkey -p com.google.android.apps.messaging 1
+adb -s 202512003630 logcat -d -v time | \
+  grep -E 'MODEL_RESOLVE_STAGE|SNAPSHOT|SOURCE_PAGE|OPEN blocked|BBMessagesPage'
+```
+
+If the shared page appears and a conversation cannot be opened, the
+fallback is intentional. Continue investigation of Google's
+`asvk.I(int)` outside its native click before allowing activation.
+Do not disable the identity guard or synthesize a conversation ID.
+
 ## New opt-in integrated BBOS6 inbox (implementation staged; untested on Q25)
 
 **Progress since the failed row-skin experiment:**
