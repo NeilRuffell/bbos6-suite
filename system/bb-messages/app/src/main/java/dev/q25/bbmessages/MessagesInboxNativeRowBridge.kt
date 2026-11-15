@@ -84,6 +84,8 @@ object MessagesInboxNativeRowBridge {
         private var clock: TextView? = null
         private val originalAlpha = IdentityHashMap<View, Float>()
         private var originalHeight: Int? = null
+        private var originalPadding: IntArray? = null
+        private var geometryLogged = false
         private var failed = false
         private var focusedObserver: ViewTreeObserver? = null
 
@@ -126,7 +128,10 @@ object MessagesInboxNativeRowBridge {
                 updateText()
                 if (face.title.isBlank()) return
                 if (compose == null) installFace()
-                else concealNativeChildren()
+                else {
+                    removeNativeInsets()
+                    concealNativeChildren()
+                }
                 if (row.isAttachedToWindow) observeFocus()
                 focused = row.hasFocus()
             } catch (failure: Throwable) {
@@ -169,6 +174,7 @@ object MessagesInboxNativeRowBridge {
                 owner = localOwner
                 row.addOnAttachStateChangeListener(attachmentListener)
                 row.addOnLayoutChangeListener(layoutListener)
+                removeNativeInsets()
                 concealNativeChildren()
                 setNativeRowHeight()
                 positionFace()
@@ -209,10 +215,43 @@ object MessagesInboxNativeRowBridge {
                 }
                 skin.layout(0, 0, w, h)
                 skin.bringToFront()
+                if (!geometryLogged) {
+                    geometryLogged = true
+                    val original = originalPadding
+                    Log.i(TAG, "NATIVE_GEOMETRY width=" + w
+                        + " height=" + h
+                        + " faceWidth=" + skin.measuredWidth
+                        + " faceHeight=" + skin.measuredHeight
+                        + " density=" + row.resources.displayMetrics.density
+                        + " initialPaddingPresent=" + (original != null)
+                        + " initialPaddingNonzero="
+                        + (original != null && original.any { it != 0 })
+                        + " nativeParent=" + (row.parent?.javaClass?.simpleName ?: "null"))
+                }
             } catch (failure: Throwable) {
                 failed = true
                 rollback()
                 Log.w(TAG, "NATIVE_ROW face layout failed: ${failure.javaClass.simpleName}")
+            }
+        }
+
+        /**
+         * Google uses content padding inside ConversationListItemView.
+         * The screenshot showed the full-size Compose skin clipped at that
+         * inset rectangle (including its leading name and trailing clock).
+         * Remove only this row's insets while the alternate face is mounted.
+         * The exact original values are restored on failure.
+         */
+        private fun removeNativeInsets() {
+            if (originalPadding == null) {
+                originalPadding = intArrayOf(
+                    row.paddingLeft, row.paddingTop,
+                    row.paddingRight, row.paddingBottom
+                )
+            }
+            if (row.paddingLeft != 0 || row.paddingTop != 0 ||
+                row.paddingRight != 0 || row.paddingBottom != 0) {
+                row.setPadding(0, 0, 0, 0)
             }
         }
 
@@ -310,6 +349,10 @@ object MessagesInboxNativeRowBridge {
             } finally {
                 for ((view, alpha) in originalAlpha) view.alpha = alpha
                 originalAlpha.clear()
+                originalPadding?.let { padding ->
+                    row.setPadding(padding[0], padding[1], padding[2], padding[3])
+                }
+                originalPadding = null
                 originalHeight?.let { height ->
                     row.layoutParams?.let { params ->
                         if (params.height != height) {
