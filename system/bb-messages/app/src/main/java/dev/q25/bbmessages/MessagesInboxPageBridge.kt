@@ -74,14 +74,27 @@ object MessagesInboxPageBridge {
         if (!tree.isAlive) return
         var passes = 0
         var lastSnapshotAt = 0L
+        var finished = false
         val listener = object : ViewTreeObserver.OnPreDrawListener {
+            private fun finish() {
+                finished = true
+                // The observer captured before first attach can become stale.
+                // Remove from both the captured and current live observer.
+                if (tree.isAlive) tree.removeOnPreDrawListener(this)
+                val current = decor.viewTreeObserver
+                if (current !== tree && current.isAlive) {
+                    current.removeOnPreDrawListener(this)
+                }
+            }
+
             override fun onPreDraw(): Boolean {
+                if (finished) return true
                 if (activity.isFinishing || activity.isDestroyed) {
-                    if (tree.isAlive) tree.removeOnPreDrawListener(this)
+                    finish()
                     return true
                 }
                 if (currentSession?.get() != null) {
-                    if (tree.isAlive) tree.removeOnPreDrawListener(this)
+                    finish()
                     return true
                 }
                 // Snapshotting can bind many native holders. Retry at
@@ -90,7 +103,7 @@ object MessagesInboxPageBridge {
                 if (now - lastSnapshotAt >= 150L) {
                     lastSnapshotAt = now
                     if (tryMount(activity)) {
-                        if (tree.isAlive) tree.removeOnPreDrawListener(this)
+                        finish()
                         Log.i(TAG, "SOURCE_PAGE mounted before first native draw")
                         decor.postInvalidateOnAnimation()
                         return false
@@ -98,7 +111,7 @@ object MessagesInboxPageBridge {
                 }
                 passes++
                 if (passes >= SOURCE_DRAW_ATTEMPTS) {
-                    if (tree.isAlive) tree.removeOnPreDrawListener(this)
+                    finish()
                     Log.w(TAG, "SOURCE_PAGE unavailable; retained stock Google inbox")
                     return true
                 }
@@ -300,9 +313,11 @@ object MessagesInboxPageBridge {
                 val identityChanged = nativeRows.size != latest.size ||
                     nativeRows.zip(latest).any { (before, after) ->
                         before.index != after.index ||
-                            !GoogleMessagesControllerNavigation.sameConversation(
-                                before.model, after.model
-                            )
+                            (before.model == null) != (after.model == null) ||
+                            (before.model != null && after.model != null &&
+                                !GoogleMessagesControllerNavigation.sameConversation(
+                                    before.model, after.model
+                                ))
                     }
                 nativeRows = latest
                 nativeAdapterItemCount = refreshedItemCount
