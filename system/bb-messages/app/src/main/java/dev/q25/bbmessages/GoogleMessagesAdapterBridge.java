@@ -392,7 +392,6 @@ final class GoogleMessagesAdapterBridge {
         java.util.ArrayList<NativeConversationRow> rows =
             new java.util.ArrayList<>(count);
         int nonInteractiveAnimations = 0;
-        int unresolvedModels = 0;
         for (int index = 0; index < count; index++) {
             Object type = itemTypeMethod.invoke(adapter, index);
             if (!(type instanceof Integer)) {
@@ -436,7 +435,6 @@ final class GoogleMessagesAdapterBridge {
             // dependent, so do not call it during a presentation snapshot.
             // Opening is delegated to Google's own attached row listener.
             // Never manufacture a message ID from a position or title.
-            unresolvedModels++;
             rows.add(new NativeConversationRow(index, sender, preview,
                 timestamp, view, holder, null));
         }
@@ -450,8 +448,8 @@ final class GoogleMessagesAdapterBridge {
         }
         Log.i(TAG, "SNAPSHOT nativeItems=" + count
             + " conversationRows=" + rows.size()
-            + " modelsResolved=" + (rows.size() - unresolvedModels)
-            + " modelsUnavailable=" + unresolvedModels
+            + " independentModelRead=disabled"
+            + " originalNativeActionBridge=enabled"
             + " nonInteractiveLottieRows=" + nonInteractiveAnimations);
         return rows;
     }
