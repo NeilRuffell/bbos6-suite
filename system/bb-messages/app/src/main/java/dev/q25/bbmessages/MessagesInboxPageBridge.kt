@@ -45,93 +45,165 @@ object MessagesInboxPageBridge {
     // Bounded wait for Google's asynchronous inbox population, without
     // painting the rejected native-Google-to-BBOS6 transition.
     private const val SOURCE_DRAW_ATTEMPTS = 90
-    private val observedActivities =
-        java.util.Collections.newSetFromMap(
-            java.util.WeakHashMap<Activity, Boolean>()
+    // Every MainActivity needs a persistent pre-draw observer, not a
+    // one-shot watcher removed after the initial inbox mount. Google can
+    // recreate its RecyclerView without recreating the Activity on Back.
+    private val monitors =
+        java.util.Collections.synchronizedMap(
+            java.util.WeakHashMap<Activity, InboxDrawMonitor>()
         )
 
-    /**
-     * Google adapter bind callback (not a new scrolling/input controller).
-     * Coalesce native data refreshes on the main thread.
-     */
+    /** Coalesce native adapter callbacks; list mechanics stay shared. */
     @JvmStatic
     fun onNativeAdapterBound() {
         currentSession?.get()?.scheduleRefresh()
     }
 
     /**
-     * Register while Activity.onResume is returning, before first draw.
-     * Do not post a 750ms overlay over an already painted Google inbox.
-     * If Google has not supplied a valid adapter snapshot within a bounded
-     * number of draw passes, fail closed to the unmodified Google UI.
+     * Register on every MainActivity resume and retain the monitor across
+     * fragment transitions. It performs no work when the conversation
+     * screen is showing and no VISIBLE native inbox exists.
      */
     @JvmStatic
     fun watchFirstDraw(activity: Activity) {
-        if (activity.javaClass.name != TARGET_ACTIVITY ||
-            !observedActivities.add(activity)) return
-        val decor = activity.window?.decorView ?: return
-        val tree = decor.viewTreeObserver
-        if (!tree.isAlive) return
-        var passes = 0
-        var lastSnapshotAt = 0L
-        var finished = false
-        val listener = object : ViewTreeObserver.OnPreDrawListener {
-            private fun finish() {
-                finished = true
-                // The observer captured before first attach can become stale.
-                // Remove from both the captured and current live observer.
-                if (tree.isAlive) tree.removeOnPreDrawListener(this)
-                val current = decor.viewTreeObserver
-                if (current !== tree && current.isAlive) {
-                    current.removeOnPreDrawListener(this)
-                }
-            }
-
-            override fun onPreDraw(): Boolean {
-                if (finished) return true
-                if (activity.isFinishing || activity.isDestroyed) {
-                    finish()
-                    return true
-                }
-                if (currentSession?.get() != null) {
-                    finish()
-                    return true
-                }
-                // Snapshotting can bind many native holders. Retry at
-                // bounded intervals, not on every 16ms pre-draw pass.
-                val now = android.os.SystemClock.uptimeMillis()
-                if (now - lastSnapshotAt >= 150L) {
-                    lastSnapshotAt = now
-                    if (tryMount(activity)) {
-                        finish()
-                        Log.i(TAG, "SOURCE_PAGE mounted before first native draw")
-                        decor.postInvalidateOnAnimation()
-                        return false
-                    }
-                }
-                passes++
-                if (passes >= SOURCE_DRAW_ATTEMPTS) {
-                    finish()
-                    Log.w(TAG, "SOURCE_PAGE unavailable; retained stock Google inbox")
-                    return true
-                }
-                decor.postInvalidateOnAnimation()
-                return false
+        if (activity.javaClass.name != TARGET_ACTIVITY) return
+        val monitor = synchronized(monitors) {
+            monitors[activity] ?: InboxDrawMonitor(activity).also {
+                monitors[activity] = it
             }
         }
-        tree.addOnPreDrawListener(listener)
-        Log.i(TAG, "SOURCE_PAGE watching first draw")
+        monitor.observeCurrentTree()
+    }
+
+    private class InboxDrawMonitor(activity: Activity) :
+        ViewTreeObserver.OnPreDrawListener {
+        private val activityRef = WeakReference(activity)
+        private var tree: ViewTreeObserver? = null
+        private var attempts = 0
+        private var lastSnapshotAt = 0L
+        private var fallbackLogged = false
+        private var insideMount = false
+
+        fun observeCurrentTree() {
+            val current = activityRef.get()?.window?.decorView
+                ?.viewTreeObserver?.takeIf { it.isAlive } ?: return
+            if (tree === current) return
+            tree?.takeIf { it.isAlive }?.removeOnPreDrawListener(this)
+            current.addOnPreDrawListener(this)
+            tree = current
+            Log.i(TAG, "SOURCE_PAGE persistent inbox draw monitor attached")
+        }
+
+        private fun detach() {
+            tree?.takeIf { it.isAlive }?.removeOnPreDrawListener(this)
+            tree = null
+            activityRef.get()?.let { activity ->
+                synchronized(monitors) {
+                    if (monitors[activity] === this) monitors.remove(activity)
+                }
+            }
+        }
+
+        override fun onPreDraw(): Boolean {
+            if (insideMount) return true
+            val activity = activityRef.get()
+            if (activity == null || activity.isFinishing || activity.isDestroyed) {
+                detach()
+                return true
+            }
+
+            // This is the decisive Back fix: the one-time startup watcher
+            // was previously removed after mounting, leaving later Google
+            // inbox RecyclerViews completely unskinned on Back.
+            // A visible stock inbox is a remount candidate on EVERY draw;
+            // the hidden RecyclerView inside our own host is not.
+            val recycler = findVisibleNativeInbox(activity.window?.decorView)
+            if (recycler == null) {
+                attempts = 0
+                lastSnapshotAt = 0L
+                fallbackLogged = false
+                return true
+            }
+
+            val now = android.os.SystemClock.uptimeMillis()
+            if (attempts < SOURCE_DRAW_ATTEMPTS &&
+                now - lastSnapshotAt >= 150L) {
+                lastSnapshotAt = now
+                insideMount = true
+                val mounted = try {
+                    tryMount(activity, recycler)
+                } finally {
+                    insideMount = false
+                }
+                if (mounted) {
+                    attempts = 0
+                    fallbackLogged = false
+                    Log.i(TAG, "SOURCE_PAGE intercepted native inbox before draw"
+                        + " returnMount=true")
+                    activity.window?.decorView?.postInvalidateOnAnimation()
+                    return false
+                }
+            }
+            attempts++
+            if (attempts >= SOURCE_DRAW_ATTEMPTS) {
+                if (!fallbackLogged) {
+                    fallbackLogged = true
+                    Log.w(TAG, "SOURCE_PAGE unsupported inbox retained for safety"
+                        + " after bounded draw attempts")
+                }
+                return true
+            }
+            activity.window?.decorView?.postInvalidateOnAnimation()
+            return false
+        }
+    }
+
+    /**
+     * Inspect only the visible, attached native inbox, not the hidden
+     * recycler retained inside the BBOS6 host or a conversation thread.
+     * This handles returning fragments that allocate a NEW recycler with
+     * the same android.R.id.list, which findViewById would otherwise miss.
+     */
+    private fun findVisibleNativeInbox(root: View?): ViewGroup? {
+        if (root == null) return null
+        var inspected = 0
+        fun find(view: View, depth: Int): ViewGroup? {
+            if (depth > 24 || ++inspected > 1500 || !view.isShown) return null
+            if (view is ViewGroup) {
+                if (view.id == android.R.id.list &&
+                    view.javaClass.name == NATIVE_RECYCLER &&
+                    view.parent is LinearLayout && view.isAttachedToWindow &&
+                    GoogleMessagesAdapterBridge.resolve(view) != null) {
+                    return view
+                }
+                for (i in 0 until view.childCount) {
+                    find(view.getChildAt(i), depth + 1)?.let { return it }
+                }
+            }
+            return null
+        }
+        return find(root, 0)
     }
 
     @JvmStatic
-    fun tryMount(activity: Activity): Boolean {
+    fun tryMount(activity: Activity): Boolean =
+        findVisibleNativeInbox(activity.window?.decorView)?.let {
+            tryMount(activity, it)
+        } ?: false
+
+    private fun tryMount(activity: Activity, recycler: ViewGroup): Boolean {
         if (activity.javaClass.name != TARGET_ACTIVITY) return false
         try {
-            val recycler = activity.findViewById<View>(android.R.id.list)
-            if (recycler !is ViewGroup || recycler.javaClass.name != NATIVE_RECYCLER)
-                return false
+            if (!recycler.isAttachedToWindow || !recycler.isShown ||
+                recycler.javaClass.name != NATIVE_RECYCLER) return false
             val parent = recycler.parent as? LinearLayout ?: return false
             val adapter = GoogleMessagesAdapterBridge.resolve(recycler) ?: return false
+            // Recreated native inbox: do not confuse a stale detached
+            // session with a mounted page. Keep the stock row hidden as
+            // soon as this new shared session is installed.
+            currentSession?.get()?.let { previous ->
+                if (!previous.owns(recycler)) previous.abandonIfDetached()
+            }
 
             // No partial inbox. All adapter positions must bind to verified
             // native conversation rows and activation handlers.
@@ -185,6 +257,17 @@ object MessagesInboxPageBridge {
         private var scheduled = false
         private var closed = false
         private var restoring = false
+
+        fun owns(candidate: ViewGroup): Boolean =
+            !closed && recycler === candidate && recycler.parent === host &&
+                host.parent === parent
+
+        fun abandonIfDetached() {
+            if (!closed && !host.isAttachedToWindow) {
+                Log.i(TAG, "SOURCE_PAGE retiring detached native inbox session")
+                release()
+            }
+        }
 
         private val refreshListener = View.OnLayoutChangeListener {
                 _, _, _, _, _, _, _, _, _ ->
