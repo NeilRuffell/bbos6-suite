@@ -270,6 +270,14 @@ object MessagesInboxPageBridge {
         private var displayRows by mutableStateOf(asDisplayRows(originalRows))
         private var revision by mutableIntStateOf(0)
         private var scheduled = false
+        private data class PendingActivation(
+            val row: GoogleMessagesAdapterBridge.NativeConversationRow,
+            val itemCount: Int,
+            val longPress: Boolean,
+            var frames: Int = 0,
+            var posted: Boolean = false
+        )
+        private var pendingActivation: PendingActivation? = null
         private var closed = false
         private var restoring = false
 
@@ -297,6 +305,38 @@ object MessagesInboxPageBridge {
                     if (adapter.itemCount() != nativeAdapterItemCount) scheduleRefresh()
                 } catch (failure: Throwable) {
                     scheduleRefresh()
+                }
+            }
+            val pending = pendingActivation
+            if (!closed && pending != null && !pending.posted) {
+                if (adapter.hasAttachedNativePosition(pending.row.index)) {
+                    // Pre-draw runs after the native RecyclerView layout.
+                    // Dispatch later, not during Google's draw traversal.
+                    pending.posted = true
+                    host.post {
+                        if (closed || restoring || pendingActivation !== pending)
+                            return@post
+                        pendingActivation = null
+                        if (!host.isAttachedToWindow) return@post
+                        if (!selectionStillCurrent(pending.row, pending.itemCount) ||
+                            !adapter.activate(pending.row, pending.longPress)) {
+                            Log.w(TAG, "OFFSCREEN attached row invalid; restoring Google inbox")
+                            rollback()
+                        }
+                    }
+                } else if (++pending.frames >= 20) {
+                    pending.posted = true
+                    host.post {
+                        if (closed || restoring || pendingActivation !== pending)
+                            return@post
+                        pendingActivation = null
+                        if (host.isAttachedToWindow) {
+                            Log.w(TAG, "OFFSCREEN native row never attached; restoring Google inbox")
+                            rollback()
+                        }
+                    }
+                } else {
+                    host.postInvalidateOnAnimation()
                 }
             }
             true
@@ -381,6 +421,9 @@ object MessagesInboxPageBridge {
                             // when Back is pressed. The persistent pre-draw
                             // monitor remounts BBOS6 before that new inbox
                             // can become visible.
+                            // Never dispatch an offscreen click after the
+                            // Google-owned inbox fragment has detached.
+                            pendingActivation = null
                             if (activity.isFinishing || activity.isDestroyed) {
                                 release()
                             }
@@ -434,29 +477,61 @@ object MessagesInboxPageBridge {
             }
         }
 
-        private fun activate(id: String, longPress: Boolean) {
-            if (closed) return
-            val current = nativeRows.firstOrNull { it.id == id }
+        private fun selectionStillCurrent(
+            selected: GoogleMessagesAdapterBridge.NativeConversationRow,
+            expectedItemCount: Int
+        ): Boolean {
             val countStable = try {
-                adapter.itemCount() == nativeAdapterItemCount
+                adapter.itemCount() == expectedItemCount &&
+                    nativeAdapterItemCount == expectedItemCount
             } catch (_: Throwable) {
                 false
             }
-            // With no independently readable Google ConversationId, we
-            // only allow delegation when this displayed tuple is unique.
-            // A duplicate could refer to another thread after a reorder;
-            // in that case the stock inbox is safer than an inferred ID.
-            val uniquePresentation = if (current == null) false else
-                nativeRows.count {
-                    it.sender == current.sender &&
-                        it.preview == current.preview &&
-                        it.timestamp == current.timestamp
-                } == 1
-            if (!countStable || !uniquePresentation || current == null ||
-                !adapter.activate(current, longPress)) {
-                Log.w(TAG, "Native conversation action unavailable or ambiguous; restoring Google inbox")
+            if (!countStable) return false
+            // The position key is NOT a conversation ID. Revalidate the
+            // complete displayed tuple against the latest native snapshot,
+            // and require uniqueness before any native action.
+            val current = nativeRows.firstOrNull { it.index == selected.index }
+                ?: return false
+            if (current.sender != selected.sender ||
+                current.preview != selected.preview ||
+                current.timestamp != selected.timestamp) return false
+            return nativeRows.count {
+                it.sender == selected.sender &&
+                    it.preview == selected.preview &&
+                    it.timestamp == selected.timestamp
+            } == 1
+        }
+
+        private fun activate(id: String, longPress: Boolean) {
+            if (closed || restoring || pendingActivation != null) return
+            val current = nativeRows.firstOrNull { it.id == id }
+            if (current == null ||
+                !selectionStillCurrent(current, nativeAdapterItemCount)) {
+                Log.w(TAG, "Native conversation selection stale or ambiguous; restoring Google inbox")
                 rollback()
+                return
             }
+            if (adapter.hasAttachedNativePosition(current.index)) {
+                if (!adapter.activate(current, longPress)) {
+                    Log.w(TAG, "Native attached action unavailable; restoring Google inbox")
+                    rollback()
+                }
+                return
+            }
+
+            // Offscreen BBOS6 rows must first become REAL Google-owned
+            // attached rows. Move only Google's hidden native viewport.
+            // The shared Bbos6PageList retains all user scrolling/focus.
+            val pending = PendingActivation(current, nativeAdapterItemCount, longPress)
+            pendingActivation = pending
+            if (!adapter.revealNativePosition(current.index)) {
+                pendingActivation = null
+                Log.w(TAG, "OFFSCREEN native viewport movement unavailable")
+                rollback()
+                return
+            }
+            host.postInvalidateOnAnimation()
         }
 
         private fun rollback() {
@@ -488,6 +563,7 @@ object MessagesInboxPageBridge {
         private fun release() {
             if (closed) return
             closed = true
+            pendingActivation = null
             if (currentSession?.get() === this) currentSession = null
             recycler.removeOnLayoutChangeListener(refreshListener)
             observedTree?.takeIf { it.isAlive }?.removeOnPreDrawListener(countObserver)

@@ -581,11 +581,43 @@ final class GoogleMessagesAdapterBridge {
         }
     }
 
+    /** Whether a real Google-bound row for this position is attached. */
+    boolean hasAttachedNativePosition(int position) {
+        return isCurrent() &&
+            MessagesNativeAttachedActionBridge.hasAttachedNativePosition(
+                recycler, position
+            );
+    }
+
+    /**
+     * Request a position using Google's own native RecyclerView scrolling
+     * API. No pixel-based scroll math, fake row, or independent list
+     * controller. The caller must wait for a real attachment and revalidate
+     * before dispatching any action.
+     */
+    boolean revealNativePosition(int position) {
+        try {
+            if (!isCurrent() || !recycler.isAttachedToWindow()
+                || position < 0 || position >= itemCount()) return false;
+            Method scroll = recycler.getClass().getMethod(
+                "scrollToPosition", int.class
+            );
+            if (scroll.getReturnType() != void.class) return false;
+            scroll.invoke(recycler, position);
+            Log.i(TAG, "OFFSCREEN requested native scrollToPosition index=" + position);
+            return true;
+        } catch (Throwable unavailable) {
+            Log.w(TAG, "OFFSCREEN native scrollToPosition unavailable: "
+                + unavailable.getClass().getSimpleName());
+            return false;
+        }
+    }
+
     /**
      * Open via the ORIGINAL attached Google row listener after confirming
      * current adapter, native position and presentation have not changed.
      * Never invoke a detached row's listener, never invent an ID.
-     * Unsupported/offscreen rows fail closed to stock Google Messages.
+     * Rows without an attached Google action fail closed; the caller may first\n     * move Google's own viewport and retry only after real attachment.
      */
     boolean activate(NativeConversationRow selected, boolean longPress) {
         if (selected == null) return false;

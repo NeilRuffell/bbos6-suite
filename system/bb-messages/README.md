@@ -4,6 +4,40 @@ Independent experimental Vector/LSPosed module for Google Messages on the
 Zinwa Q25. The renderer reuses the canonical Kotlin/Compose BBOS6 library in
 `../../shared/android/bbos6-ui/`.
 
+## Offscreen Google conversation activation (implementation awaiting Q25 test)
+
+The shared inbox now attempts to activate a selected conversation even if
+its original Google row is not attached to the native viewport:
+
+1. The canonical `Bbos6PageList` owns user scrolling, selection and input.
+   The Google adapter bridge asks the existing hidden, **attached** native
+   RecyclerView to `scrollToPosition(nativeAdapterIndex)`. It never
+   manufactures a Google conversation ID or calls the standalone `asvk.I`.
+2. On a subsequent pre-draw (after native layout), the bridge requires an
+   actual Google-bound, attached `ConversationListItemView` for the selected
+   native position. The original attached-row listener is the **only** action
+   path. All existing sender, preview, timestamp, adapter identity and unique
+   presentation checks still apply, and the selected snapshot's native item
+   count and tuple are rechecked before dispatch.
+3. No action runs during pre-draw. Dispatch is posted to the UI thread.
+   A pending action is canceled on host detach or session release. If the
+   public `scrollToPosition(int)` method is unavailable in this obfuscated
+   Google build, the row changes, or the expected row does not attach within
+   20 frames, the bridge **fails closed** and restores the native inbox.
+
+**Not yet verified on the Q25:** whether this installed Google Messages
+RecyclerView exports that method and binds the requested offscreen item;
+correct-target activation, Back, long-press and refresh still require on-device
+testing. No new native-scrolling helper or independent focus policy was added.
+The prior verified Back-to-BBOS6 remount path was not changed.
+
+Q25 test: after installing the existing feature branch, open Google Messages,
+use the BBOS6 trackpad or touchscreen to select a conversation far below the
+initial native viewport, and activate it. Confirm the *intended* conversation
+opens and Back returns straight to BBOS6. Repeat with hardware long-press and
+inspect `OFFSCREEN`, `ATTACHED_OPEN`, `SOURCE_PAGE` and `SNAPSHOT` logs.
+Do not clear app data or enable the rejected native-row skin.
+
 ## Q25 2026-11-14: Back visual acceptance passed
 
 The user explicitly confirmed on the Zinwa Q25 that after opening

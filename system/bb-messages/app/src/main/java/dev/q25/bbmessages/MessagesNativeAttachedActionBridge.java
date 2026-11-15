@@ -80,6 +80,25 @@ final class MessagesNativeAttachedActionBridge {
     }
 
     /**
+     * True only when Google has actually bound and attached the requested
+     * native position. Used to decide whether native RecyclerView movement
+     * is necessary; the final click still performs every full row check.
+     */
+    static boolean hasAttachedNativePosition(ViewGroup recycler, int position) {
+        if (recycler == null || position < 0
+            || !RECYCLER_CLASS.equals(recycler.getClass().getName())) return false;
+        for (int i = 0; i < recycler.getChildCount(); i++) {
+            View row = recycler.getChildAt(i);
+            if (row == null || row.getParent() != recycler
+                || !row.isAttachedToWindow()
+                || !ROW_CLASS.equals(row.getClass().getName())) continue;
+            Integer bound = BOUND.get(row);
+            if (bound != null && bound == position) return true;
+        }
+        return false;
+    }
+
+    /**
      * Selects from the currently ATTACHED native rows only, and never
      * creates/rebinds a detached row as an action source.
      *
