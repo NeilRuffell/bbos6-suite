@@ -31,6 +31,8 @@ public final class MessagesInspectionHook implements IXposedHookLoadPackage {
     private static final String PAGE_PROP = "debug.bbmessages.page.enabled";
     private static final String ACTION_PROBE_PROP =
         "debug.bbmessages.actionprobe.enabled";
+    private static final String NATIVE_ROW_PROP =
+        "debug.bbmessages.native.rows.enabled";
     private static final String ROW_CLASS =
         "com.google.android.apps.messaging.home.list.ConversationListItemView";
     private static final int MAX_VIEWS = 240;
@@ -82,6 +84,11 @@ public final class MessagesInspectionHook implements IXposedHookLoadPackage {
             if (isActionProbeEnabled()) {
                 Log.i(TAG, "Native action diagnostics enabled; stock Google UI retained");
                 MessagesNativeActionTrace.install(param.classLoader);
+            } else if (propertyEnabled(NATIVE_ROW_PROP)) {
+                // This is not the rejected delayed page-swap or a row overlay.
+                // Reuse Google's own RecyclerView and row actions; insert the
+                // shared BBOS6 composable as a native row child at bind time.
+                hookNativeRowFaces(param.classLoader);
             } else if (isPageEnabled() || isInboxPaintEnabled()) {
                 // The 750ms delayed full-page view swap and row overlay
                 // were rejected by Q25 acceptance: the native Google inbox
@@ -94,6 +101,49 @@ public final class MessagesInspectionHook implements IXposedHookLoadPackage {
             }
         } catch (Throwable failure) {
             Log.e(TAG, "Unable to install read-only inspection hook", failure);
+        }
+    }
+
+    /**
+     * One opt-in, version-checked native binder hook. Fails closed on
+     * unsupported Google versions and does not alter navigation or data.
+     *
+     * Google bind runs before RecyclerView draws a newly bound row, avoiding
+     * the rejected post-resume full-page swap and independent overlay list.
+     */
+    private static void hookNativeRowFaces(ClassLoader loader) {
+        try {
+            Class<?> adapter = XposedHelpers.findClassIfExists("vv", loader);
+            Class<?> holder = XposedHelpers.findClassIfExists("aac", loader);
+            if (adapter == null || holder == null
+                || adapter.getSuperclass() == null
+                || !"yv".equals(adapter.getSuperclass().getName())) {
+                Log.w(TAG, "NATIVE_ROW version contract unavailable; Google UI retained");
+                return;
+            }
+            java.lang.reflect.Method bind = adapter.getDeclaredMethod(
+                "g", holder, int.class
+            );
+            if (bind.getReturnType() != void.class) {
+                Log.w(TAG, "NATIVE_ROW incompatible bind signature; Google UI retained");
+                return;
+            }
+            XposedBridge.hookMethod(bind, new XC_MethodHook() {
+                @Override
+                protected void afterHookedMethod(MethodHookParam hook) {
+                    if (hook.hasThrowable()
+                        || GoogleMessagesAdapterBridge.isSnapshotBinding()
+                        || hook.args.length != 2) return;
+                    try {
+                        MessagesInboxNativeRowBridge.onNativeBound(hook.args[0]);
+                    } catch (Throwable failure) {
+                        Log.e(TAG, "Native BBOS6 row failed; Google row retained", failure);
+                    }
+                }
+            });
+            Log.i(TAG, "NATIVE_ROW binding enabled: shared face in Google RecyclerView");
+        } catch (Throwable failure) {
+            Log.w(TAG, "NATIVE_ROW failed to install; Google UI retained", failure);
         }
     }
 
