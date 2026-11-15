@@ -116,11 +116,8 @@ object MessagesInboxPageBridge {
             val snapshot = try {
                 adapter.snapshot()
             } catch (failure: Throwable) {
-                Log.w(
-                    TAG,
-                    "Full inbox snapshot rejected; inspecting native row types. Google inbox retained",
-                    failure
-                )
+                Log.d(TAG, "SOURCE_PAGE snapshot not ready: " +
+                    failure.javaClass.simpleName)
                 // No repeated per-row diagnostics in a pre-draw retry loop.
                 return false
             }
@@ -277,10 +274,9 @@ object MessagesInboxPageBridge {
                 val latest = adapter.snapshot()
                 val refreshedItemCount = adapter.itemCount()
                 val presentation = asDisplayRows(latest)
-                // Position IDs cannot be treated as stable conversation IDs.
-                // Reset shared selection whenever Google's dataset changes.
-                nativeRows = latest
-                nativeAdapterItemCount = refreshedItemCount
+                // Position keys are NOT conversation IDs. Compare the
+                // previous typed Google models before replacing the snapshot,
+                // including updates with unchanged sender/preview text.
                 val identityChanged = nativeRows.size != latest.size ||
                     nativeRows.zip(latest).any { (before, after) ->
                         before.index != after.index ||
@@ -288,6 +284,8 @@ object MessagesInboxPageBridge {
                                 before.model, after.model
                             )
                     }
+                nativeRows = latest
+                nativeAdapterItemCount = refreshedItemCount
                 if (presentation != displayRows || identityChanged) {
                     displayRows = presentation
                     revision++
