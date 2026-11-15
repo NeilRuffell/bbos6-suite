@@ -344,11 +344,12 @@ object MessagesInboxPageBridge {
             // only allow delegation when this displayed tuple is unique.
             // A duplicate could refer to another thread after a reorder;
             // in that case the stock inbox is safer than an inferred ID.
-            val uniquePresentation = current != null && nativeRows.count {
-                it.sender == current.sender &&
-                    it.preview == current.preview &&
-                    it.timestamp == current.timestamp
-            } == 1
+            val uniquePresentation = if (current == null) false else
+                nativeRows.count {
+                    it.sender == current.sender &&
+                        it.preview == current.preview &&
+                        it.timestamp == current.timestamp
+                } == 1
             if (!countStable || !uniquePresentation || current == null ||
                 !adapter.activate(current, longPress)) {
                 Log.w(TAG, "Native conversation action unavailable or ambiguous; restoring Google inbox")
