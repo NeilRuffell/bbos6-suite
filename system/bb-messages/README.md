@@ -4,6 +4,78 @@ Independent experimental Vector/LSPosed module for Google Messages on the
 Zinwa Q25. The renderer reuses the canonical Kotlin/Compose BBOS6 library in
 `../../shared/android/bbos6-ui/`.
 
+## Q25 18:37 first real attached-row action and controller-trace follow-up
+
+Q25 device log confirms the new source-time shared inbox mode completed
+an actual activation attempt: the stock adapter supplied 8 real rows,
+the shared `Bbos6PageList` mounted before the first native draw,
+the adapter then populated to 28 conversations / 96 Lottie entries,
+and the BBOS6-selected row dispatched through Google's original
+attached-row listener:
+
+```text
+SOURCE_PAGE mounted before first native draw
+SNAPSHOT nativeItems=124 conversationRows=28
+  independentModelRead=disabled originalNativeActionBridge=enabled
+  nonInteractiveLottieRows=96
+ATTACHED_OPEN originalGoogleActionInvoked=true longPress=false
+```
+
+This establishes that the attached original Google row handler was
+called, unlike the rejected detached-holder click. **The log does not
+yet establish that the intended conversation screen opened** or that
+Back, offscreen activation or long-press work.
+
+Added a narrow read-only controller-outcome trace to answer that
+specific question on the next Q25 test:
+
+- Hook only Google's version-checked `asvk.Q(ConversationId):void`
+  (and, when present, `asvk.P(eggp):void`). Never change arguments,
+  return values or navigation.
+- Record completion only within a thread-local scope surrounding
+  `performClick()`/`performLongClick()` on the verified **attached**
+  native row. Calls outside this scope are ignored.
+- `ATTACHED_OPEN` now reports
+  `nativeQCalls`, `nativePCalls`, `nativeCompleted`,
+  `nativeFailures`, and `longPress` alongside the original
+  listener-invoked flag. These are metadata counts only. No message
+  contents, contacts, conversation IDs or object identifiers are logged.
+- The controller hook logs `ATTACHED_TRACE Q installed P installed=...`
+  or an explicit unsupported-signature error. A completed Q indicates
+  Google's own controller-opening method ran, but the physical screen
+  and intended thread still require device observation.
+
+New diagnostics await build/device verification on the draft branch.
+No merge or shared helper modification.
+
+```sh
+cd ~/Projects/bbos6-suite
+git fetch origin
+git switch feature/messages-inbox-shared-subtitles
+git pull --ff-only origin feature/messages-inbox-shared-subtitles
+gradle -p system/bb-messages \
+  :bbos6-ui:verifyKotlinOnly \
+  :bbos6-ui:testDebugUnitTest \
+  :app:testDebugUnitTest \
+  :app:assembleDebug && \
+adb -s 202512003630 install -r \
+  system/bb-messages/app/build/outputs/apk/debug/app-debug.apk
+
+adb -s 202512003630 shell setprop debug.bbmessages.actionprobe.enabled false
+adb -s 202512003630 shell setprop debug.bbmessages.native.rows.enabled false
+adb -s 202512003630 shell setprop debug.bbmessages.shared.page.enabled true
+adb -s 202512003630 logcat -c
+adb -s 202512003630 shell am force-stop com.google.android.apps.messaging
+adb -s 202512003630 shell monkey -p com.google.android.apps.messaging 1
+adb -s 202512003630 logcat -d -v time | \
+  grep -E 'SOURCE_PAGE|SNAPSHOT|ATTACHED_TRACE|ATTACHED_OPEN'
+```
+
+Only tap an **initially visible** conversation on the shared list
+for this test. Confirm whether the correct conversation opens and
+whether Back returns to the BBOS6 inbox. Offscreen positions still
+fail closed to stock rather than invoking the wrong thread.
+
 ## Q25 18:25: shared list renders; original attached Google actions now wired
 
 The user's latest Q25 device test verified that **the shared page
