@@ -124,7 +124,9 @@ object MessagesInboxPageBridge {
             if (recycler.parent !== parent || !recycler.isAttachedToWindow)
                 return false
 
-            val session = Session(parent, recycler, adapter, snapshot, adapter.itemCount())
+            val session = Session(
+                activity, parent, recycler, adapter, snapshot, adapter.itemCount()
+            )
             session.mount()
             currentSession = WeakReference(session)
             return true
@@ -136,6 +138,7 @@ object MessagesInboxPageBridge {
     }
 
     private class Session(
+        private val activity: Activity,
         private val parent: LinearLayout,
         private val recycler: ViewGroup,
         private val adapter: GoogleMessagesAdapterBridge,
@@ -244,11 +247,19 @@ object MessagesInboxPageBridge {
 
                 host.addOnAttachStateChangeListener(
                     object : View.OnAttachStateChangeListener {
-                        override fun onViewAttachedToWindow(v: View) = Unit
+                        override fun onViewAttachedToWindow(v: View) {
+                            // The inbox can detach during Google's own
+                            // conversation navigation, then return on Back.
+                            // Revalidate the live native adapter on reattach.
+                            if (!closed && !restoring) scheduleRefresh()
+                        }
                         override fun onViewDetachedFromWindow(v: View) {
-                            // On Activity teardown release our compose lifecycle.
-                            // Rollback never mutates Google's conversation data.
-                            if (!restoring) rollback()
+                            // A temporary fragment/screen transition is NOT
+                            // an error: don't replace BBOS6 with stock Google
+                            // when the user opens a conversation and presses Back.
+                            if (activity.isFinishing || activity.isDestroyed) {
+                                release()
+                            }
                         }
                     }
                 )
