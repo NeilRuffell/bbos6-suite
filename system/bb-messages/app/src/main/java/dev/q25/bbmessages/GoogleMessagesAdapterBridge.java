@@ -426,8 +426,18 @@ final class GoogleMessagesAdapterBridge {
                 TextView value = findTextDescendant(container);
                 if (value != null) timestamp = value.getText().toString();
             }
+            GoogleMessagesControllerNavigation.BoundModel model =
+                GoogleMessagesControllerNavigation.resolve(view, holder, index);
+            if (model == null) {
+                throw new IllegalStateException("Google model unavailable for native row");
+            }
+            for (NativeConversationRow previous : rows) {
+                if (GoogleMessagesControllerNavigation.sameConversation(previous.model, model)) {
+                    throw new IllegalStateException("Duplicate native conversation model");
+                }
+            }
             rows.add(new NativeConversationRow(index, sender, preview,
-                timestamp, view, holder));
+                timestamp, view, holder, model));
         }
         if (!isCurrent() || count != itemCount()) {
             throw new IllegalStateException("Adapter updated during snapshot");
@@ -571,15 +581,20 @@ final class GoogleMessagesAdapterBridge {
     }
 
     /**
-     * Native click listeners can act on a detached bound ViewHolder, as a
-     * property of Google's implementation, but functional success still
-     * requires actual Q25 navigation testing. No homegrown conversation
-     * intents or synthetic message IDs are used.
+     * Open only a currently matching native Google conversation model.
+     * The rejected detached View.performClick path is NEVER used.
+     *
+     * Google long-press needs a separate eggp action model. Fail closed;
+     * the caller restores the stock inbox rather than selecting the wrong row.
      */
     boolean activate(NativeConversationRow selected, boolean longPress) {
+        if (longPress) {
+            Log.i(TAG, "OPEN long-press unavailable; stock inbox required");
+            return false;
+        }
         try {
-            if (!isCurrent() || selected == null ||
-                selected.index < 0 || selected.index >= itemCount()) return false;
+            if (!isCurrent() || selected == null
+                || selected.index < 0 || selected.index >= itemCount()) return false;
             Object type = itemTypeMethod.invoke(adapter, selected.index);
             if (!(type instanceof Integer)) return false;
             Object holder = createHolderMethod.invoke(adapter, recycler, (Integer) type);
@@ -593,18 +608,13 @@ final class GoogleMessagesAdapterBridge {
             int nameId = recycler.getResources().getIdentifier(
                 "conversation_name", "id", TARGET_PACKAGE
             );
-            View nativeRow = holderItemView(holder, nameId);
-            if (nativeRow == null || !CONVERSATION_ROW.equals(
-                    nativeRow.getClass().getName())
-                || !nativeRow.hasOnClickListeners()
-                || (longPress && !nativeRow.isLongClickable())) return false;
-            // Native IDs are unavailable. A background reorder could make
-            // the position represent another conversation between selection
-            // and activation. Compare the current bound presentation before
-            // dispatching Google's original action. Fail closed on mismatch.
             int snippetId = recycler.getResources().getIdentifier(
                 "conversation_snippet", "id", TARGET_PACKAGE
             );
+            View nativeRow = holderItemView(holder, nameId);
+            if (nativeRow == null || !CONVERSATION_ROW.equals(
+                    nativeRow.getClass().getName())
+                || !nativeRow.hasOnClickListeners()) return false;
             View senderView = nativeRow.findViewById(nameId);
             View snippetView = nativeRow.findViewById(snippetId);
             if (!(senderView instanceof TextView)
@@ -613,12 +623,21 @@ final class GoogleMessagesAdapterBridge {
                     ((TextView) senderView).getText().toString())
                 || !selected.preview.equals(
                     ((TextView) snippetView).getText().toString())) {
-                Log.w(TAG, "Native position changed before action; no action dispatched");
+                Log.w(TAG, "OPEN denied: native row presentation changed");
                 return false;
             }
-            return longPress ? nativeRow.performLongClick() : nativeRow.performClick();
+            GoogleMessagesControllerNavigation.BoundModel current =
+                GoogleMessagesControllerNavigation.resolve(
+                    nativeRow, holder, selected.index
+                );
+            if (!isCurrent() || !GoogleMessagesControllerNavigation.sameConversation(
+                    selected.model, current)) {
+                Log.w(TAG, "OPEN denied: native model changed");
+                return false;
+            }
+            return GoogleMessagesControllerNavigation.open(selected.model, current);
         } catch (Throwable failure) {
-            Log.e(TAG, "Native conversation action failed; no synthetic fallback", failure);
+            Log.w(TAG, "OPEN failed="+ failure.getClass().getSimpleName());
             return false;
         }
     }
@@ -631,10 +650,12 @@ final class GoogleMessagesAdapterBridge {
         // Keep the native holder alive for this snapshot's bound action data.
         @SuppressWarnings("unused") final View nativeRow;
         @SuppressWarnings("unused") final Object holder;
+        final GoogleMessagesControllerNavigation.BoundModel model;
 
         NativeConversationRow(
             int index, String sender, String preview, String timestamp,
-            View nativeRow, Object holder
+            View nativeRow, Object holder,
+            GoogleMessagesControllerNavigation.BoundModel model
         ) {
             this.index = index;
             this.sender = sender;
@@ -642,6 +663,7 @@ final class GoogleMessagesAdapterBridge {
             this.timestamp = timestamp;
             this.nativeRow = nativeRow;
             this.holder = holder;
+            this.model = model;
         }
 
         public String getId() { return "position:" + index; }
