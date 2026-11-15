@@ -4,6 +4,21 @@ Independent experimental Vector/LSPosed module for Google Messages on the
 Zinwa Q25. The renderer reuses the canonical Kotlin/Compose BBOS6 library in
 `../../shared/android/bbos6-ui/`.
 
+## Q25 2026-11-14: Back visual acceptance passed
+
+The user explicitly confirmed on the Zinwa Q25 that after opening
+a conversation and pressing Back, the **BBOS6 inbox reappeared
+directly**, without the stock Google inbox becoming visible.
+Combined with the preceding 19:20–19:21 device logs, this passes
+the targeted **Back-to-BBOS6 inbox / no stock-inbox flash**
+acceptance check.
+
+This confirms only the tested Back path. Offscreen conversation
+activation, long-press/context menu, trackpad boundary scrolling,
+selection retention and full-screen BlackBerry styling remain
+separate acceptance checks; do not infer success for those.
+No additional source change was needed and PR #19 remains unmerged.
+
 ## Q25 19:20: Back source-time remount verified by device logs
 
 The 2026-11-14 19:20–19:21 Q25 test confirms the persistent
