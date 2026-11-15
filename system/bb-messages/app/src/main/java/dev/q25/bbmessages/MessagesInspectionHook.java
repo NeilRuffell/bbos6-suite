@@ -97,6 +97,7 @@ public final class MessagesInspectionHook implements IXposedHookLoadPackage {
                 // Source-time shared Bbos6PageList takes precedence over
                 // the incomplete Google-RecyclerView row-skin experiment.
                 hookAdapterBindings(param.classLoader);
+                hookNativeControllerOutcome(param.classLoader);
                 Log.i(TAG, "SOURCE_PAGE shared BBOS6 controller opted in");
             } else if (propertyEnabled(NATIVE_ROW_PROP)) {
                 // This is not the rejected delayed page-swap or a row overlay.
@@ -208,6 +209,68 @@ public final class MessagesInspectionHook implements IXposedHookLoadPackage {
         } catch (Throwable failure) {
             Log.e(TAG, "Unable to hook verified inbox row class; native list retained",
                 failure);
+        }
+    }
+
+    /**
+     * Observe the original Google controller's Q/P calls only while the
+     * shared list delegates to an attached native row. The hook neither
+     * changes an argument nor calls any method. Do not log identifiers.
+     */
+    private static void hookNativeControllerOutcome(ClassLoader loader) {
+        try {
+            Class<?> controller = XposedHelpers.findClassIfExists("asvk", loader);
+            Class<?> conversationId = XposedHelpers.findClassIfExists(
+                "com.google.android.apps.messaging.shared.api.messaging.conversation.ConversationId",
+                loader
+            );
+            if (controller == null || conversationId == null) {
+                Log.w(TAG, "ATTACHED_TRACE Google controller contract unavailable");
+                return;
+            }
+            java.lang.reflect.Method open = controller.getDeclaredMethod(
+                "Q", conversationId
+            );
+            if (open.getReturnType() != void.class
+                || java.lang.reflect.Modifier.isStatic(open.getModifiers())) {
+                Log.w(TAG, "ATTACHED_TRACE unsupported Q signature");
+                return;
+            }
+            XposedBridge.hookMethod(open, new XC_MethodHook() {
+                @Override
+                protected void afterHookedMethod(MethodHookParam param) {
+                    MessagesNativeAttachedActionBridge.observeControllerAction(
+                        false, !param.hasThrowable()
+                    );
+                }
+            });
+            boolean menuInstalled = false;
+            Class<?> selection = XposedHelpers.findClassIfExists("eggp", loader);
+            if (selection != null) {
+                try {
+                    java.lang.reflect.Method menu = controller.getDeclaredMethod(
+                        "P", selection
+                    );
+                    if (menu.getReturnType() == void.class
+                        && !java.lang.reflect.Modifier.isStatic(menu.getModifiers())) {
+                        XposedBridge.hookMethod(menu, new XC_MethodHook() {
+                            @Override
+                            protected void afterHookedMethod(MethodHookParam param) {
+                                MessagesNativeAttachedActionBridge.observeControllerAction(
+                                    true, !param.hasThrowable()
+                                );
+                            }
+                        });
+                        menuInstalled = true;
+                    }
+                } catch (NoSuchMethodException missing) {
+                    // Do not guess a replacement obfuscated menu action.
+                }
+            }
+            Log.i(TAG, "ATTACHED_TRACE Q installed P installed=" + menuInstalled);
+        } catch (Throwable failure) {
+            Log.w(TAG, "ATTACHED_TRACE unavailable="
+                + failure.getClass().getSimpleName());
         }
     }
 
