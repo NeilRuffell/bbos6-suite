@@ -590,24 +590,47 @@ final class GoogleMessagesAdapterBridge {
     }
 
     /**
-     * Request a position using Google's own native RecyclerView scrolling
-     * API. No pixel-based scroll math, fake row, or independent list
-     * controller. The caller must wait for a real attachment and revalidate
-     * before dispatching any action.
+     * Move Google's own invisible RecyclerView a bounded partial viewport
+     * toward a real native adapter index. The stock support RecyclerView
+     * overrides View.scrollBy(int,int); this Android API name cannot be
+     * changed by app obfuscation. Confirm the native override exists, so
+     * View's plain content-offset fallback can NEVER masquerade as
+     * RecyclerView adapter scrolling. No detached holder is clicked.
+     *
+     * Repeated movement is owned by the pending Google-action bridge,
+     * never the shared BBOS6 user navigation/scroll controller.
      */
-    boolean revealNativePosition(int position) {
+    boolean advanceNativeViewport(int position) {
         try {
             if (!isCurrent() || !recycler.isAttachedToWindow()
                 || position < 0 || position >= itemCount()) return false;
             Method scroll = recycler.getClass().getMethod(
-                "scrollToPosition", int.class
+                "scrollBy", int.class, int.class
             );
-            if (scroll.getReturnType() != void.class) return false;
-            scroll.invoke(recycler, position);
-            Log.i(TAG, "OFFSCREEN requested native scrollToPosition index=" + position);
+            if (scroll.getReturnType() != void.class ||
+                scroll.getDeclaringClass() == View.class ||
+                scroll.getDeclaringClass() == ViewGroup.class) {
+                Log.w(TAG, "OFFSCREEN native RecyclerView scrollBy override missing");
+                return false;
+            }
+            int direction =
+                MessagesNativeAttachedActionBridge.directionTowardNativePosition(
+                    recycler, position
+                );
+            int height = recycler.getHeight();
+            if (direction == 0 || height <= 0) {
+                Log.w(TAG, "OFFSCREEN native viewport direction or height unavailable");
+                return false;
+            }
+            // Less than a full viewport so an intermediate attached
+            // conversation cannot be skipped on the way to the target.
+            int pixels = Math.max(1, height / 2);
+            recycler.scrollBy(0, pixels * direction);
+            Log.i(TAG, "OFFSCREEN native scrollBy index=" + position
+                + " direction=" + direction + " pixels=" + pixels);
             return true;
         } catch (Throwable unavailable) {
-            Log.w(TAG, "OFFSCREEN native scrollToPosition unavailable: "
+            Log.w(TAG, "OFFSCREEN native scrollBy unavailable: "
                 + unavailable.getClass().getSimpleName());
             return false;
         }
@@ -617,7 +640,8 @@ final class GoogleMessagesAdapterBridge {
      * Open via the ORIGINAL attached Google row listener after confirming
      * current adapter, native position and presentation have not changed.
      * Never invoke a detached row's listener, never invent an ID.
-     * Rows without an attached Google action fail closed; the caller may first\n     * move Google's own viewport and retry only after real attachment.
+     * Rows without an attached Google action fail closed; the caller may first
+     * move Google's own viewport and retry only after real attachment.
      */
     boolean activate(NativeConversationRow selected, boolean longPress) {
         if (selected == null) return false;

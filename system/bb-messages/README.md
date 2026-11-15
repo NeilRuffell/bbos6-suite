@@ -4,39 +4,56 @@ Independent experimental Vector/LSPosed module for Google Messages on the
 Zinwa Q25. The renderer reuses the canonical Kotlin/Compose BBOS6 library in
 `../../shared/android/bbos6-ui/`.
 
-## Offscreen Google conversation activation (implementation awaiting Q25 test)
+## Q25 19:37: offscreen scrollToPosition failed; bounded native scrollBy fix awaits test
 
-The shared inbox now attempts to activate a selected conversation even if
-its original Google row is not attached to the native viewport:
+The 2026-11-14 Q25 logs for `fc098eea` verified the snapshot and
+safety fallback, but **not** offscreen activation:
 
-1. The canonical `Bbos6PageList` owns user scrolling, selection and input.
-   The Google adapter bridge asks the existing hidden, **attached** native
-   RecyclerView to `scrollToPosition(nativeAdapterIndex)`. It never
-   manufactures a Google conversation ID or calls the standalone `asvk.I`.
-2. On a subsequent pre-draw (after native layout), the bridge requires an
-   actual Google-bound, attached `ConversationListItemView` for the selected
-   native position. The original attached-row listener is the **only** action
-   path. All existing sender, preview, timestamp, adapter identity and unique
-   presentation checks still apply, and the selected snapshot's native item
-   count and tuple are rechecked before dispatch.
-3. No action runs during pre-draw. Dispatch is posted to the UI thread.
-   A pending action is canceled on host detach or session release. If the
-   public `scrollToPosition(int)` method is unavailable in this obfuscated
-   Google build, the row changes, or the expected row does not attach within
-   20 frames, the bridge **fails closed** and restores the native inbox.
+```text
+SNAPSHOT nativeItems=124 conversationRows=28 nonInteractiveLottieRows=96
+OFFSCREEN native scrollToPosition unavailable: NoSuchMethodException
+OFFSCREEN native viewport movement unavailable
+SOURCE_PAGE fallback restored native Google inbox
+ATTACHED_OPEN originalGoogleActionInvoked=true longPress=true
+  nativeQCalls=0 nativePCalls=1 nativeCompleted=1 nativeFailures=0
+```
 
-**Not yet verified on the Q25:** whether this installed Google Messages
-RecyclerView exports that method and binds the requested offscreen item;
-correct-target activation, Back, long-press and refresh still require on-device
-testing. No new native-scrolling helper or independent focus policy was added.
-The prior verified Back-to-BBOS6 remount path was not changed.
+The installed Google Messages RecyclerView is obfuscated and did not
+export the assumed method name `scrollToPosition(int)`. That method
+lookup is **removed**. The long-press trace confirms Google's native
+`P` handler completed; it is not an offscreen-activation pass.
 
-Q25 test: after installing the existing feature branch, open Google Messages,
-use the BBOS6 trackpad or touchscreen to select a conversation far below the
-initial native viewport, and activate it. Confirm the *intended* conversation
-opens and Back returns straight to BBOS6. Repeat with hardware long-press and
-inspect `OFFSCREEN`, `ATTACHED_OPEN`, `SOURCE_PAGE` and `SNAPSHOT` logs.
-Do not clear app data or enable the rejected native-row skin.
+### Revised Google-only offscreen bridge
+
+1. `Bbos6PageList` continues to own the user's scrolling, focus and
+   selection. The hidden Google RecyclerView is moved only when a
+   selected conversation lacks an attached native row.
+2. The Google action bridge examines **real, attached** Google-bound
+   conversation row positions and determines whether the selected native
+   adapter index lies before or after them. It fails closed without a
+   clear direction.
+3. The Google adapter bridge uses `View.scrollBy(0, deltaY)`, a stable
+   Android View API, **only after verifying that the Google RecyclerView
+   itself overrides this method** (not the base View's offset behavior).
+   Original support RecyclerView implements `scrollBy` through its
+   LayoutManager. It moves at most half of the native viewport per
+   step, so intermediate rows are not skipped.
+4. After each native layout/pre-draw, require the *real* Google row to
+   attach. Only then is the original click/long-click listener invoked,
+   after existing adapter identity, item count, exact
+   sender/preview/timestamp and uniqueness checks. A pending action is
+   canceled on host detach/release. Movement stops after **64 bounded
+   native steps** or earlier on unsupported APIs or stale identity,
+   restoring the native Google inbox rather than guessing a thread.
+5. The verified persistent Back remount monitor and shared helper are
+   unchanged. No conversation ID is invented, and no detached
+   `ViewHolder.performClick()` or standalone `asvk.I` is used.
+
+**Q25 acceptance pending:** select a conversation beyond the native
+viewport; confirm it opens the correct thread, Back returns directly
+to BBOS6, and hardware long-press works there. Check
+`OFFSCREEN native scrollBy`, `ATTACHED_OPEN`, `SOURCE_PAGE`,
+`SNAPSHOT` and any fallback messages. App data is preserved.
 
 ## Q25 2026-11-14: Back visual acceptance passed
 

@@ -274,7 +274,7 @@ object MessagesInboxPageBridge {
             val row: GoogleMessagesAdapterBridge.NativeConversationRow,
             val itemCount: Int,
             val longPress: Boolean,
-            var frames: Int = 0,
+            var scrollSteps: Int = 0,
             var posted: Boolean = false
         )
         private var pendingActivation: PendingActivation? = null
@@ -324,19 +324,40 @@ object MessagesInboxPageBridge {
                             rollback()
                         }
                     }
-                } else if (++pending.frames >= 20) {
+                } else if (pending.scrollSteps >= 64) {
                     pending.posted = true
                     host.post {
                         if (closed || restoring || pendingActivation !== pending)
                             return@post
                         pendingActivation = null
                         if (host.isAttachedToWindow) {
-                            Log.w(TAG, "OFFSCREEN native row never attached; restoring Google inbox")
+                            Log.w(TAG, "OFFSCREEN native row never attached after bounded scrolls")
                             rollback()
                         }
                     }
                 } else {
-                    host.postInvalidateOnAnimation()
+                    // The native Google RecyclerView scrolls, not the
+                    // canonical Bbos6PageList. Perform each partial-viewport
+                    // step after pre-draw; the next pass checks attachment.
+                    pending.posted = true
+                    host.post {
+                        if (closed || restoring || pendingActivation !== pending)
+                            return@post
+                        if (!host.isAttachedToWindow) {
+                            pendingActivation = null
+                            return@post
+                        }
+                        if (!selectionStillCurrent(pending.row, pending.itemCount) ||
+                            !adapter.advanceNativeViewport(pending.row.index)) {
+                            pendingActivation = null
+                            Log.w(TAG, "OFFSCREEN native movement stopped; restoring Google inbox")
+                            rollback()
+                        } else {
+                            pending.scrollSteps++
+                            pending.posted = false
+                            host.postInvalidateOnAnimation()
+                        }
+                    }
                 }
             }
             true
@@ -525,12 +546,13 @@ object MessagesInboxPageBridge {
             // The shared Bbos6PageList retains all user scrolling/focus.
             val pending = PendingActivation(current, nativeAdapterItemCount, longPress)
             pendingActivation = pending
-            if (!adapter.revealNativePosition(current.index)) {
+            if (!adapter.advanceNativeViewport(current.index)) {
                 pendingActivation = null
                 Log.w(TAG, "OFFSCREEN native viewport movement unavailable")
                 rollback()
                 return
             }
+            pending.scrollSteps = 1
             host.postInvalidateOnAnimation()
         }
 

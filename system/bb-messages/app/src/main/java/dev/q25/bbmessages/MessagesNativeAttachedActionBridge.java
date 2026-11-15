@@ -99,6 +99,33 @@ final class MessagesNativeAttachedActionBridge {
     }
 
     /**
+     * Direction from the currently attached, Google-bound conversation
+     * rows toward a selected native adapter position. No guessed Google
+     * ID, adapter position offset, or pixel-based list selection.
+     * Return zero for missing or non-contiguous/ambiguous attachment.
+     */
+    static int directionTowardNativePosition(ViewGroup recycler, int position) {
+        if (recycler == null || position < 0
+            || !RECYCLER_CLASS.equals(recycler.getClass().getName())) return 0;
+        int min = Integer.MAX_VALUE;
+        int max = -1;
+        for (int i = 0; i < recycler.getChildCount(); i++) {
+            View row = recycler.getChildAt(i);
+            if (row == null || row.getParent() != recycler
+                || !row.isAttachedToWindow() || !row.isEnabled()
+                || !ROW_CLASS.equals(row.getClass().getName())) continue;
+            Integer bound = BOUND.get(row);
+            if (bound == null || bound < 0) continue;
+            min = Math.min(min, bound);
+            max = Math.max(max, bound);
+        }
+        if (min == Integer.MAX_VALUE) return 0;
+        if (position < min) return -1;
+        if (position > max) return 1;
+        return 0;
+    }
+
+    /**
      * Selects from the currently ATTACHED native rows only, and never
      * creates/rebinds a detached row as an action source.
      *
