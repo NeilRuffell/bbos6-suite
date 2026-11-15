@@ -32,6 +32,57 @@ so `adb install -r` updates the existing module without uninstalling it.
 contracts have real Q25 evidence.** The current probe proves none of
 the mandatory RCS capabilities.
 
+## Q25 history metadata — 6/6 classes found, one test regression fixed
+
+Q25 on 15 November 2026: the offline `--focus history` scan found all
+six named definitions across four APKs / 12 DEX files. The companion
+Python suite reported **17 tests run, one failure**. The failure was
+our outdated `test_model_focus_contains_observed_core_types` assertion:
+it compared `--focus all` to only `models + actions`, omitting the newly
+introduced `history` group. Commit below corrects that regression.
+
+Verified DEX metadata:
+
+- `HomeDataService` is an **interface** defining
+  `b(ConversationIdType):fzew`. Its concrete implementation and
+  the purpose of `fzew` are not yet established.
+- `MessageData` and `MessagePartData` provide defined message and
+  message-part methods, but neither is proof of historical retrieval.
+- `MessagesTable` has static signatures taking `MessageIdType` and
+  returning `MessagesTable$BindData`/`Object`. Their read/write
+  semantics are not established by signatures alone.
+- `MessagesTable$InsertableBindData` exists. Its existence does not
+  establish a conversation-history query contract.
+
+### Next milestone: defined interface implementations
+
+The new Python standard-library `tools/find_history_implementations.py`
+looks up **direct DEX `class_def` interfaces and superclass links**
+for `HomeDataService`, `MessageCoreData`, and `MessagePartCoreData`.
+Methods included in the output are real defined method signatures.
+The search does NOT execute Google code, traverse runtime objects,
+decode method bodies, read private message content/databases, or modify
+Google Messages. Only bounded direct relationships are reported;
+indirect inheritance is not identified as direct.
+
+Run on the connected Q25:
+
+```bash
+cd ~/Projects/bbos6-suite
+git fetch origin
+git switch feature/messages-rcs-backend-research
+git pull --ff-only origin feature/messages-rcs-backend-research
+python3 -m unittest discover -s system/bb-messages/tools/tests -v
+python3 system/bb-messages/tools/find_history_implementations.py \
+  --serial 202512003630
+```
+
+**Expected testing:** 22 Python tests (17 existing + 5 added),
+subject to Q25 execution. This new scanner has not yet been
+device-tested. Google Messages and the Vector module need no
+reinstallation/restart for this metadata-only investigation.
+
+All full RCS acceptance requirements remain unverified.
 ## Q25 defined-method owner scan — 16 tests PASSED
 
 On 15 November 2026, the Q25 passed all 16 Python tests and scanned

@@ -116,7 +116,9 @@ class InspectorTest(unittest.TestCase):
         self.assertTrue(set(models).isdisjoint(tool.focused_targets("actions")))
         self.assertEqual(
             set(tool.focused_targets("all")),
-            set(tool.focused_targets("models") + tool.focused_targets("actions")),
+            set(tool.focused_targets("models") +
+                tool.focused_targets("actions") +
+                tool.focused_targets("history")),
         )
         with self.assertRaises(ValueError):
             tool.focused_targets("not-supported")
