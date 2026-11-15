@@ -4,6 +4,7 @@ import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
+import android.view.MotionEvent
 import android.widget.TextView
 import android.text.Editable
 import android.text.TextWatcher
@@ -20,6 +21,7 @@ import dev.q25.bbos6.ui.compose.Bbos6MediaListRow
 import java.util.Collections
 import java.util.IdentityHashMap
 import java.util.WeakHashMap
+import java.lang.ref.WeakReference
 
 /**
  * Opt-in BBOS6 rendering *inside* Google's existing conversation row.
@@ -37,7 +39,11 @@ object MessagesInboxNativeRowBridge {
         "com.google.android.apps.messaging.home.list.ConversationListItemView"
     private const val PACKAGE = "com.google.android.apps.messaging"
     private const val ROW_DP = 52
-    private val painters = Collections.synchronizedMap(WeakHashMap<ViewGroup, NativePainter>())
+    // Weak VALUE references prevent the map retaining the row through a
+    // painter -> row backreference. Native row listeners retain their painter.
+    private val painters = Collections.synchronizedMap(
+        WeakHashMap<ViewGroup, WeakReference<NativePainter>>()
+    )
 
     /** Called strictly after Google's verified vv.g(aac,int) row bind. */
     @JvmStatic
@@ -49,7 +55,9 @@ object MessagesInboxNativeRowBridge {
             val row = field.get(holder) as? ViewGroup ?: return
             if (row.javaClass.name != ROW_CLASS) return
             val painter = synchronized(painters) {
-                painters[row] ?: NativePainter(row).also { painters[row] = it }
+                painters[row]?.get() ?: NativePainter(row).also {
+                    painters[row] = WeakReference(it)
+                }
             }
             painter.bind()
         } catch (failure: Throwable) {
@@ -122,7 +130,12 @@ object MessagesInboxNativeRowBridge {
             val localOwner = InboxRowCompositionOwner()
             var newCompose: ComposeView? = null
             try {
-                val skin = ComposeView(row.context).apply {
+                // This child is a visual face only. Google's existing row
+                // receives every touch/long-click/hover event unchanged.
+                val skin = object : ComposeView(row.context) {
+                    override fun dispatchTouchEvent(event: MotionEvent?): Boolean = false
+                    override fun dispatchHoverEvent(event: MotionEvent?): Boolean = false
+                }.apply {
                     isClickable = false
                     isLongClickable = false
                     isFocusable = false
@@ -253,7 +266,7 @@ object MessagesInboxNativeRowBridge {
                 }
                 return null
             }
-            return search(row.findViewById(id))
+            return search(row.findViewById<View>(id))
         }
 
         private fun observeFocus() {
