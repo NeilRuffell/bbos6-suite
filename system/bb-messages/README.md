@@ -4,6 +4,45 @@ Independent experimental Vector/LSPosed module for Google Messages on the
 Zinwa Q25. The renderer reuses the canonical Kotlin/Compose BBOS6 library in
 `../../shared/android/bbos6-ui/`.
 
+## Q25 19:20: Back source-time remount verified by device logs
+
+The 2026-11-14 19:20–19:21 Q25 test confirms the persistent
+pre-draw monitor reintercepts Google's recreated inbox after Back:
+
+```text
+SOURCE_PAGE persistent inbox draw monitor attached
+SOURCE_PAGE visible native inbox detected stage=return_or_initial
+Mounted shared Bbos6PageList count=8
+SOURCE_PAGE intercepted native inbox before draw returnMount=true
+Refreshed shared inbox count=31
+SOURCE_PAGE shared inbox host detached finishing=false destroyed=false
+ATTACHED_OPEN originalGoogleActionInvoked=true longPress=false
+  nativeQCalls=1 nativePCalls=0 nativeCompleted=1 nativeFailures=0
+SOURCE_PAGE visible native inbox detected stage=return_or_initial
+SOURCE_PAGE retiring detached native inbox session
+SOURCE_PAGE snapshot not ready: IllegalStateException
+Mounted shared Bbos6PageList count=24
+SOURCE_PAGE intercepted native inbox before draw returnMount=true
+Refreshed shared inbox count=40
+```
+
+**Verified:** the stock Google controller `Q` returned without
+exception during a real selected-row click; the original BBOS6
+host detached as the conversation opened; on Back, a newly visible
+native inbox triggered retirement of the old session and a new
+canonical `Bbos6PageList` mount before the next native inbox draw.
+This corrects the earlier one-shot-interceptor defect. Native
+adapter population remains asynchronous (8 → 31 before navigation,
+24 → 40 after Back) and is handled by refresh.
+
+**Not yet proved solely by logs:** no visual frame of the stock
+inbox appeared, the correct conversation contents were shown,
+selection/scroll position remained stable, or offscreen actions
+and long-press worked. These require visual/device interaction
+acceptance. There was no failure/rollback message in this log.
+Do not mark the whole feature complete or merge without explicit
+approval.
+
 ## Q25 18:41 Back return: persist BBOS6 across Google fragment recreation
 
 The Q25 log verified the attached native Google action ran the
