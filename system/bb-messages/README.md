@@ -32,6 +32,55 @@ so `adb install -r` updates the existing module without uninstalling it.
 contracts have real Q25 evidence.** The current probe proves none of
 the mandatory RCS capabilities.
 
+## Q25 APK class inventory — PASS (15 November 2026)
+
+The Q25 scanned four installed Google Messages APK files containing
+12 DEX files and 157,806 defined classes. The scanner found 1,014 classes
+under recognized Google Messages/IMS/RCS prefixes. Noteworthy class
+**definitions** include:
+
+- `FastPathRcsSendMessageAction` and `InsertRcsMessageInTelephonyAction`
+- `ProcessRcsDeliveryReportAction`
+- `ForwardIncomingTypingIndicatorToTachyonAction`
+- `ProcessFileTransferAction`, `PauseRcsFileTransferAction` and
+  `ResumeRcsFileTransferAction`
+- `ProcessConversationUpdateAsyncAction`, `RcsStateProvider`,
+  `ExternalRcsEndpointService` and `ImsCapabilities`
+
+Presence of these class definitions is verified. Their operational
+roles, private contracts, message-history coverage, and RCS functionality
+are **not verified** by names alone.
+
+### Targeted offline DEX field / method signature inspection
+
+`tools/inspect_rcs_classes.py` now reads defined fields and methods
+from the DEX `class_data_item` for the 11 above classes only. It
+resolves `field_ids`, `method_ids`, `proto_ids`, and `type_ids` to
+bounded class/member type metadata. It does not decode method bytecode,
+read message content, read Google Messages private data, send anything,
+or modify the Google Messages process. Temporary installed APK copies
+are removed when the scan finishes.
+
+Bounded output: maximum 20 fields, 32 methods and 8 parameter types
+per target class. The five new synthetic-DEX tests pass in local
+isolated testing; the previous scanner also passed five Q25 tests.
+No actual Q25 method/field signature output has been verified yet.
+
+```bash
+cd ~/Projects/bbos6-suite
+git fetch origin
+git switch feature/messages-rcs-backend-research
+git pull --ff-only origin feature/messages-rcs-backend-research
+python3 -m unittest discover -s system/bb-messages/tools/tests -v
+python3 system/bb-messages/tools/inspect_rcs_classes.py \
+  --serial 202512003630
+```
+
+Keep the native Google Messages UI. No Vector module rebuild or
+reinstall is necessary. The next step is to examine class signatures
+for a stable, read-only history/stream interface, without declaring
+any RCS feature implemented prematurely.
+
 ## Q25 00:46 third probe — structural collection passed; UI chain deprioritized
 
 The third read-only Q25 diagnostic reported `qe` with position-range callbacks,
