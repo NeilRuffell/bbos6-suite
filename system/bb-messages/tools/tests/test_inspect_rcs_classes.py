@@ -98,6 +98,29 @@ class InspectorTest(unittest.TestCase):
             self.assertEqual(count, 1)
             self.assertIn(tool.TARGETS[2], names)
 
+    def test_model_focus_contains_observed_core_types(self):
+        models = tool.focused_targets("models")
+        self.assertIn(
+            "com.google.android.apps.messaging.shared.datamodel.data.common.MessageCoreData",
+            models,
+        )
+        self.assertIn(
+            "com.google.android.ims.rcsservice.chatsession.ChatSessionMessageEvent",
+            models,
+        )
+        self.assertIn(
+            "com.google.android.apps.messaging.shared.datamodel.action.ProcessMessageUpdateAsyncAction",
+            models,
+        )
+        self.assertEqual(len(models), 8)
+        self.assertTrue(set(models).isdisjoint(tool.focused_targets("actions")))
+        self.assertEqual(
+            set(tool.focused_targets("all")),
+            set(tool.focused_targets("models") + tool.focused_targets("actions")),
+        )
+        with self.assertRaises(ValueError):
+            tool.focused_targets("not-supported")
+
     def test_invalid_header_is_rejected(self):
         b = bytearray(synthetic_dex())
         b[7] = 1

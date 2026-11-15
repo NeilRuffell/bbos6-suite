@@ -32,6 +32,57 @@ so `adb install -r` updates the existing module without uninstalling it.
 contracts have real Q25 evidence.** The current probe proves none of
 the mandatory RCS capabilities.
 
+## Q25 00:55 offline RCS action signatures — PASSED
+
+The user ran ten Python unit tests successfully and scanned all four
+installed Google Messages APKs (12 DEX files). All 11 action-class
+definitions were found. The following signatures are **defined in the
+installed APK**, but their runtime behavior has not been verified:
+
+- `FastPathRcsSendMessageAction` has a constructor accepting
+  `MessageCoreData`.
+- `ProcessRcsDeliveryReportAction` has constructors accepting
+  `com.google.android.ims.rcsservice.chatsession.ChatSessionMessageEvent`.
+- `ForwardIncomingTypingIndicatorToTachyonAction` has a constructor
+  accepting `long`, `String`, and `boolean` among other parameters;
+  what each value represents is unverified.
+- RCS transfer actions contain `MessageCoreData` and `MessageIdType`
+  signatures; these establish code dependencies, not transfer success.
+- `ExternalRcsEndpointService` defines `onBind(Intent)` returning
+  `IBinder`. Its availability to independent clients or its security
+  conditions have NOT been established.
+- `RcsStateProvider` defines `getRcsState()`; this is migration-state
+  metadata, not evidence of conversation history access.
+
+### Fifth milestone — history / model contracts (awaiting Q25 test)
+
+The existing read-only offline DEX inspector now supports a distinct
+`--focus models` mode for eight exact model/history-related type
+names grounded in the previous APK inventory or observed signatures:
+
+- `MessageCoreData`, `ConversationIdType`, `MessageIdType`
+- `ChatSessionMessageEvent`, `ConversationId`, `BugleConversationId`
+- `ProcessMessageUpdateAsyncAction`, `MessagesBackupAndRestoreService`
+
+Some types were observed as **references only**, not as definitions.
+Missing definitions will be reported as `[MISSING]` without guessing.
+The inspector reads only class-defined field and method metadata;
+it executes no Google code and accesses no user messages or databases.
+
+```bash
+cd ~/Projects/bbos6-suite
+git fetch origin
+git switch feature/messages-rcs-backend-research
+git pull --ff-only origin feature/messages-rcs-backend-research
+python3 -m unittest discover -s system/bb-messages/tools/tests -v
+python3 system/bb-messages/tools/inspect_rcs_classes.py \
+  --serial 202512003630 --focus models
+```
+
+Default `--focus actions` retains the preceding 11-class scan;
+`--focus all` displays both bounded groups. No build or installation.
+All full RCS acceptance gates remain unverified.
+
 ## Q25 APK class inventory — PASS (15 November 2026)
 
 The Q25 scanned four installed Google Messages APK files containing

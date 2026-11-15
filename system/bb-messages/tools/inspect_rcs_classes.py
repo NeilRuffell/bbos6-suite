@@ -20,7 +20,7 @@ from inventory_google_messages_dex import (
 )
 
 # Every name in this allowlist appeared in the user's installed APK inventory.
-TARGETS = (
+ACTION_TARGETS = (
     "com.google.android.apps.messaging.shared.api.messaging.message.send.insert.FastPathRcsSendMessageAction",
     "com.google.android.apps.messaging.shared.datamodel.action.InsertRcsMessageInTelephonyAction",
     "com.google.android.apps.messaging.shared.datamodel.action.ProcessRcsDeliveryReportAction",
@@ -33,7 +33,32 @@ TARGETS = (
     "com.google.android.apps.messaging.rcsmigration.RcsStateProvider",
     "com.google.android.ims.rcsservice.contacts.ImsCapabilities",
 )
+
+# Q25-confirmed through actual action constructors / runtime type traces,
+# or through named defined classes in the earlier APK inventory.
+# Referenced descriptors may be MISSING from DEX class_def; that is valid.
+MODEL_TARGETS = (
+    "com.google.android.apps.messaging.shared.datamodel.data.common.MessageCoreData",
+    "com.google.android.apps.messaging.shared.datamodel.data.datatypes.ConversationIdType",
+    "com.google.android.apps.messaging.shared.datamodel.data.datatypes.MessageIdType",
+    "com.google.android.ims.rcsservice.chatsession.ChatSessionMessageEvent",
+    "com.google.android.apps.messaging.shared.api.messaging.conversation.ConversationId",
+    "com.google.android.apps.messaging.shared.api.messaging.conversation.bugle.BugleConversationId",
+    "com.google.android.apps.messaging.shared.datamodel.action.ProcessMessageUpdateAsyncAction",
+    "com.google.android.apps.messaging.backup.unified.MessagesBackupAndRestoreService",
+)
+
+TARGETS = ACTION_TARGETS + MODEL_TARGETS
 TARGET_DESCRIPTORS = {"L" + s.replace(".", "/") + ";": s for s in TARGETS}
+
+def focused_targets(focus: str) -> tuple[str, ...]:
+    if focus == "models":
+        return MODEL_TARGETS
+    if focus == "actions":
+        return ACTION_TARGETS
+    if focus == "all":
+        return TARGETS
+    raise ValueError("Unknown focus")
 MAX_FIELDS = 20
 MAX_METHODS = 32
 MAX_PARAM_TYPES = 8
@@ -207,6 +232,9 @@ def main(argv: list[str] | None = None) -> int:
     choice = parser.add_mutually_exclusive_group(required=True)
     choice.add_argument("--serial", help="ADB serial for installed Google Messages APK")
     choice.add_argument("--apk", type=Path, help="Offline local APK")
+    parser.add_argument("--focus", choices=("actions", "models", "all"),
+                        default="actions",
+                        help="Choose action classes, history/model classes, or both")
     args = parser.parse_args(argv)
     try:
         if args.apk is not None:
@@ -232,8 +260,11 @@ def main(argv: list[str] | None = None) -> int:
                     local.unlink()
         if dexes == 0:
             raise DexFormatError("No DEX files found")
-        print(f"APK files={apks}; DEX files={dexes}; named targets={len(names)}/{len(TARGETS)}")
-        for name in TARGETS:
+        requested = focused_targets(args.focus)
+        count = sum(1 for name in requested if name in names)
+        print(f"APK files={apks}; DEX files={dexes}; focus={args.focus}; "
+              f"named targets={count}/{len(requested)}")
+        for name in requested:
             if name not in names:
                 print(f"\n[MISSING] {name}")
                 continue
