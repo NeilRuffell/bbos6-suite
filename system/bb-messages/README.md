@@ -73,12 +73,23 @@ preview and timestamp extracted from Google's own bound TextViews.
 No second list, independent navigation controller, `ViewGroupOverlay`,
 late 750-ms activity swap, or synthetic clicks are used. Google's
 original RecyclerView, child data sources, and row listeners remain in
-place; the visual child rejects touch and hover, is not focusable
-and is excluded from accessibility. Google's original children are
+place; the visual child is non-clickable, non-focusable and excluded from
+accessibility. Android touch and hover dispatch into ComposeView is **not**
+proven transparent; physical touch, long-press, trackpad and DPAD behavior
+must be checked on the Q25 before acceptance. Google's original children are
 made paint-transparent while remaining in the hierarchy, so the
 native listeners/data binding remain Google-owned. Unsupported row
 types and failed Compose setup retain/restore native presentation,
 including original alpha and height.
+
+**Build correction (2026-11-14):** The initial attempt used an anonymous
+subclass of `ComposeView` to override touch and hover dispatch, but the
+AndroidX `ComposeView` class is final and failed at
+`MessagesInboxNativeRowBridge.kt:138` with
+`This type is final, so it cannot be extended`. The renderer now
+instantiates `ComposeView` directly without overrides, which removes
+that reported compilation blocker; a successful build and device
+input handling are still pending verification.
 
 This is intentionally a **row-only visual slice**. Google Messages'
 headers, compose conversation page and other screens remain stock.
