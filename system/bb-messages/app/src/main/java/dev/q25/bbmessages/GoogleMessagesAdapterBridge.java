@@ -372,6 +372,10 @@ final class GoogleMessagesAdapterBridge {
     private java.util.List<NativeConversationRow> snapshotBoundRows() throws Exception {
         if (!isCurrent()) throw new IllegalStateException("Adapter changed");
         int count = itemCount();
+        // A zero count here is an asynchronous loading state on the Q25
+        // startup trace, not proof that the user's inbox is empty.
+        // Never mount an empty BBOS6 page over a loading Google inbox.
+        if (count == 0) throw new IllegalStateException("Native inbox not populated");
         if (count > 1000) throw new IllegalStateException("Inbox exceeds safe snapshot cap");
         int nameId = recycler.getResources().getIdentifier(
             "conversation_name", "id", TARGET_PACKAGE
@@ -388,6 +392,7 @@ final class GoogleMessagesAdapterBridge {
         java.util.ArrayList<NativeConversationRow> rows =
             new java.util.ArrayList<>(count);
         int nonInteractiveAnimations = 0;
+        int unresolvedModels = 0;
         for (int index = 0; index < count; index++) {
             Object type = itemTypeMethod.invoke(adapter, index);
             if (!(type instanceof Integer)) {
@@ -428,12 +433,19 @@ final class GoogleMessagesAdapterBridge {
             }
             GoogleMessagesControllerNavigation.BoundModel model =
                 GoogleMessagesControllerNavigation.resolve(view, holder, index);
-            if (model == null) {
-                throw new IllegalStateException("Google model unavailable for native row");
-            }
-            for (NativeConversationRow previous : rows) {
-                if (GoogleMessagesControllerNavigation.sameConversation(previous.model, model)) {
-                    throw new IllegalStateException("Duplicate native conversation model");
+            // A separate opt-in Q25 test can exercise the canonical
+            // Bbos6PageList's actual scrolling/DPAD even when Google's
+            // obfuscated model accessor is unavailable outside real clicks.
+            // The navigation bridge always refuses activation for these
+            // rows and returns the stock inbox; never infer an ID from text.
+            if (model == null) unresolvedModels++;
+            if (model != null) {
+                for (NativeConversationRow previous : rows) {
+                    if (GoogleMessagesControllerNavigation.sameConversation(
+                        previous.model, model
+                    )) {
+                        throw new IllegalStateException("Duplicate native conversation model");
+                    }
                 }
             }
             rows.add(new NativeConversationRow(index, sender, preview,
@@ -449,6 +461,8 @@ final class GoogleMessagesAdapterBridge {
         }
         Log.i(TAG, "SNAPSHOT nativeItems=" + count
             + " conversationRows=" + rows.size()
+            + " modelsResolved=" + (rows.size() - unresolvedModels)
+            + " modelsUnavailable=" + unresolvedModels
             + " nonInteractiveLottieRows=" + nonInteractiveAnimations);
         return rows;
     }
@@ -590,6 +604,10 @@ final class GoogleMessagesAdapterBridge {
     boolean activate(NativeConversationRow selected, boolean longPress) {
         if (longPress) {
             Log.i(TAG, "OPEN long-press unavailable; stock inbox required");
+            return false;
+        }
+        if (selected == null || selected.model == null) {
+            Log.i(TAG, "OPEN blocked: no validated native model; reverting to stock inbox");
             return false;
         }
         try {
