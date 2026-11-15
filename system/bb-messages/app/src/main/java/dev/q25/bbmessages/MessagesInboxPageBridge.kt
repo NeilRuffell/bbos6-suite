@@ -27,11 +27,12 @@ import java.lang.ref.WeakReference
  * attached, measured and bound, but INVISIBLE underneath our full-page
  * Compose list. We never create an app-specific scroll/selection controller.
  *
- * The Google-specific integration only extracts native rows, refreshes them
- * after native layout, and delegates activation to Google's bound handlers.
- * For an unsupported data/action contract we restore Google's whole inbox.
+ * The Google-specific integration extracts native rows and their typed
+ * Google-owned conversation models, and refreshes after native layout.
+ * A guarded Google controller bridge replaces the rejected detached
+ * ViewHolder.performClick. For any unsupported contract, restore stock UI.
  *
- * Experimental and opt-in: debug.bbmessages.page.enabled=true
+ * Experimental and opt-in: debug.bbmessages.shared.page.enabled=true
  * Restore stock by setting false and force-stopping Google Messages.
  */
 object MessagesInboxPageBridge {
@@ -41,6 +42,11 @@ object MessagesInboxPageBridge {
     private const val NATIVE_RECYCLER =
         "android.support.v7.widget.RecyclerView"
     private var currentSession: WeakReference<Session>? = null
+    private const val SOURCE_DRAW_ATTEMPTS = 12
+    private val observedActivities =
+        java.util.Collections.newSetFromMap(
+            java.util.WeakHashMap<Activity, Boolean>()
+        )
 
     /**
      * Google adapter bind callback (not a new scrolling/input controller).
@@ -51,14 +57,59 @@ object MessagesInboxPageBridge {
         currentSession?.get()?.scheduleRefresh()
     }
 
+    /**
+     * Register while Activity.onResume is returning, before first draw.
+     * Do not post a 750ms overlay over an already painted Google inbox.
+     * If Google has not supplied a valid adapter snapshot within a bounded
+     * number of draw passes, fail closed to the unmodified Google UI.
+     */
     @JvmStatic
-    fun tryMount(activity: Activity) {
-        if (activity.javaClass.name != TARGET_ACTIVITY) return
+    fun watchFirstDraw(activity: Activity) {
+        if (activity.javaClass.name != TARGET_ACTIVITY ||
+            !observedActivities.add(activity)) return
+        val decor = activity.window?.decorView ?: return
+        val tree = decor.viewTreeObserver
+        if (!tree.isAlive) return
+        var passes = 0
+        val listener = object : ViewTreeObserver.OnPreDrawListener {
+            override fun onPreDraw(): Boolean {
+                if (activity.isFinishing || activity.isDestroyed) {
+                    if (tree.isAlive) tree.removeOnPreDrawListener(this)
+                    return true
+                }
+                if (currentSession?.get() != null) {
+                    if (tree.isAlive) tree.removeOnPreDrawListener(this)
+                    return true
+                }
+                if (tryMount(activity)) {
+                    if (tree.isAlive) tree.removeOnPreDrawListener(this)
+                    Log.i(TAG, "SOURCE_PAGE mounted before first native draw")
+                    decor.postInvalidateOnAnimation()
+                    return false
+                }
+                passes++
+                if (passes >= SOURCE_DRAW_ATTEMPTS) {
+                    if (tree.isAlive) tree.removeOnPreDrawListener(this)
+                    Log.w(TAG, "SOURCE_PAGE unavailable; retained stock Google inbox")
+                    return true
+                }
+                decor.postInvalidateOnAnimation()
+                return false
+            }
+        }
+        tree.addOnPreDrawListener(listener)
+        Log.i(TAG, "SOURCE_PAGE watching first draw")
+    }
+
+    @JvmStatic
+    fun tryMount(activity: Activity): Boolean {
+        if (activity.javaClass.name != TARGET_ACTIVITY) return false
         try {
             val recycler = activity.findViewById<View>(android.R.id.list)
-            if (recycler !is ViewGroup || recycler.javaClass.name != NATIVE_RECYCLER) return
-            val parent = recycler.parent as? LinearLayout ?: return
-            val adapter = GoogleMessagesAdapterBridge.resolve(recycler) ?: return
+            if (recycler !is ViewGroup || recycler.javaClass.name != NATIVE_RECYCLER)
+                return false
+            val parent = recycler.parent as? LinearLayout ?: return false
+            val adapter = GoogleMessagesAdapterBridge.resolve(recycler) ?: return false
 
             // No partial inbox. All adapter positions must bind to verified
             // native conversation rows and activation handlers.
@@ -70,19 +121,20 @@ object MessagesInboxPageBridge {
                     "Full inbox snapshot rejected; inspecting native row types. Google inbox retained",
                     failure
                 )
-                val rejectedIndex =
-                    (failure as? GoogleMessagesAdapterBridge.UnexpectedNativeRowException)?.index
-                        ?: -1
-                adapter.inspectRowKinds(rejectedIndex)
-                return
+                // No repeated per-row diagnostics in a pre-draw retry loop.
+                return false
             }
-            if (recycler.parent !== parent || !recycler.isAttachedToWindow) return
+            if (recycler.parent !== parent || !recycler.isAttachedToWindow)
+                return false
 
             val session = Session(parent, recycler, adapter, snapshot, adapter.itemCount())
             session.mount()
             currentSession = WeakReference(session)
+            return true
         } catch (failure: Throwable) {
-            Log.e(TAG, "Shared inbox mount rejected; Google inbox retained", failure)
+            Log.w(TAG, "SOURCE_PAGE native contract rejected; Google inbox retained",
+                failure)
+            return false
         }
     }
 
@@ -132,7 +184,7 @@ object MessagesInboxPageBridge {
         private var observedTree: ViewTreeObserver? = null
 
         fun mount() {
-            if (originalIndex < 0) return
+            if (originalIndex < 0) throw IllegalStateException("Native inbox not attached")
             try {
                 host.setViewTreeLifecycleOwner(owner)
                 host.setViewTreeSavedStateRegistryOwner(owner)
@@ -229,7 +281,14 @@ object MessagesInboxPageBridge {
                 // Reset shared selection whenever Google's dataset changes.
                 nativeRows = latest
                 nativeAdapterItemCount = refreshedItemCount
-                if (presentation != displayRows) {
+                val identityChanged = nativeRows.size != latest.size ||
+                    nativeRows.zip(latest).any { (before, after) ->
+                        before.index != after.index ||
+                            !GoogleMessagesControllerNavigation.sameConversation(
+                                before.model, after.model
+                            )
+                    }
+                if (presentation != displayRows || identityChanged) {
                     displayRows = presentation
                     revision++
                     Log.i(TAG, "Refreshed shared inbox count=" + presentation.size)
@@ -243,7 +302,12 @@ object MessagesInboxPageBridge {
         private fun activate(id: String, longPress: Boolean) {
             if (closed) return
             val current = nativeRows.firstOrNull { it.id == id }
-            if (current == null || !adapter.activate(current, longPress)) {
+            val countStable = try {
+                adapter.itemCount() == nativeAdapterItemCount
+            } catch (_: Throwable) {
+                false
+            }
+            if (!countStable || current == null || !adapter.activate(current, longPress)) {
                 Log.w(TAG, "Native conversation action unavailable; restoring Google inbox")
                 rollback()
             }
