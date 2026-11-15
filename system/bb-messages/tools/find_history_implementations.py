@@ -26,7 +26,10 @@ INTERFACES = (
     "Lcom/google/android/apps/messaging/shared/datamodel/data/common/MessageCoreData;",
     "Lcom/google/android/apps/messaging/shared/datamodel/data/message/part/MessagePartCoreData;",
 )
-MAX_INTERFACES_PER_CLASS = 96
+# Interface lists are DEX type_list tables. Class-specific hard limits such
+# as 96 can reject valid metadata. Bound by the actual DEX byte length
+# instead, and cap the aggregate entries inspected per DEX.
+MAX_INTERFACE_ENTRIES_PER_DEX = 1_000_000
 MAX_MATCHES_PER_INTERFACE = 256
 MAX_METHODS_PER_MATCH = 12
 MAX_MEMBERS_PER_CLASS = 100000
@@ -44,6 +47,7 @@ def relationships(dex: DexMetadata, wanted: tuple[str, ...] = INTERFACES
     result: dict[str, list[tuple[str, str, tuple[str, ...]]]] = {
         name: [] for name in wanted
     }
+    inspected_interface_entries = 0
     for i in range(dex.cls_count):
         off = dex.cls_off + i * 32
         class_idx = u32(dex.data, off)
@@ -51,16 +55,21 @@ def relationships(dex: DexMetadata, wanted: tuple[str, ...] = INTERFACES
         parent_idx = u32(dex.data, off + 8)
         parent = None if parent_idx == NO_INDEX else dex.typ(parent_idx)
         interface_off = u32(dex.data, off + 12)
-        direct = []
+        # Search matching interface *indices* without decoding an unrelated
+        # class's entire type list to names. Validate size before any reads.
+        direct = set()
         if interface_off:
             count = u32(dex.data, interface_off)
-            if count > MAX_INTERFACES_PER_CLASS:
-                raise DexFormatError("Excessive class interface count")
             check_table(dex.data, interface_off + 4, count, 2)
-            direct = [
-                dex.typ(u16(dex.data, interface_off + 4 + 2 * j))
-                for j in range(count)
-            ]
+            inspected_interface_entries += count
+            if inspected_interface_entries > MAX_INTERFACE_ENTRIES_PER_DEX:
+                raise DexFormatError("Interface metadata scan budget exceeded")
+            for j in range(count):
+                interface_type = dex.typ(u16(
+                    dex.data, interface_off + 4 + 2 * j
+                ))
+                if interface_type in wanted:
+                    direct.add(interface_type)
         matched = [
             (name, "implements" if name in direct else "extends")
             for name in wanted

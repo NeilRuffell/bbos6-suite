@@ -32,6 +32,37 @@ so `adb install -r` updates the existing module without uninstalling it.
 contracts have real Q25 evidence.** The current probe proves none of
 the mandatory RCS capabilities.
 
+## Q25 interface scanner repair — 22 tests PASSED, APK scan blocked
+
+The Q25 executed 22/22 Python tests successfully, but the offline
+`find_history_implementations.py` scan aborted with:
+
+```text
+Interface scan unavailable: Excessive class interface count
+```
+
+This is a **scanner safety-limit failure**, not evidence that RCS
+historical retrieval is unavailable. The previous parser applied
+an arbitrary limit of 96 interface entries per class before validating
+the DEX `type_list` table. The updated scanner validates each list's
+actual byte bounds, decodes direct type descriptors, and has a
+separate aggregate limit of 1,000,000 interface entries per DEX.
+Malformed or out-of-bounds metadata still fails closed. It reads
+no values, user messages, database records, or method bytecode.
+
+Two new synthetic-Dex tests cover an in-bounds 97-entry interface
+list and a corrupted list count. Expected local test count: 24.
+Neither the new tests nor the revised Q25 scan has been verified yet.
+
+```bash
+cd ~/Projects/bbos6-suite
+git fetch origin
+git switch feature/messages-rcs-backend-research
+git pull --ff-only origin feature/messages-rcs-backend-research
+python3 -m unittest discover -s system/bb-messages/tools/tests -v
+python3 system/bb-messages/tools/find_history_implementations.py \
+  --serial 202512003630
+```
 ## Q25 history metadata — 6/6 classes found, one test regression fixed
 
 Q25 on 15 November 2026: the offline `--focus history` scan found all
