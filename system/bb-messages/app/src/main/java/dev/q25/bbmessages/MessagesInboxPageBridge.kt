@@ -42,7 +42,9 @@ object MessagesInboxPageBridge {
     private const val NATIVE_RECYCLER =
         "android.support.v7.widget.RecyclerView"
     private var currentSession: WeakReference<Session>? = null
-    private const val SOURCE_DRAW_ATTEMPTS = 12
+    // Bounded wait for Google's asynchronous inbox population, without
+    // painting the rejected native-Google-to-BBOS6 transition.
+    private const val SOURCE_DRAW_ATTEMPTS = 90
     private val observedActivities =
         java.util.Collections.newSetFromMap(
             java.util.WeakHashMap<Activity, Boolean>()
@@ -71,6 +73,7 @@ object MessagesInboxPageBridge {
         val tree = decor.viewTreeObserver
         if (!tree.isAlive) return
         var passes = 0
+        var lastSnapshotAt = 0L
         val listener = object : ViewTreeObserver.OnPreDrawListener {
             override fun onPreDraw(): Boolean {
                 if (activity.isFinishing || activity.isDestroyed) {
@@ -81,11 +84,17 @@ object MessagesInboxPageBridge {
                     if (tree.isAlive) tree.removeOnPreDrawListener(this)
                     return true
                 }
-                if (tryMount(activity)) {
-                    if (tree.isAlive) tree.removeOnPreDrawListener(this)
-                    Log.i(TAG, "SOURCE_PAGE mounted before first native draw")
-                    decor.postInvalidateOnAnimation()
-                    return false
+                // Snapshotting can bind many native holders. Retry at
+                // bounded intervals, not on every 16ms pre-draw pass.
+                val now = android.os.SystemClock.uptimeMillis()
+                if (now - lastSnapshotAt >= 150L) {
+                    lastSnapshotAt = now
+                    if (tryMount(activity)) {
+                        if (tree.isAlive) tree.removeOnPreDrawListener(this)
+                        Log.i(TAG, "SOURCE_PAGE mounted before first native draw")
+                        decor.postInvalidateOnAnimation()
+                        return false
+                    }
                 }
                 passes++
                 if (passes >= SOURCE_DRAW_ATTEMPTS) {
