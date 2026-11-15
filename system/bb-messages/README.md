@@ -58,6 +58,73 @@ continuing to masquerade as a working BBOS6 integration. The experimental
 sources remain only for reference while direct Google controller bindings
 are investigated. No production UI replacement is active. Do not merge.
 
+### Opt-in source-time BBOS6 row presentation (unverified build/device; 2026-11-14)
+
+A new, separate experimental flag enables a first **visible** BBOS6
+surface using the *existing native Google Messages RecyclerView*:
+
+`debug.bbmessages.native.rows.enabled=true`
+
+In this mode, a version-checked hook on Google's existing
+`vv.g(aac,int)` adapter binder adds a `ComposeView` directly as a
+**child of the bound `ConversationListItemView`** before that row is
+drawn. It uses the shared canonical `Bbos6MediaListRow` with sender,
+preview and timestamp extracted from Google's own bound TextViews.
+No second list, independent navigation controller, `ViewGroupOverlay`,
+late 750-ms activity swap, or synthetic clicks are used. Google's
+original RecyclerView, child data sources, and row listeners remain in
+place; the visual child rejects touch and hover, is not focusable
+and is excluded from accessibility. Google's original children are
+made paint-transparent while remaining in the hierarchy, so the
+native listeners/data binding remain Google-owned. Unsupported row
+types and failed Compose setup retain/restore native presentation,
+including original alpha and height.
+
+This is intentionally a **row-only visual slice**. Google Messages'
+headers, compose conversation page and other screens remain stock.
+Do not claim full BBOS6 integration, zero visual flash, UI appearance
+fidelity, or reliable physical-input behavior until tested on the Q25.
+
+The original `debug.bbmessages.actionprobe.enabled` flag has
+precedence. Set it to **false** for visual testing, and keep rejected
+`inbox` / `page` modes false. Install the branch APK without
+uninstalling Google Messages or clearing its data:
+
+```sh
+cd ~/Projects/bbos6-suite
+git fetch origin
+git switch feature/messages-inbox-shared-subtitles
+git pull --ff-only origin feature/messages-inbox-shared-subtitles
+gradle -p system/bb-messages :bbos6-ui:verifyKotlinOnly :bbos6-ui:testDebugUnitTest :app:assembleDebug && \
+adb -s 202512003630 install -r system/bb-messages/app/build/outputs/apk/debug/app-debug.apk
+adb -s 202512003630 shell setprop debug.bbmessages.actionprobe.enabled false
+adb -s 202512003630 shell setprop debug.bbmessages.inbox.enabled false
+adb -s 202512003630 shell setprop debug.bbmessages.page.enabled false
+adb -s 202512003630 shell setprop debug.bbmessages.native.rows.enabled true
+adb -s 202512003630 logcat -c
+adb -s 202512003630 shell am force-stop com.google.android.apps.messaging
+adb -s 202512003630 shell monkey -p com.google.android.apps.messaging 1
+adb -s 202512003630 logcat -d -v time | \
+  grep -E 'NATIVE_ROW|BBMessagesNativeRows'
+```
+
+**Acceptance on device:** row appearance, one native inbox list only,
+no native-Google-to-BBOS6 flash, touch and trackpad activation of
+the correct thread, long press, DPAD/focus, scrolling, Back, rebind
+after scrolling, and no row overlap/click interception.
+
+**Immediate rollback (no uninstall/data loss):**
+
+```sh
+adb -s 202512003630 shell setprop debug.bbmessages.native.rows.enabled false
+adb -s 202512003630 shell am force-stop com.google.android.apps.messaging
+adb -s 202512003630 shell monkey -p com.google.android.apps.messaging 1
+```
+
+The original rejected row overlay and full-page swap remain disabled.
+This UI slice is **not** merged into `master`; merge requires device
+acceptance and explicit approval.
+
 ### Q25 repeatability and structural binding confirmed (2026-11-14 16:56)
 
 User verified the updated action-probe build installed and ran on
