@@ -34,6 +34,35 @@ final class MessagesNativeAttachedActionBridge {
     private static final Map<View, Integer> BOUND =
         Collections.synchronizedMap(new WeakHashMap<View, Integer>());
 
+    // Read-only evidence about which Google controller method the original
+    // listener actually calls. Thread-local scope excludes unrelated opens.
+    private static final ThreadLocal<DispatchTrace> ACTIVE_DISPATCH = new ThreadLocal<>();
+
+    private static final class DispatchTrace {
+        final boolean longPress;
+        int openCalls;
+        int menuCalls;
+        int completedCalls;
+        int failedCalls;
+
+        DispatchTrace(boolean longPress) {
+            this.longPress = longPress;
+        }
+    }
+
+    /**
+     * Called by exact asvk.Q/P hooks ONLY during original attached-row
+     * listener dispatch on the same thread. No IDs or objects are logged.
+     */
+    static void observeControllerAction(boolean longPress, boolean completed) {
+        DispatchTrace state = ACTIVE_DISPATCH.get();
+        if (state == null) return;
+        if (longPress) state.menuCalls++;
+        else state.openCalls++;
+        if (completed) state.completedCalls++;
+        else state.failedCalls++;
+    }
+
     private MessagesNativeAttachedActionBridge() { }
 
     static void observeNativeBind(Object holder, int position) {
@@ -105,10 +134,25 @@ final class MessagesNativeAttachedActionBridge {
 
         // Native listener dispatch is the only place Q25 testing observed
         // Google reliably populate the ConversationId before asvk.Q().
-        boolean invoked = longPress ? match.performLongClick() : match.performClick();
-        Log.i(TAG, "ATTACHED_OPEN originalGoogleActionInvoked=" + invoked
-            + " longPress=" + longPress);
-        return invoked;
+        DispatchTrace trace = new DispatchTrace(longPress);
+        if (ACTIVE_DISPATCH.get() != null) {
+            Log.w(TAG, "ATTACHED_OPEN nested Google action refused");
+            return false;
+        }
+        ACTIVE_DISPATCH.set(trace);
+        boolean invoked = false;
+        try {
+            invoked = longPress ? match.performLongClick() : match.performClick();
+            return invoked;
+        } finally {
+            ACTIVE_DISPATCH.remove();
+            Log.i(TAG, "ATTACHED_OPEN originalGoogleActionInvoked=" + invoked
+                + " longPress=" + longPress
+                + " nativeQCalls=" + trace.openCalls
+                + " nativePCalls=" + trace.menuCalls
+                + " nativeCompleted=" + trace.completedCalls
+                + " nativeFailures=" + trace.failedCalls);
+        }
     }
 
     private static TextView textField(View root, int id) {
