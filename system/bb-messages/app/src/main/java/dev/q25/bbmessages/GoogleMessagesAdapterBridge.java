@@ -595,21 +595,13 @@ final class GoogleMessagesAdapterBridge {
     }
 
     /**
-     * Open only a currently matching native Google conversation model.
-     * The rejected detached View.performClick path is NEVER used.
-     *
-     * Google long-press needs a separate eggp action model. Fail closed;
-     * the caller restores the stock inbox rather than selecting the wrong row.
+     * Open via the ORIGINAL attached Google row listener after confirming
+     * current adapter, native position and presentation have not changed.
+     * Never invoke a detached row's listener, never invent an ID.
+     * Unsupported/offscreen rows fail closed to stock Google Messages.
      */
     boolean activate(NativeConversationRow selected, boolean longPress) {
-        if (longPress) {
-            Log.i(TAG, "OPEN long-press unavailable; stock inbox required");
-            return false;
-        }
-        if (selected == null || selected.model == null) {
-            Log.i(TAG, "OPEN blocked: no validated native model; reverting to stock inbox");
-            return false;
-        }
+        if (selected == null) return false;
         try {
             if (!isCurrent() || selected == null
                 || selected.index < 0 || selected.index >= itemCount()) return false;
@@ -644,16 +636,21 @@ final class GoogleMessagesAdapterBridge {
                 Log.w(TAG, "OPEN denied: native row presentation changed");
                 return false;
             }
-            GoogleMessagesControllerNavigation.BoundModel current =
-                GoogleMessagesControllerNavigation.resolve(
-                    nativeRow, holder, selected.index
-                );
-            if (!isCurrent() || !GoogleMessagesControllerNavigation.sameConversation(
-                    selected.model, current)) {
-                Log.w(TAG, "OPEN denied: native model changed");
-                return false;
+            // The Q25 data-model path aszh.a.I.c becomes populated
+            // only during Google's native click sequence. The existing
+            // Google RecyclerView can provide the original, ATTACHED row
+            // and its real listener, without inventing an identifier.
+            if (!isCurrent()) return false;
+            if (MessagesNativeAttachedActionBridge.activate(
+                    recycler, selected.index, selected.sender,
+                    selected.preview, selected.timestamp, longPress)) {
+                return true;
             }
-            return GoogleMessagesControllerNavigation.open(selected.model, current);
+
+            // No synthetic fallback: the standalone asvk.I(int) accessor
+            // returned a null conversation ID for every tested row.
+            Log.i(TAG, "OPEN unavailable: verified attached row required");
+            return false;
         } catch (Throwable failure) {
             Log.w(TAG, "OPEN failed="+ failure.getClass().getSimpleName());
             return false;
