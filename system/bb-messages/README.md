@@ -4,6 +4,80 @@ Independent experimental Vector/LSPosed module for Google Messages on the
 Zinwa Q25. The renderer reuses the canonical Kotlin/Compose BBOS6 library in
 `../../shared/android/bbos6-ui/`.
 
+## Q25 18:25: shared list renders; original attached Google actions now wired
+
+The user's latest Q25 device test verified that **the shared page
+mounted and refreshed correctly**: first 8 native conversation rows,
+then 28 conversation rows among 124 native adapter entries (96
+noninteractive Lottie placeholders). All 28 row model lookups returned
+`model_id_null`. Activating a BBOS6 row consequently rolled back to
+stock UI; this was not a missing enable flag.
+
+### Corrected action contract on the current feature branch
+
+We now use the original Google Messages action path from an
+**actual attached native row**, rather than reading the transient
+`aszh.a.I.c` ID outside a real click or calling the detached
+`performClick()` previously shown to fail.
+
+- The verified `vv.g(aac,int)` native bind callback records a weak
+  row-to-adapter-position association, ignoring our synthetic
+  snapshot binds. No IDs or content are logged.
+- On BBOS6 selection, the Google adapter rebinds a fresh read-only
+  presentation snapshot at that index and checks unchanged title and
+  preview, its current adapter identity and count. The shared-page
+  controller refuses ambiguous duplicate sender/preview/timestamp
+  tuples rather than guessing which thread to open.
+- `MessagesNativeAttachedActionBridge` searches the **currently
+  attached** original Google RecyclerView children, requiring a
+  *single* attached row with the exact verified native index, title,
+  preview and timestamp. It delegates to that existing row's
+  `performClick()` or `performLongClick()`, invoking Google's own
+  native delegates and normal click-time context. No fabricated
+  conversation ID, standalone `asvk.I` call, manually assembled
+  `asvk.Q` invocation or second scrolling controller is used.
+- If the selected native row is offscreen, detached, stale,
+  ambiguous or noninteractive, the action fails closed and the stock
+  inbox is restored. Offscreen activation is **not** yet supported.
+- The standalone `asvk.I(int)` read is no longer called in
+  snapshots because Q25 verified it yields null IDs outside Google's
+  actual click path. New snapshot logs explicitly report
+  `independentModelRead=disabled originalNativeActionBridge=enabled`.
+
+This is new code, **not yet compiled or Q25-device verified**. The
+next device result must establish whether `View.performClick()` on
+an original **attached but parent-invisible** native row invokes
+the working Google conversation handler, and whether native long
+presses remain functional. An `ATTACHED_OPEN
+originalGoogleActionInvoked=true` log means a listener was called;
+it is not by itself proof that the intended conversation opened.
+Only device testing can establish success.
+
+Test on the same existing branch and flag:
+
+```sh
+cd ~/Projects/bbos6-suite
+git fetch origin
+git switch feature/messages-inbox-shared-subtitles
+git pull --ff-only origin feature/messages-inbox-shared-subtitles
+gradle -p system/bb-messages \
+  :bbos6-ui:verifyKotlinOnly :bbos6-ui:testDebugUnitTest \
+  :app:testDebugUnitTest :app:assembleDebug && \
+adb -s 202512003630 install -r \
+  system/bb-messages/app/build/outputs/apk/debug/app-debug.apk
+adb -s 202512003630 shell setprop debug.bbmessages.actionprobe.enabled false
+adb -s 202512003630 shell setprop debug.bbmessages.native.rows.enabled false
+adb -s 202512003630 shell setprop debug.bbmessages.shared.page.enabled true
+adb -s 202512003630 logcat -c
+adb -s 202512003630 shell am force-stop com.google.android.apps.messaging
+adb -s 202512003630 shell monkey -p com.google.android.apps.messaging 1
+adb -s 202512003630 logcat -d -v time | \
+  grep -E 'SOURCE_PAGE|SNAPSHOT|ATTACHED_OPEN|BBMessagesPage|BBMessagesNavigation'
+```
+
+No changes to shared UI helpers were necessary, and no merge has
+occurred. Stock rollback remains the same two properties + restart.
+
 ## Q25 18:05 startup regression: empty mount and model lookup failure
 
 The Q25 log proves **the new integration was already enabled**:
@@ -23,12 +97,12 @@ Changes on the same unmerged feature branch:
 2. **Presentation is separated from navigation identity:** native
    conversation rows can produce a complete `Bbos6PageList` snapshot
    even when the standalone `asvk.I(position)` model lookup cannot be
-   verified. The snapshot logs counts of `modelsResolved` and
-   `modelsUnavailable` without printing IDs, contacts or text.
-3. **Fail-closed activation remains mandatory.** A row without its
-   validated model cannot call `asvk.Q`; selecting it restores stock
-   Google Messages. This is a shared-list visual/scroll test, *not* a
-   claim of working conversation activation.
+   verified. This historical step has now been superseded:
+   independent model reads are disabled in the current snapshot path.
+3. **Fail-closed activation remains mandatory.** This historical
+   model-based activation guard has now been replaced with validation
+   of the original, attached Google conversation row before invoking
+   its existing listener; see the newer Q25 18:25 section above.
 4. `MODEL_RESOLVE_STAGE unavailable=...` now records the **first
    occurrence of each structural failure stage only**, distinguishing
    a native binding failure, null result, unexpected returned type,
