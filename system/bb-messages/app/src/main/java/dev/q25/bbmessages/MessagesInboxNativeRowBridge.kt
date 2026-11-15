@@ -4,7 +4,6 @@ import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
-import android.view.MotionEvent
 import android.widget.TextView
 import android.text.Editable
 import android.text.TextWatcher
@@ -133,12 +132,10 @@ object MessagesInboxNativeRowBridge {
             val localOwner = InboxRowCompositionOwner()
             var newCompose: ComposeView? = null
             try {
-                // This child is a visual face only. Google's existing row
-                // receives every touch/long-click/hover event unchanged.
-                val skin = object : ComposeView(row.context) {
-                    override fun dispatchTouchEvent(event: MotionEvent?): Boolean = false
-                    override fun dispatchHoverEvent(event: MotionEvent?): Boolean = false
-                }.apply {
+                // ComposeView is final and cannot override input dispatch.
+                // Render only passive shared-row content; retain Google's
+                // existing native row listeners and validate input on Q25.
+                val skin = ComposeView(row.context).apply {
                     isClickable = false
                     isLongClickable = false
                     isFocusable = false
