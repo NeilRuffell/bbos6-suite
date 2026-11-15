@@ -67,25 +67,20 @@ public final class MessagesInspectionHook implements IXposedHookLoadPackage {
                             return;
                         }
                         Activity activity = (Activity) hook.args[0];
-                        if (!inspected.add(activity)) {
-                            return;
-                        }
-
-                        View decor = activity.getWindow() == null
-                            ? null : activity.getWindow().getDecorView();
-                        if (decor == null) {
-                            return;
-                        }
-
+                        // Return from a Google conversation may resume the
+                        // same MainActivity, or only swap its inbox fragment.
+                        // The permanent pre-draw watcher handles both.
                         if (propertyEnabled(SHARED_PAGE_PROP)
                             && !isActionProbeEnabled()) {
-                            // Attach before first draw. Never show a Google
-                            // inbox and replace it 750ms later.
                             MessagesInboxPageBridge.watchFirstDraw(activity);
-                        } else {
-                            // Existing read-only inspection mode only.
-                            decor.postDelayed(() -> inspect(activity), 750L);
+                            return;
                         }
+                        if (!inspected.add(activity)) return;
+                        View decor = activity.getWindow() == null
+                            ? null : activity.getWindow().getDecorView();
+                        if (decor == null) return;
+                        // Existing read-only inspection mode only.
+                        decor.postDelayed(() -> inspect(activity), 750L);
                     }
                 }
             );
