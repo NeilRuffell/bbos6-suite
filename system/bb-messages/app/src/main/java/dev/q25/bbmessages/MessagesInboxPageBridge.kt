@@ -27,10 +27,12 @@ import java.lang.ref.WeakReference
  * attached, measured and bound, but INVISIBLE underneath our full-page
  * Compose list. We never create an app-specific scroll/selection controller.
  *
- * The Google-specific integration extracts native rows and their typed
- * Google-owned conversation models, and refreshes after native layout.
- * A guarded Google controller bridge replaces the rejected detached
- * ViewHolder.performClick. For any unsupported contract, restore stock UI.
+ * The Google-specific integration extracts native row presentation
+ * and delegates to the actual attached Google-owned row actions.
+ * Standalone Google conversation ID lookup is unsupported on Q25.
+ * A permanent pre-draw monitor remounts the shared inbox on Back
+ * without allowing the recreated native inbox to paint first.
+ * For unsupported contracts the original Google UI is the safety fallback.
  *
  * Experimental and opt-in: debug.bbmessages.shared.page.enabled=true
  * Restore stock by setting false and force-stopping Google Messages.
@@ -42,8 +44,8 @@ object MessagesInboxPageBridge {
     private const val NATIVE_RECYCLER =
         "android.support.v7.widget.RecyclerView"
     private var currentSession: WeakReference<Session>? = null
-    // Bounded wait for Google's asynchronous inbox population, without
-    // painting the rejected native-Google-to-BBOS6 transition.
+    // Per-visible-inbox bounded wait for Google's asynchronous population,
+    // including recreated inboxes following conversation Back navigation.
     private const val SOURCE_DRAW_ATTEMPTS = 90
     // Every MainActivity needs a persistent pre-draw observer, not a
     // one-shot watcher removed after the initial inbox mount. Google can
