@@ -4,6 +4,100 @@ Independent experimental Vector/LSPosed module for Google Messages on the
 Zinwa Q25. The renderer reuses the canonical Kotlin/Compose BBOS6 library in
 `../../shared/android/bbos6-ui/`.
 
+## Q25 18:41 Back return: persist BBOS6 across Google fragment recreation
+
+The Q25 log verified the attached native Google action ran the
+actual conversation-opening method successfully:
+
+```text
+ATTACHED_TRACE Q installed P installed=true
+SOURCE_PAGE mounted before first native draw
+ATTACHED_OPEN originalGoogleActionInvoked=true longPress=false
+  nativeQCalls=1 nativePCalls=0 nativeCompleted=1 nativeFailures=0
+```
+
+However, pressing **Back** displayed the **stock Google inbox**.
+That violates the BBOS6-only presentation requirement even when
+the selected conversation is opened by Google's backend.
+
+### Root cause and correction
+
+The startup code previously installed a **one-shot**
+`ViewTreeObserver.OnPreDrawListener` which removed itself after the
+first shared-list mount, and `MessagesInspectionHook` ignored
+subsequent `MainActivity.onResume` callbacks by gating on a
+one-time Activity set. Google can recreate or reinsert its native
+RecyclerView on returning from a conversation *without* recreating
+the Activity. In that case nothing remounted BBOS6 and the native
+inbox became visible.
+
+The updated integration now:
+
+1. Registers one **persistent** per-MainActivity pre-draw monitor.
+   Reuses/re-attaches the monitor on later Activity resumes.
+2. On every draw pass, searches the attached, visible view tree for
+   the **verified Google inbox** `android.R.id.list`,
+   `android.support.v7.widget.RecyclerView`, the known adapter
+   `vv extends yv`, and the verified LinearLayout parent.
+   The old native recycler *inside the BBOS6 host* remains
+   `INVISIBLE` and is deliberately excluded. Google conversation
+   screens with no visible compatible inbox are unaffected.
+3. When a newly visible native inbox appears (including Back),
+   mounts the canonical `MessagesInboxList` /
+   `Bbos6PageList` before native drawing using the same guarded
+   adapter snapshot and Google actions. Returning **false** from
+   `onPreDraw` invalidates the pre-swap frame.
+4. Uses the established bounded/150ms-throttled snapshot retries for
+   that newly visible inbox. Resets the retry window whenever the
+   native inbox disappears during conversation navigation.
+5. Retires detached stale shared sessions, logs host
+   attach/detach, and leaves the current shared list alone while
+   its native recycler is hidden. It never implements custom
+   per-app scrolling or changes the shared helper.
+
+Useful log markers:
+`SOURCE_PAGE persistent inbox draw monitor attached`,
+`SOURCE_PAGE shared inbox host detached`,
+`SOURCE_PAGE intercepted native inbox before draw returnMount=true`,
+`ATTACHED_OPEN`,
+`SOURCE_PAGE fallback restored native Google inbox`.
+
+**Status:** implementation committed; Gradle and actual Q25 Back
+verification still pending. The same safety fallback to Google
+remains for unknown/incompatible versions rather than freezing or
+crashing the SMS app. No claim of zero flash or successful Back
+remount until on-device testing.
+
+```sh
+cd ~/Projects/bbos6-suite
+git fetch origin
+git switch feature/messages-inbox-shared-subtitles
+git pull --ff-only origin feature/messages-inbox-shared-subtitles
+gradle -p system/bb-messages \
+  :bbos6-ui:verifyKotlinOnly \
+  :bbos6-ui:testDebugUnitTest \
+  :app:testDebugUnitTest \
+  :app:assembleDebug && \
+adb -s 202512003630 install -r \
+  system/bb-messages/app/build/outputs/apk/debug/app-debug.apk
+
+adb -s 202512003630 shell setprop debug.bbmessages.actionprobe.enabled false
+adb -s 202512003630 shell setprop debug.bbmessages.native.rows.enabled false
+adb -s 202512003630 shell setprop debug.bbmessages.shared.page.enabled true
+adb -s 202512003630 logcat -c
+adb -s 202512003630 shell am force-stop com.google.android.apps.messaging
+adb -s 202512003630 shell monkey -p com.google.android.apps.messaging 1
+adb -s 202512003630 logcat -d -v time | \
+  grep -E 'SOURCE_PAGE|ATTACHED_OPEN|ATTACHED_TRACE|BBMessagesPage'
+```
+
+Device test: open an initially visible thread, verify the right
+conversation, press Android Back, verify the **BBOS6 inbox**
+returns without the stock Google inbox appearing, then repeat with
+another conversation. The code still needs acceptance for offscreen
+conversation activation, long press, focus and selection retention.
+Do not merge before explicit approval.
+
 ## Q25 18:37 first real attached-row action and controller-trace follow-up
 
 Q25 device log confirms the new source-time shared inbox mode completed
