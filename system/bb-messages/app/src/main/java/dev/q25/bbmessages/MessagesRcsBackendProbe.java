@@ -27,6 +27,8 @@ import de.robv.android.xposed.callbacks.XC_LoadPackage;
 public final class MessagesRcsBackendProbe implements IXposedHookLoadPackage {
     private static final String TAG = "BBMessagesRcsProbe";
     private static final String PROPERTY = "debug.bbmessages.rcsprobe.enabled";
+    private static final String SCHEMA_PROPERTY =
+        "debug.bbmessages.rcsprobe.schema.enabled";
     private static final String CONTROLLER = "asvk";
     private static final String CONVERSATION_ID =
         "com.google.android.apps.messaging.shared.api.messaging.conversation.ConversationId";
@@ -71,7 +73,9 @@ public final class MessagesRcsBackendProbe implements IXposedHookLoadPackage {
                     try {
                         Log.i(TAG, "RCS_PROBE originalConversationOpenObserved=true"
                             + " completed=" + !hook.hasThrowable());
-                        describeReferenceTypes(hook.thisObject, controller);
+                        describeReferenceTypes(
+                            hook.thisObject, controller, propertyEnabled(SCHEMA_PROPERTY)
+                        );
                         describeConversationType(conversationId);
                     } catch (Throwable failure) {
                         Log.w(TAG, "RCS_PROBE structural inspection failed: "
@@ -88,12 +92,16 @@ public final class MessagesRcsBackendProbe implements IXposedHookLoadPackage {
     }
 
     private static boolean isEnabled() {
+        return propertyEnabled(PROPERTY);
+    }
+
+    private static boolean propertyEnabled(String property) {
         try {
             Class<?> properties = XposedHelpers.findClass(
                 "android.os.SystemProperties", null
             );
             Object result = XposedHelpers.callStaticMethod(
-                properties, "getBoolean", PROPERTY, false
+                properties, "getBoolean", property, false
             );
             return Boolean.TRUE.equals(result);
         } catch (Throwable unavailable) {
@@ -106,7 +114,9 @@ public final class MessagesRcsBackendProbe implements IXposedHookLoadPackage {
      * Reading the Java class of a referenced object is not reading its
      * conversation content. Never call methods on those objects or log them.
      */
-    private static void describeReferenceTypes(Object instance, Class<?> expected) {
+    private static void describeReferenceTypes(
+        Object instance, Class<?> expected, boolean includeSchema
+    ) {
         if (instance == null || !expected.isInstance(instance)) {
             Log.w(TAG, "RCS_PROBE controller instance unavailable");
             return;
@@ -120,9 +130,10 @@ public final class MessagesRcsBackendProbe implements IXposedHookLoadPackage {
                 if (Modifier.isStatic(field.getModifiers())
                     || field.getType().isPrimitive()) continue;
                 String runtimeType = "unavailable";
+                Object reference = null;
                 try {
                     field.setAccessible(true);
-                    Object reference = field.get(instance);
+                    reference = field.get(instance);
                     runtimeType = reference == null
                         ? "null" : reference.getClass().getName();
                 } catch (Throwable inaccessible) {
@@ -131,6 +142,12 @@ public final class MessagesRcsBackendProbe implements IXposedHookLoadPackage {
                 Log.i(TAG, "RCS_PROBE controllerReference"
                     + " declared=" + field.getType().getName()
                     + " runtime=" + runtimeType);
+                // Only Class metadata from known Q25 reference types;
+                // never inspect the instance's fields a second time,
+                // traverse its object graph or call a Google method.
+                if (includeSchema && reference != null) {
+                    RcsServiceMetadataProbe.describe(reference.getClass());
+                }
                 emitted++;
             }
         }

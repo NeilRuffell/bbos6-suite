@@ -32,6 +32,66 @@ so `adb install -r` updates the existing module without uninstalling it.
 contracts have real Q25 evidence.** The current probe proves none of
 the mandatory RCS capabilities.
 
+## Q25 00:30 first read-only controller probe — PASSED
+
+The Q25's installed Google Messages build confirmed the native action
+`asvk.Q(ConversationId)` completed after a genuine stock-UI conversation
+open. There were 16 direct controller reference fields. Among them the
+runtime classes `fzii`, `fzbv`, `affa`, `awei`, `aweq`,
+`gvvj`, `ucc`, `ujp` and `yw` occurred. The runtime conversation
+identifier class was
+`com.google.android.apps.messaging.shared.api.messaging.conversation.bugle.BugleConversationId`.
+Its public interface was
+`com.google.android.apps.messaging.shared.api.messaging.conversation.ConversationId`.
+It exposed three instance methods returning `bfac`, `String` and
+`byte[]`, but **none was called**, and no identifier value was logged.
+
+These observations verify the controller hook and allowlisted class
+identities; they **do not prove** RCS historical storage access, RCS
+conversation transport, sending, receipts, media or typing.
+
+## Second milestone — bounded class schema probe (awaiting Q25 test)
+
+A second separately opted-in diagnostic reads **class metadata only**
+for the nine runtime types above: superclass, interfaces (up to 6),
+declared instance field names/types (up to 16) and method signatures
+(up to 24, with at most 6 parameter types). Each class is logged once
+per process. No values or objects are followed beyond the existing
+controller's direct references; no Google methods are called.
+
+It avoids the known Activity, Context, Optional and ConversationId
+objects. A different installed Google version fails closed for unknown
+types. Class descriptions are strictly *candidates*, not verified
+backend services.
+
+After compiling/installing this branch, enable **both** properties
+before force-stopping/restarting stock Google Messages:
+
+```bash
+adb -s 202512003630 shell setprop debug.bbmessages.rcsprobe.enabled true
+adb -s 202512003630 shell setprop debug.bbmessages.rcsprobe.schema.enabled true
+adb -s 202512003630 logcat -c
+adb -s 202512003630 shell am force-stop com.google.android.apps.messaging
+adb -s 202512003630 shell monkey -p com.google.android.apps.messaging 1
+```
+
+Open one existing conversation via the **stock** Google UI; retrieve:
+
+```bash
+adb -s 202512003630 logcat -d -v time | \
+  grep -E 'RCS_SCHEMA|RCS_PROBE'
+```
+
+To disable schema inspection for subsequent tests:
+
+```bash
+adb -s 202512003630 shell setprop debug.bbmessages.rcsprobe.schema.enabled false
+```
+
+This diagnostic is not a complete RCS integration. The immediate goal
+is to obtain enough verified method/field **types** to identify a
+read-only conversation-history subscription or data-store contract.
+
 ## First milestone: read-only structural probe
 
 The device previously verified that the Google controller class
