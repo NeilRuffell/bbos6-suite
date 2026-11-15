@@ -33,6 +33,8 @@ public final class MessagesInspectionHook implements IXposedHookLoadPackage {
         "debug.bbmessages.actionprobe.enabled";
     private static final String NATIVE_ROW_PROP =
         "debug.bbmessages.native.rows.enabled";
+    private static final String SHARED_PAGE_PROP =
+        "debug.bbmessages.shared.page.enabled";
     private static final String ROW_CLASS =
         "com.google.android.apps.messaging.home.list.ConversationListItemView";
     private static final int MAX_VIEWS = 240;
@@ -75,8 +77,15 @@ public final class MessagesInspectionHook implements IXposedHookLoadPackage {
                             return;
                         }
 
-                        // Let the view tree mount after Activity resume.
-                        decor.postDelayed(() -> inspect(activity), 750L);
+                        if (propertyEnabled(SHARED_PAGE_PROP)
+                            && !isActionProbeEnabled()) {
+                            // Attach before first draw. Never show a Google
+                            // inbox and replace it 750ms later.
+                            MessagesInboxPageBridge.watchFirstDraw(activity);
+                        } else {
+                            // Existing read-only inspection mode only.
+                            decor.postDelayed(() -> inspect(activity), 750L);
+                        }
                     }
                 }
             );
@@ -84,6 +93,11 @@ public final class MessagesInspectionHook implements IXposedHookLoadPackage {
             if (isActionProbeEnabled()) {
                 Log.i(TAG, "Native action diagnostics enabled; stock Google UI retained");
                 MessagesNativeActionTrace.install(param.classLoader);
+            } else if (propertyEnabled(SHARED_PAGE_PROP)) {
+                // Source-time shared Bbos6PageList takes precedence over
+                // the incomplete Google-RecyclerView row-skin experiment.
+                hookAdapterBindings(param.classLoader);
+                Log.i(TAG, "SOURCE_PAGE shared BBOS6 controller opted in");
             } else if (propertyEnabled(NATIVE_ROW_PROP)) {
                 // This is not the rejected delayed page-swap or a row overlay.
                 // Reuse Google's own RecyclerView and row actions; insert the
