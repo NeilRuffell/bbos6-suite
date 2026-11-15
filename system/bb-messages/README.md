@@ -32,6 +32,45 @@ so `adb install -r` updates the existing module without uninstalling it.
 contracts have real Q25 evidence.** The current probe proves none of
 the mandatory RCS capabilities.
 
+## Q25 model signatures — 11 tests and 8/8 classes PASSED
+
+The Q25 installed-Google-Messages metadata scan reported 4 APKs, 12 DEX,
+11 passing unit tests and definitions for all eight model targets.
+`MessageCoreData` is an interface. Its methods include `H()` returning
+`ConversationIdType`, `J()` / `K()` returning `MessageIdType`,
+`O()` returning `MessagePartCoreData`, and `Q()` returning the
+`MessagesTable$InsertableBindData` type. `BugleConversationId`
+contains a `ConversationIdType` field. `ProcessMessageUpdateAsyncAction`
+defines `j(...)` and `k(MessageIdType)` methods. These are static
+code signatures, **not verified message retrieval operations**.
+
+### Next milestone: actual defined-method owners (awaiting Q25 test)
+
+The offline `tools/find_rcs_history_entrypoints.py` scanner finds only
+methods actually *defined* by installed Google Messages classes whose
+DEX prototypes return `MessageCoreData` or `MessagePartCoreData`,
+or accept `ConversationIdType` / `MessageIdType`. It intersects method
+reference table entries with real `class_data_item` method definitions,
+so merely referenced external methods do not count.
+
+The output reports total matches and up to ten named and ten
+obfuscated class-owner signatures per group. It does not decode
+method bodies, call Google code, read account/message data or
+inspect databases. Temporary APK copies are automatically deleted.
+
+```bash
+cd ~/Projects/bbos6-suite
+git fetch origin
+git switch feature/messages-rcs-backend-research
+git pull --ff-only origin feature/messages-rcs-backend-research
+python3 -m unittest discover -s system/bb-messages/tools/tests -v
+python3 system/bb-messages/tools/find_rcs_history_entrypoints.py \
+  --serial 202512003630
+```
+
+The new scanner is pending Q25 tests; results identify **candidates**
+for a future read-only history API investigation, not proven RCS
+backend contracts. Keep Google Messages stock and enabled.
 ## Q25 00:55 offline RCS action signatures — PASSED
 
 The user ran ten Python unit tests successfully and scanned all four
