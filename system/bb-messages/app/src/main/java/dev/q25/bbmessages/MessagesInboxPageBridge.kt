@@ -353,15 +353,19 @@ object MessagesInboxPageBridge {
                 host.addOnAttachStateChangeListener(
                     object : View.OnAttachStateChangeListener {
                         override fun onViewAttachedToWindow(v: View) {
-                            // The inbox can detach during Google's own
-                            // conversation navigation, then return on Back.
-                            // Revalidate the live native adapter on reattach.
+                            Log.i(TAG, "SOURCE_PAGE shared inbox host reattached"
+                                + " closed=" + closed)
                             if (!closed && !restoring) scheduleRefresh()
                         }
                         override fun onViewDetachedFromWindow(v: View) {
-                            // A temporary fragment/screen transition is NOT
-                            // an error: don't replace BBOS6 with stock Google
-                            // when the user opens a conversation and presses Back.
+                            Log.i(TAG, "SOURCE_PAGE shared inbox host detached"
+                                + " finishing=" + activity.isFinishing
+                                + " destroyed=" + activity.isDestroyed)
+                            // Google may remove the inbox fragment when a
+                            // thread opens and allocate a fresh native inbox
+                            // when Back is pressed. The persistent pre-draw
+                            // monitor remounts BBOS6 before that new inbox
+                            // can become visible.
                             if (activity.isFinishing || activity.isDestroyed) {
                                 release()
                             }
@@ -460,7 +464,7 @@ object MessagesInboxPageBridge {
                 recycler.visibility = originalVisibility
                 recycler.isFocusable = originalFocusable
                 recycler.isFocusableInTouchMode = originalFocusableInTouchMode
-                Log.i(TAG, "Restored native Google inbox")
+                Log.i(TAG, "SOURCE_PAGE fallback restored native Google inbox")
             } catch (failure: Throwable) {
                 Log.e(TAG, "Could not restore native Google inbox view", failure)
             }
