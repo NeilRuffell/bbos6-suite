@@ -6,6 +6,10 @@ import android.view.View;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.InvocationTargetException;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Q25 Google Messages-specific controller/model contract, NOT a UI helper.
@@ -24,6 +28,16 @@ final class GoogleMessagesControllerNavigation {
     private static final String TAG = "BBMessagesNavigation";
     private static final String ID_INTERFACE =
         "com.google.android.apps.messaging.shared.api.messaging.conversation.ConversationId";
+    // Structural diagnostics only: distinct failure stages are printed once.
+    // No identifiers, model objects, contacts or text enter the logs.
+    private static final Set<String> REPORTED_STAGES =
+        Collections.synchronizedSet(new HashSet<String>());
+
+    private static void unavailable(String stage) {
+        if (REPORTED_STAGES.add(stage)) {
+            Log.i(TAG, "MODEL_RESOLVE_STAGE unavailable=" + stage);
+        }
+    }
 
     static final class BoundModel {
         final Object controller;
@@ -45,31 +59,63 @@ final class GoogleMessagesControllerNavigation {
      * Google's internal I(int) method is not a public, stable read-only API.
      */
     static BoundModel resolve(View row, Object holder, int position) {
-        if (position < 0) return null;
+        if (position < 0) {
+            unavailable("invalid_position");
+            return null;
+        }
         GoogleMessagesConversationBinding.BindingCheck binding =
             GoogleMessagesConversationBinding.inspectBoundConversation(row, holder);
-        if (binding.handle == null) return null;
+        if (binding.handle == null) {
+            unavailable("native_binding_" + binding.reason);
+            return null;
+        }
         Object controller = binding.handle.controller;
         try {
             Class<?> type = controller.getClass();
-            if (!"asvk".equals(type.getName())) return null;
+            if (!"asvk".equals(type.getName())) {
+                unavailable("controller_class");
+                return null;
+            }
             Method accessor = type.getDeclaredMethod("I", int.class);
             Class<?> idType = Class.forName(
                 ID_INTERFACE, false, type.getClassLoader()
             );
             if (!"aszr".equals(accessor.getReturnType().getName())
-                || Modifier.isStatic(accessor.getModifiers())) return null;
+                || Modifier.isStatic(accessor.getModifiers())) {
+                unavailable("accessor_signature");
+                return null;
+            }
             accessor.setAccessible(true);
             Object result = accessor.invoke(controller, position);
-            if (result == null || !"aszh".equals(result.getClass().getName()))
+            if (result == null) {
+                unavailable("accessor_result_null");
                 return null;
+            }
+            if (!"aszh".equals(result.getClass().getName())) {
+                unavailable("accessor_result_class_" + result.getClass().getName());
+                return null;
+            }
             Object a = readField(result, "a");
+            if (a == null) {
+                unavailable("model_a_null");
+                return null;
+            }
             Object i = readField(a, "I");
+            if (i == null) {
+                unavailable("model_a_I_null");
+                return null;
+            }
             Object id = readField(i, "c");
-            return idType.isInstance(id) ? new BoundModel(controller, id) : null;
+            if (!idType.isInstance(id)) {
+                unavailable(id == null ? "model_id_null" : "model_id_type");
+                return null;
+            }
+            return new BoundModel(controller, id);
         } catch (Throwable error) {
-            Log.w(TAG, "MODEL_RESOLVE unavailable="
-                + error.getClass().getSimpleName());
+            Throwable cause = error instanceof InvocationTargetException
+                && ((InvocationTargetException) error).getCause() != null
+                ? ((InvocationTargetException) error).getCause() : error;
+            unavailable("exception_" + cause.getClass().getSimpleName());
             return null;
         }
     }
