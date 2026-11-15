@@ -4,6 +4,96 @@ Independent experimental Vector/LSPosed module for Google Messages on the
 Zinwa Q25. The renderer reuses the canonical Kotlin/Compose BBOS6 library in
 `../../shared/android/bbos6-ui/`.
 
+## New opt-in integrated BBOS6 inbox (implementation staged; untested on Q25)
+
+**Progress since the failed row-skin experiment:**
+
+- The actual visible inbox uses the existing `MessagesInboxList` consumer,
+  which invokes the canonical shared `Bbos6PageList`. Hardware
+  DPAD/trackpad, focus, viewport scrolling, touch and selection
+  are therefore owned by the established shared helper—not Google
+  `RecyclerView` as they were in native-row skin mode.
+- A source-time `MainActivity` pre-draw listener attempts to mount the
+  shared inbox **before the first native inbox paint**. This replaces
+  the rejected 750ms delayed mount. If the current Google adapter
+  cannot provide a complete verified snapshot within 12 attempts,
+  it restores/allows Google's stock UI.
+- Added `GoogleMessagesControllerNavigation` as an **app-specific**
+  guarded action bridge (not a shared UI helper). At snapshot,
+  it resolves the actual Google model through `asvk.I(position)`
+  and extracts the typed conversation ID through `aszh.a.I.c`.
+  These paths were observed on two Q25 stock-conversation taps, but
+  independent invocation is **not yet device-verified**.
+- On BBOS6 selection, the bridge rebinds the current native adapter
+  position, checks the sender/snippet, current adapter, controller
+  identity and exact Google model ID against its saved snapshot,
+  and only then invokes the verified `asvk.Q(ConversationId)`
+  signature. If anything changes, it refuses activation and
+  returns to stock. It no longer uses the rejected detached
+  `performClick()`.
+- Native inbox rebinds refresh the shared list. Model changes reset
+  position-only selection even if display text is unchanged.
+  Temporary detach while opening a conversation no longer immediately
+  destroys the shared inbox, allowing it to return after Back.
+- Google long-press `asvk.P(eggp)` remains unverified for
+  independent dispatch. A long-press currently fails closed by restoring
+  the stock UI; it does **not** claim an active context menu.
+- A JVM unit test checks model/controller equality rejection; this and
+  the full build still require execution.
+
+**Important:** This is a new opt-in Q25 test, not a verified working
+replacement. The native `asvk.I(int)` accessor is obfuscated and not a
+public read-only API. It may have side effects; failure must leave
+the stock inbox. Do not test with critical conversations until the
+user accepts that risk. No message data, ID values, contacts, hashes
+or message text are logged by these new diagnostics.
+
+The new mode is completely separate from the defective native-row skin:
+
+```sh
+cd ~/Projects/bbos6-suite
+git fetch origin
+git switch feature/messages-inbox-shared-subtitles
+git pull --ff-only origin feature/messages-inbox-shared-subtitles
+gradle -p system/bb-messages \
+  :bbos6-ui:verifyKotlinOnly \
+  :bbos6-ui:testDebugUnitTest \
+  :app:testDebugUnitTest \
+  :app:assembleDebug && \
+adb -s 202512003630 install -r \
+  system/bb-messages/app/build/outputs/apk/debug/app-debug.apk
+
+adb -s 202512003630 shell setprop debug.bbmessages.actionprobe.enabled false
+adb -s 202512003630 shell setprop debug.bbmessages.native.rows.enabled false
+adb -s 202512003630 shell setprop debug.bbmessages.inbox.enabled false
+adb -s 202512003630 shell setprop debug.bbmessages.page.enabled false
+adb -s 202512003630 shell setprop debug.bbmessages.shared.page.enabled true
+adb -s 202512003630 logcat -c
+adb -s 202512003630 shell am force-stop com.google.android.apps.messaging
+adb -s 202512003630 shell monkey -p com.google.android.apps.messaging 1
+adb -s 202512003630 logcat -d -v time | \
+  grep -E 'SOURCE_PAGE|BBMessagesPage|BBMessagesNavigation|BBMessagesAdapter.*SNAPSHOT'
+```
+
+**Device acceptance still required:** first paint without Google UI
+flash, correct visible rows, BBOS6 trackpad selection and viewport
+boundary scroll, touch, long-press fallback, opening the correct
+conversation, Back preserving the inbox, live updates and safe
+fallback on app version change.
+
+**Immediate stock rollback (no uninstall, no data reset):**
+
+```sh
+adb -s 202512003630 shell setprop debug.bbmessages.shared.page.enabled false
+adb -s 202512003630 shell setprop debug.bbmessages.native.rows.enabled false
+adb -s 202512003630 shell am force-stop com.google.android.apps.messaging
+adb -s 202512003630 shell monkey -p com.google.android.apps.messaging 1
+```
+
+This entire implementation remains on the existing feature branch in
+draft PR #19. Do **not** merge until explicit user approval and Q25
+functional testing.
+
 ## Active direction: controller-level Google Messages integration (2026-11-14)
 
 **The old visible overlay and late full-page swap are rejected and disabled.**
