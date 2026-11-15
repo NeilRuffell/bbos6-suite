@@ -32,6 +32,50 @@ so `adb install -r` updates the existing module without uninstalling it.
 contracts have real Q25 evidence.** The current probe proves none of
 the mandatory RCS capabilities.
 
+## Q25 00:46 third probe — structural collection passed; UI chain deprioritized
+
+The third read-only Q25 diagnostic reported `qe` with position-range callbacks,
+`ujo` extending `java.util.AbstractList`, `uji` with range callbacks,
+and `ujl`/`hbno` as companion types. This is consistent with list/observer
+machinery but **does not identify Google RCS data, message history,
+transport, receipts, typing, or attachments**. The probe executed and
+returned metadata; those RCS capabilities are still unverified.
+
+Rather than following more types from the UI controller graph, the next
+step is an **offline DEX class-definition inventory** of the installed
+Google Messages APK/splits. No new Vector hooks, UI changes, or APK
+installation are needed for this step.
+
+The new Python standard-library scanner reads only class-definition
+descriptors from `classes*.dex` inside those code APKs. It groups
+human-readable class names under RCS/IMS/Jibe, conversation, receipt,
+typing, media and persistence keywords. These are **name-only heuristic
+candidates**, not verified APIs or proof that full RCS is possible.
+Only DEX versions 035–040 are supported; unfamiliar formats fail closed.
+
+Run from the repository checkout on the connected Q25:
+
+```bash
+cd ~/Projects/bbos6-suite
+git fetch origin
+git switch feature/messages-rcs-backend-research
+git pull --ff-only origin feature/messages-rcs-backend-research
+python3 -m unittest discover -s system/bb-messages/tools/tests -v
+python3 system/bb-messages/tools/inventory_google_messages_dex.py \
+  --serial 202512003630 --sample 12
+```
+
+The scanner requests only APK paths using `adb shell pm path`, temporarily
+pulls APK code files, reads class names from their DEX definition tables
+and automatically deletes the temporary copies. It does **not** request
+application private storage, query content providers, read RCS message
+databases, stop/launch Google Messages or change user data.
+
+**Offline scanner tests:** five synthetic-DEX Python unittest cases passed
+in the isolated development environment; no Q25 scan has been run.
+
+Reference: https://source.android.com/docs/core/runtime/dex-format
+
 ## Q25 00:30 first read-only controller probe — PASSED
 
 The Q25's installed Google Messages build confirmed the native action
