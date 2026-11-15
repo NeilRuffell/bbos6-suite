@@ -431,25 +431,14 @@ final class GoogleMessagesAdapterBridge {
                 TextView value = findTextDescendant(container);
                 if (value != null) timestamp = value.getText().toString();
             }
-            GoogleMessagesControllerNavigation.BoundModel model =
-                GoogleMessagesControllerNavigation.resolve(view, holder, index);
-            // A separate opt-in Q25 test can exercise the canonical
-            // Bbos6PageList's actual scrolling/DPAD even when Google's
-            // obfuscated model accessor is unavailable outside real clicks.
-            // The navigation bridge always refuses activation for these
-            // rows and returns the stock inbox; never infer an ID from text.
-            if (model == null) unresolvedModels++;
-            if (model != null) {
-                for (NativeConversationRow previous : rows) {
-                    if (GoogleMessagesControllerNavigation.sameConversation(
-                        previous.model, model
-                    )) {
-                        throw new IllegalStateException("Duplicate native conversation model");
-                    }
-                }
-            }
+            // Q25 18:25 independently calling asvk.I(position)
+            // produced a NULL ID for all 28 rows. It is action-context
+            // dependent, so do not call it during a presentation snapshot.
+            // Opening is delegated to Google's own attached row listener.
+            // Never manufacture a message ID from a position or title.
+            unresolvedModels++;
             rows.add(new NativeConversationRow(index, sender, preview,
-                timestamp, view, holder, model));
+                timestamp, view, holder, null));
         }
         if (!isCurrent() || count != itemCount()) {
             throw new IllegalStateException("Adapter updated during snapshot");
