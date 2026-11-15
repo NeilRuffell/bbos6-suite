@@ -39,4 +39,5 @@ dependencies {
     implementation 'androidx.lifecycle:lifecycle-viewmodel:2.8.7'
     implementation 'androidx.savedstate:savedstate:1.2.1'
     compileOnly 'de.robv.android.xposed:api:82'
+    testImplementation 'junit:junit:4.13.2'
 }
