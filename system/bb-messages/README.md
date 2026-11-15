@@ -58,6 +58,56 @@ continuing to masquerade as a working BBOS6 integration. The experimental
 sources remain only for reference while direct Google controller bindings
 are investigated. No production UI replacement is active. Do not merge.
 
+### Q25 navigation mismatch: row skin is NOT the shared list controller (2026-11-14 17:38)
+
+The user verified the new native skin mounts and logs repeated
+`NATIVE_GEOMETRY width=720 height=83 faceWidth=720 faceHeight=83
+density=1.6 initialPaddingNonzero=true nativeParent=RecyclerView`.
+This proves measured skin geometry and the existence of native row
+padding; it does **not** prove the pixel appearance, clipping or
+navigation are correct. Their Q25 device report says scrolling is
+unacceptable.
+
+**Root architectural mismatch:** `MessagesInboxNativeRowBridge`
+embeds only `Bbos6MediaListRow` inside each Google
+`ConversationListItemView`. The native Google `RecyclerView`
+continues to own list scrolling, DPAD/trackpad selection, viewport
+placement, touch and focus. The canonical shared
+`Bbos6PageList` owns all of those behaviors in Files/Music where
+it is actually used, but **is not mounted in this row-skin mode**.
+Changing row padding or height will not make native Google
+RecyclerView inherit the shared list's behavior.
+
+`MessagesInboxList` already composes `Bbos6PageList`, but the
+old `MessagesInboxPageBridge` full-page mode was disabled after
+Q25 found a delayed 750ms Google-UI flash and inability to open
+conversations through detached native ViewHolder `performClick()`.
+It must not simply be re-enabled.
+
+**Correct path:** use the canonical `MessagesInboxList` /
+`Bbos6PageList` for one BBOS6-controlled inbox, backed by the
+version-checked full Google adapter snapshot. Replace the rejected
+detached `performClick` navigation with a separately tested,
+fail-closed bridge to Google's real conversation controller; maintain
+native conversation identity across live data updates, reject stale
+position-only keys, and mount in the original inbox creation/draw
+path instead of after a 750ms delayed swap. Prove trackpad/DPAD,
+scroll-to-edge, touch, long press, Back and row recycling on Q25.
+No app-specific fork of the canonical navigation helper.
+
+**Current status:** native-row visual mode is an incomplete, opt-in
+diagnostic, not a working BBOS6 inbox. Recommend disabling it for
+normal device use until a true shared-controller integration is
+tested:
+
+```sh
+adb -s 202512003630 shell setprop debug.bbmessages.native.rows.enabled false
+adb -s 202512003630 shell am force-stop com.google.android.apps.messaging
+adb -s 202512003630 shell monkey -p com.google.android.apps.messaging 1
+```
+
+No production navigation integration is claimed or merged.
+
 ### Native row padding / clipping repair (Q25 2026-11-14 17:30)
 
 The user supplied an actual 720-pixel-wide device screenshot and log
