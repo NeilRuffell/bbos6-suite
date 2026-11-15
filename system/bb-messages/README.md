@@ -58,6 +58,49 @@ continuing to masquerade as a working BBOS6 integration. The experimental
 sources remain only for reference while direct Google controller bindings
 are investigated. No production UI replacement is active. Do not merge.
 
+### Native row padding / clipping repair (Q25 2026-11-14 17:30)
+
+The user supplied an actual 720-pixel-wide device screenshot and log
+confirming repeated `NATIVE_ROW mounted shared Bbos6MediaListRow`.
+The first visible BBOS6 rows had cropped leading sender letters,
+cropped right-hand timestamps, clipped preview lines, and residual
+Google rounded-card/row spacing. The mount log confirms that the
+renderer installed but **not** that its geometry was valid.
+
+The row renderer was laying a full-width `Bbos6MediaListRow` out at
+`(0,0)` inside Google's existing `ConversationListItemView`
+without accounting for the native view's own content padding/clipping.
+It now captures that row's original padding, clears the insets only
+while the BBOS6 child is mounted, and restores the exact native padding
+(and previously tracked height and child alpha) on rollback.
+`NATIVE_GEOMETRY` logs a bounded, payload-free diagnostic containing
+the first actual row width/height, face size, screen density, presence
+of initial padding and parent class. No sender names, texts,
+conversation IDs or phone numbers are logged.
+
+The Google Messages app header, floating buttons and conversation
+screen remain stock by design at this row-only stage. Do not claim
+full-width fidelity or working touch/focus until verified after device
+installation. Retest after rebuilding the same branch:
+
+```sh
+cd ~/Projects/bbos6-suite
+git fetch origin
+git switch feature/messages-inbox-shared-subtitles
+git pull --ff-only origin feature/messages-inbox-shared-subtitles
+gradle -p system/bb-messages :app:assembleDebug && \
+adb -s 202512003630 install -r system/bb-messages/app/build/outputs/apk/debug/app-debug.apk
+adb -s 202512003630 shell setprop debug.bbmessages.actionprobe.enabled false
+adb -s 202512003630 shell setprop debug.bbmessages.native.rows.enabled true
+adb -s 202512003630 logcat -c
+adb -s 202512003630 shell am force-stop com.google.android.apps.messaging
+adb -s 202512003630 shell monkey -p com.google.android.apps.messaging 1
+adb -s 202512003630 logcat -d -v time | \
+  grep -E 'NATIVE_ROW|NATIVE_GEOMETRY|BBMessagesNativeRows'
+```
+
+This is an experimental local Q25 fix, not merged.
+
 ### Native row inheritance fix (Q25 2026-11-14 17:26)
 
 Q25 logs confirmed `NATIVE_ROW binding enabled`, followed by repeated
